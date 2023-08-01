@@ -1,0 +1,40 @@
+{
+  "name": "@nostr-ts/node",
+  "version": "0.0.1",
+  "description": "Commonly used snippets",
+  "author": "Franz Geffke <m@f-a.nz>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/franzos/nostr-ts"
+  },
+  "type": "module",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "tsc": "pnpm run build",
+    "build": "pnpm run prebuild && node build.js && tsc -p tsconfig.json --emitDeclarationOnly",
+    "check": "pnpm dlx madge --extensions ts --circular src/"
+  },
+  "dependencies": {
+    "@nostr-ts/common": "workspace:*",
+    "@noble/curves": "^1.1.0",
+    "@noble/hashes": "^1.3.1",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "@types/ws": "^8.5.5",
+    "@anatine/esbuild-decorators": "^0.2.19",
+    "esbuild": "^0.17.18",
+    "esbuild-node-externals": "^1.7.0",
+    "rimraf": "^3.0.2",
+    "tslib": "2.5.0",
+    "typescript": "5.1.6"
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist/*"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+    "extends": "./../tsconfig.base.json",
+    "compilerOptions": {
+        "baseUrl": "./",
+        "outDir": "dist/",
+        "emitDecoratorMetadata": true
+    },
+    "include": ["*.ts", "**/*.ts"],
+    "types": ["node"]
+}

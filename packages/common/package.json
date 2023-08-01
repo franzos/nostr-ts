@@ -1,0 +1,39 @@
+{
+  "name": "@nostr-ts/common",
+  "version": "0.0.1",
+  "description": "Commonly used nostr types and utils",
+  "author": "Franz Geffke <m@f-a.nz>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/franzos/nostr"
+  },
+  "type": "module",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "tsc": "pnpm run build",
+    "build": "pnpm run prebuild && node build.js && tsc -p tsconfig.json --emitDeclarationOnly",
+    "check": "pnpm dlx madge --extensions ts --circular src/"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.1.0",
+    "@noble/hashes": "^1.3.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^9.0.2",
+    "@anatine/esbuild-decorators": "^0.2.19",
+    "esbuild": "^0.17.18",
+    "esbuild-node-externals": "^1.7.0",
+    "rimraf": "^3.0.2",
+    "tslib": "2.5.0",
+    "typescript": "5.1.6"
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "gitHead": "67e2e9767eb307a0ef494800638d8d163db8cb6a"
+}

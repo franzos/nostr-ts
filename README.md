@@ -79,6 +79,12 @@ client.listen((payload) => {
 })
 ```
 
+- [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
+
+```js
+const infos = await client.getRelayInformation();
+```
+
 - [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js

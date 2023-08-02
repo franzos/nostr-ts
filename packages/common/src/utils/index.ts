@@ -1,6 +1,7 @@
 export * from "./event-content-warning.js";
 export * from "./event-expiration.js";
 export * from "./event-nonce.js";
+export * from "./event-recommendation.js";
 export * from "./event-subject.js";
 export * from "./generate-keypair.js";
 export * from "./hash-event.js";

@@ -1,4 +1,5 @@
 import { RelayInformationDocument } from "@nostr-ts/common";
+import type { Response } from "node-fetch";
 
 /**
  * Get relay information document
@@ -21,15 +22,21 @@ export async function getRelayInformationDocument(
   // Use inline import for 'node-fetch'
   const fetch = (await import("node-fetch")).default;
 
-  let response = await fetch(httpsUrl, {
-    headers: {
-      Accept: "application/nostr+json",
-    },
-  });
+  let response = (await Promise.race([
+    fetch(httpsUrl, {
+      headers: {
+        Accept: "application/nostr+json",
+      },
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), 5000)
+    ),
+  ])) as Response;
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  return result;
 }

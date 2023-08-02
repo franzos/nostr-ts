@@ -1,3 +1,3 @@
-export * from './keypair'
-export * from './relay-client'
-export * from './ws'
+export * from "./keypair";
+export * from "./relay-client";
+export * from "./relay-discovery";

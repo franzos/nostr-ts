@@ -83,7 +83,7 @@ client.listen((payload) => {
 **Recommend a relay**
 
 ```js
-connst rec = NewRecommendRelay({
+const rec = NewRecommendRelay({
     server: 'wss://nostr.rocks',
 })
 rec.signAndGenerateId(keypair)
@@ -120,7 +120,7 @@ If you want to respond to a note, keeping the subject:
 ```js
 const previousEvent
 const relaySourceUrl
-const newEvent = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", previousEvent, relayUrl);
+const newEvent = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", previousEvent, relaySourceUrl);
 ```
 
 If this is the first response, we prepend the subject with `Re: ` automatically. So you'd be responding with subject `Re: All things Bitcoin`.
@@ -190,7 +190,170 @@ client.sendEvent(identity);
 ```js
 const newEvent = NewShortTextNote("Meeting starts in 10 minutes ...");
 newEvent.addExpirationTag(1690990889);
-  ```
+```
+
+## Examples
+
+### Collect a list of recommended relays
+
+1. Setup a filter for kind 2
+2. Subscribe with the filter
+3. Pass incoming events to discovery
+4. Save to json file
+
+```js
+import {
+  NewFilters,
+  logRelayMessage,
+} from "@nostr-ts/common";
+import {
+  loadOrCreateKeypair,
+  RelayClient,
+  RelayDiscovery,
+} from "@nostr-ts/node";
+
+const main = async () => {
+  const keypair = await loadOrCreateKeypair();
+
+  let client = new RelayClient([
+    "wss://nostr.rocks",
+    "wss://nostr.wine",
+    "wss://nostr.lu.ke",
+    "wss://nos.lol",
+    "wss://nostr.orangepill.dev",
+  ]);
+
+  const relayDiscovery = new RelayDiscovery();
+  const filters = new NewFilters();
+  filters.addKind(2);
+
+  client.subscribe({
+    filters,
+  });
+
+  client.listen(async (payload) => {
+    await relayDiscovery.add(payload.data);
+  });
+
+  await client.getRelayInformation();
+  await new Promise((resolve) => setTimeout(resolve, 1 * 30 * 1000)).then(
+    async () => {
+      client.closeConnection();
+      await relayDiscovery.saveToFile();
+    }
+  );
+};
+
+main();
+```
+
+You will have get a file (`discovered-relays.json`) that looks similiar to this excerpt: 
+
+
+```json
+[
+  {
+    "url": "wss://relay.nostrplebs.com",
+    "info": {
+      "contact": "nostr@semisol.dev",
+      "description": "Nostr Plebs paid relay.",
+      "name": "relay.nostrplebs.com",
+      "pubkey": "52b4a076bcbbbdc3a1aefa3735816cf74993b1b8db202b01c883c58be7fad8bd",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v92-84ba68b"
+    }
+  },
+  {
+    "url": "wss://nostr-pub.wellorder.net",
+    "info": {
+      "id": "wss://nostr-pub.wellorder.net/",
+      "name": "Public Wellorder Relay",
+      "description": "Public relay for nostr development and use.",
+      "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
+      "contact": "mailto:relay@wellorder.net",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostrview.com",
+    "info": {
+      "name": "relay.nostrview.com",
+      "description": "Nostrview relay",
+      "pubkey": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "contact": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40,
+        111
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostrview.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 4000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+]
+```
 
 ## TODO
 

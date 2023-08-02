@@ -1,7 +1,6 @@
-import { RelayClientBase } from "@nostr-ts/common";
+import { RelayClientBase, WebSocketClientInfo } from "@nostr-ts/common";
 import { WebSocketClient } from "./ws";
 import { getRelayInformationDocument } from "./relay-information";
-import { WebSocketClientInfo } from "@nostr-ts/common";
 
 export class RelayClient extends RelayClientBase {
   constructor(urls: string[]) {

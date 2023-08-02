@@ -79,6 +79,16 @@ client.listen((payload) => {
 })
 ```
 
+**Recommend a relay**
+
+```js
+connst rec = NewRecommendRelay({
+    server: 'wss://nostr.rocks',
+})
+rec.signAndGenerateId(keypair)
+client.sendEvent(rec)
+```
+
 - [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
 ```js
@@ -116,6 +126,26 @@ const reaction = NewReaction('+', {
 
 reaction.signAndGenerateId(keypair)
 client.sendEvent(reaction)
+```
+
+- [ ] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
+
+```js
+const githubClaim = new ExternalIdentityClaim({
+    type: IDENTITY_CLAIM_TYPE.GITHUB,
+    identity: "semisol",
+    proof: "9721ce4ee4fceb91c9711ca2a6c9a5ab",
+});
+
+const identity = NewUpdateUserMetadata({
+    claims: [githubClaim],
+    userMetadata: {
+        name: "Semisol",
+    },
+});
+
+identity.signAndGenerateId(keypair);
+client.sendEvent(identity);
 ```
 
 ## TODO

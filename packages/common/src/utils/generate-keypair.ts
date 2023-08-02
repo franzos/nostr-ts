@@ -1,6 +1,5 @@
-
-import { schnorr } from '@noble/curves/secp256k1';
-import { bytesToHex } from '@noble/curves/abstract/utils';
+import { schnorr } from "@noble/curves/secp256k1";
+import { bytesToHex } from "@noble/curves/abstract/utils";
 
 /**
  * Generate keypair
@@ -9,11 +8,11 @@ import { bytesToHex } from '@noble/curves/abstract/utils';
  *  pub: hex string
  * }
  */
-export function generateClientKeys() {
-    const priv = schnorr.utils.randomPrivateKey();
-    const pub = schnorr.getPublicKey(priv);
-    return {
-        priv: bytesToHex(priv),
-        pub: bytesToHex(pub),
-    }
+export function generateClientKeys(): { priv: string; pub: string } {
+  const priv = schnorr.utils.randomPrivateKey();
+  const pub = schnorr.getPublicKey(priv);
+  return {
+    priv: bytesToHex(priv),
+    pub: bytesToHex(pub),
+  };
 }

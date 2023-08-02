@@ -53,6 +53,7 @@ let client = new RelayClient([
     'wss://nostr.rocks',
     'wss://nostr.lu.ke'
 ]);
+await client.getRelayInformation();
 ```
 
 **Send a message**:
@@ -95,6 +96,35 @@ client.sendEvent(rec)
 const infos = await client.getRelayInformation();
 ```
 
+Based on this information the client decides whether to publish to a rely:
+
+```
+neededNips [ 40 ]
+supportedNips [
+   1,  2,  4,  9, 11,
+  12, 15, 16, 20, 22,
+  28, 33
+]
+Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not published to wss://nostr.wine because not all needed NIPS are supported.
+```
+
+- [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
+
+```js
+const newEvent = NewShortTextNote("Let's have a discussion about Bitcoin!");
+newEvent.addSubjectTag("All things Bitcoin");
+```
+
+If you want to respond to a note, keeping the subject:
+
+```js
+const previousEvent
+const relaySourceUrl
+const newEvent = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", previousEvent, relayUrl);
+```
+
+If this is the first response, we prepend the subject with `Re: ` automatically. So you'd be responding with subject `Re: All things Bitcoin`.
+
 - [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js
@@ -128,6 +158,13 @@ reaction.signAndGenerateId(keypair)
 client.sendEvent(reaction)
 ```
 
+- [ ] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
+
+```js
+const newEvent = NewShortTextNote("This is explicit sh** right here.");
+newEvent.addContentWarningTag("explicit language");
+```
+
 - [ ] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
 
 ```js
@@ -147,6 +184,13 @@ const identity = NewUpdateUserMetadata({
 identity.signAndGenerateId(keypair);
 client.sendEvent(identity);
 ```
+
+- [ ] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
+
+```js
+const newEvent = NewShortTextNote("Meeting starts in 10 minutes ...");
+newEvent.addExpirationTag(1690990889);
+  ```
 
 ## TODO
 

@@ -91,8 +91,6 @@ export class RelayClientBase {
       message.filters,
     ]);
 
-    console.log("sendSubscribe", data);
-
     const newSubscriptions: ClientSubscription[] = [];
 
     for (const relay of this.clients) {
@@ -199,19 +197,45 @@ export class RelayClientBase {
     };
     const data = JSON.stringify([message.type, message.data]);
 
+    let sent = false;
+
     for (const relay of this.clients) {
       if (relay.connection) {
-        relay.connection.sendMessage(data);
+        // TODO: CLeanuo logs
+        const neededNips = event.determineRequiredNIP();
+        console.log("neededNips", neededNips);
+        const supportedNips = relay.info?.supported_nips || [];
+        console.log("supportedNips", supportedNips);
 
-        const command: ClientCommands = {
-          connectionId: relay.id,
-          eventId: event.id,
-          request: message,
-        };
-        this.commands.push(command);
+        const allNipsSupported = neededNips.every((nip) =>
+          supportedNips.includes(nip)
+        );
 
-        console.log(`Sent event to ${relay.url}`, message);
+        if (allNipsSupported) {
+          relay.connection.sendMessage(data);
+
+          const command: ClientCommands = {
+            connectionId: relay.id,
+            eventId: event.id,
+            request: message,
+          };
+          this.commands.push(command);
+
+          console.log(`Sent event to ${relay.url}`, message);
+          sent = true;
+        } else {
+          console.log(
+            `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
+            message
+          );
+        }
       }
+    }
+
+    if (!sent) {
+      console.log(
+        `Event ${event.id} not published because no supported relay is available.`
+      );
     }
   }
 

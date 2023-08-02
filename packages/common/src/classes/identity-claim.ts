@@ -57,3 +57,37 @@ export class ExternalIdentityClaim implements ExternalIdentityClaimBase {
     return this;
   }
 }
+
+/**
+ * Check tag if NIP-41
+ * @param tag
+ * @returns
+ */
+export function isValidExternalIdentityClaim(tag: string[]) {
+  if (tag.length !== 3) {
+    return false;
+  }
+  const typeIsValid = Object.values(IDENTITY_CLAIM_TYPE).includes(
+    tag[1].split(":")[0] as IDENTITY_CLAIM_TYPE
+  );
+  if (!typeIsValid) {
+    return false;
+  }
+  const identityIsValid = isValidProviderName(tag[1].split(":")[1]);
+  if (!identityIsValid) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Check array of tags if any are NIP-41
+ * @param tags
+ * @returns
+ */
+export function eventHasExternalIdentityClaim(tags: string[][]) {
+  const identityClaimTags = tags.filter(
+    (tag) => tag[0] === "i" && isValidExternalIdentityClaim(tag)
+  );
+  return identityClaimTags.length > 0;
+}

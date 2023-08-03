@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pnpm --filter './packages/**' build"
+    "build": "pnpm --filter './packages/**' build",
+    "tests": "pnpm --filter './packages/**' tests"
   },
   "keywords": [],
   "author": "Franz Geffke <m@f-a.nz>",

@@ -461,6 +461,12 @@ const relays = relayDiscovery.get().slice(0, 10)
 await client.loadFromDiscovered(relays);
 ```
 
+## Tests
+
+```
+pnpm run tests
+```
+
 ## TODO
 
 - [ ] Tests

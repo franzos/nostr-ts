@@ -8,7 +8,7 @@ import {
   DiscoveredRelay,
   DiscoveredRelayWithError,
 } from "@nostr-ts/common";
-import { getRelayInformationDocument } from "../utils/relay-information.js";
+import { getRelayInformationDocument } from "../utils/relay-information";
 import {
   RelayAuth,
   RelayCount,

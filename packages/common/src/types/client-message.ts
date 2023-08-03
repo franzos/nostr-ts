@@ -1,5 +1,5 @@
-import { NEvent, NFilters } from "../classes/index.js";
-import { FiltersBase } from "./filter.js";
+import { NEvent, NFilters } from "../classes/index";
+import { FiltersBase } from "./filter";
 
 /**
  * Client message to relay

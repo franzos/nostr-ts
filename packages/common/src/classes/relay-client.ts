@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { NEvent } from "./event.js";
+import { NEvent } from "./event";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
@@ -16,8 +16,8 @@ import {
   RelayOK,
   Subscribe,
   WebSocketClientConfig,
-} from "../types/index.js";
-import { RelayConnection } from "./relay-connection.js";
+} from "../types/index";
+import { RelayConnection } from "./relay-connection";
 
 export class RelayClientBase {
   public relays: RelayConnection[] = [];

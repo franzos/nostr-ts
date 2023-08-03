@@ -59,7 +59,7 @@ await client.getRelayInformation();
 **Send a message**:
 
 ```js
-const ev = NewShortTextNote('Hello nostr!')
+const ev = NewShortTextNote({ text: 'Hello nostr!' })
 ev.signAndGenerateId(keypair)
 client.sendEvent(ev)
 ```
@@ -84,7 +84,7 @@ client.listen((payload) => {
 
 ```js
 const ev = NewRecommendRelay({
-    server: 'wss://nostr.rocks',
+    relayUrl: 'wss://nostr.rocks',
 })
 ev.signAndGenerateId(keypair)
 client.sendEvent(ev)
@@ -111,14 +111,14 @@ Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not publi
 - [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
 
 ```js
-const ev = NewShortTextNote("Let's have a discussion about Bitcoin!");
+const ev = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
 ev.addSubjectTag("All things Bitcoin");
 ```
 
 If you want to respond to a note, keeping the subject:
 
 ```js
-const event = {
+const inResponseTo = {
     id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
     pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
     created_at: 1690881792,
@@ -127,8 +127,12 @@ const event = {
     content: "Let's have a discussion about Bitcoin!",
     sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
 }
-const relaySourceUrl = "wss://nostr.rocks"
-const ev = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", event, relaySourceUrl);
+const relayUrl = "wss://nostr.rocks"
+const ev = NewShortTextNoteResponse({
+    text: "Sounds like a great idea. What do you think about the Lightning Network?",
+    inResponseTo,
+    relayUrl
+});
 ```
 
 If this is the first response, we prepend the subject with `Re: ` automatically. So you'd be responding with subject `Re: All things Bitcoin`.
@@ -136,9 +140,9 @@ If this is the first response, we prepend the subject with `Re: ` automatically.
 - [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js
-const ev = NewQuoteRepost(
-    'https://nostr.rocks',
-    {
+const ev = NewQuoteRepost({
+    relayUrl: 'https://nostr.rocks',
+    inResponseTo: {
         id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
         pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
         created_at: 1690881792,
@@ -147,7 +151,7 @@ const ev = NewQuoteRepost(
         content: "Hello everyone! I am working on a new ts library for nostr. This is just a test.",
         sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
     }
-)
+})
 ev.signAndGenerateId(keypair)
 client.sendEvent(ev)
 ```
@@ -157,9 +161,12 @@ You can also utilize `NewGenericRepost` to repost any kind of event.
 - [ ] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
 
 ```js
-const ev = NewReaction('+', {
-    id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
-    pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
+const ev = NewReaction({
+    text: '+', 
+    inResponseTo: {
+        id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
+        pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
+    }
 })
 
 ev.signAndGenerateId(keypair)
@@ -169,7 +176,7 @@ client.sendEvent(ev)
 - [ ] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
 
 ```js
-const ev = NewShortTextNote("This is explicit sh** right here.");
+const ev = NewShortTextNote({ text: "This is a test note with explicit language.", });
 ev.addContentWarningTag("explicit language");
 ```
 
@@ -196,7 +203,7 @@ client.sendEvent(ev);
 - [ ] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
 
 ```js
-const ev = NewShortTextNote("Meeting starts in 10 minutes ...");
+const ev = NewShortTextNote({ text: "Meeting starts in 10 minutes ..." });
 ev.addExpirationTag(1690990889);
 ```
 

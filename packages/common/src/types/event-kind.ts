@@ -1,6 +1,7 @@
 /**
  * Event kinds
  * https://github.com/nostr-protocol/nips/blob/master/README.md#event-kinds
+ * https://github.com/nostr-protocol/nips/blob/master/33.md
  */
 export enum NEVENT_KIND {
   METADATA = 0,

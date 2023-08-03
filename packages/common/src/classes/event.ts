@@ -165,9 +165,6 @@ export class NEvent implements EventBase {
    * This is primarily for events of kind 1
    */
   public hasSubjectTag() {
-    if (this.kind !== NEVENT_KIND.SHORT_TEXT_NOTE) {
-      console.log(`Event kind ${this.kind} should not have a subject.`);
-    }
     return eventHasSubject(this);
   }
 
@@ -371,13 +368,13 @@ export function NewShortTextNoteResponse(
  * @returns
  */
 export function NewReaction(opts: iNewReaction) {
+  if (opts.text !== "+" && opts.text !== "-") {
+    throw new Error("Reaction must be either '+' or '-'");
+  }
   const nEv = new NEvent({
     content: opts.text,
     kind: NEVENT_KIND.REACTION,
-    tags: [
-      // ["e", opts.inResponseTo.id],
-      // ["p", opts.inResponseTo.pubkey],
-    ],
+    tags: [],
   });
 
   nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);

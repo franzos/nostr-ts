@@ -98,9 +98,6 @@ export function encodeBech32(
   const words = bech32.toWords(new Uint8Array(tlvData.buffer));
 
   const encoded = bech32.encode(prefix, words);
-  console.log(
-    `Data length: ${tlvData.length}, Bech32 string length: ${encoded.length}`
-  );
 
   return encoded;
 }

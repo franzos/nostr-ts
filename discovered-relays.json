@@ -1,0 +1,3012 @@
+[
+  {
+    "url": "wss://relay.nostrplebs.com",
+    "info": {
+      "contact": "nostr@semisol.dev",
+      "description": "Nostr Plebs paid relay.",
+      "name": "relay.nostrplebs.com",
+      "pubkey": "52b4a076bcbbbdc3a1aefa3735816cf74993b1b8db202b01c883c58be7fad8bd",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v92-84ba68b"
+    }
+  },
+  {
+    "url": "wss://relay.nostrview.com",
+    "info": {
+      "name": "relay.nostrview.com",
+      "description": "Nostrview relay",
+      "pubkey": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "contact": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40,
+        111
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostrview.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 4000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://eden.nostr.land",
+    "info": {
+      "name": "eden.nostr.land",
+      "description": "Eden Nostr Land - Toronto 1-01",
+      "pubkey": "00000000827ffaa94bfea288c3dfce4422c794fbb96625b6b31e9049f729d700",
+      "contact": "me@ricardocabral.io",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 1048576,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://eden.nostr.land/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr-pub.wellorder.net",
+    "info": {
+      "id": "wss://nostr-pub.wellorder.net/",
+      "name": "Public Wellorder Relay",
+      "description": "Public relay for nostr development and use.",
+      "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
+      "contact": "mailto:relay@wellorder.net",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nos.lol",
+    "info": {
+      "contact": "unset",
+      "description": "Generally accepts notes, except spammy ones.",
+      "name": "nos.lol",
+      "pubkey": "9fec72d579baaa772af9e71e638b529215721ace6e0f8320725ecbf9f77f85b1",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        16,
+        20,
+        22,
+        28,
+        33,
+        40
+      ],
+      "version": "0.9.2"
+    }
+  },
+  {
+    "url": "wss://relay.wellorder.net",
+    "info": {
+      "id": "wss://nostr-pub.wellorder.net/",
+      "name": "Public Wellorder Relay",
+      "description": "Public relay for nostr development and use.",
+      "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
+      "contact": "mailto:relay@wellorder.net",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://blastr.f7z.xyz",
+    "info": {
+      "name": "Mutiny blastr relay",
+      "description": "Mutiny blastr relay",
+      "pubkey": "fa984bd7dbb282f07e16e7ae87b26a2a7b9b90b7246a44771f0cf5ae58018f52",
+      "contact": "p@f7z.io",
+      "supported_nips": [
+        1,
+        11,
+        15,
+        20
+      ],
+      "software": "git+https://github.com/MutinyWallet/blastr.git",
+      "version": "0.0.0"
+    }
+  },
+  {
+    "url": "wss://botrelay.com",
+    "info": {
+      "name": "Botrelay",
+      "description": "Botrelay blastr",
+      "pubkey": "8fb140b4e8ddef97ce4b821d247278a1a4353362623f64021484b372f948000c",
+      "contact": "me@fshck.com",
+      "supported_nips": [
+        1,
+        11,
+        15,
+        20
+      ],
+      "software": "git+https://github.com/MutinyWallet/blastr.git",
+      "version": "0.0.0"
+    }
+  },
+  {
+    "url": "wss://at.nostrworks.com",
+    "info": {
+      "name": "at.nostrworks.com",
+      "description": "First paid Nostr relay hosted in Vienna/Austria. This relay requires a small one-time admission fee to keep away spam. Go to https://at.nostrworks.com",
+      "pubkey": "0e6802d8b7caf0206b1df7b81d2421a27b2dd5a3396f74bfcfe5bae8997c959a",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.24.1",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://at.nostrworks.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://brb.io",
+    "info": {
+      "name": "BRB.io",
+      "description": "Nostr relay server by Coinkite. A work in progress.",
+      "pubkey": "3c1ba7d42c873c2f89caf1ca79b4ead6513385de53743fa6eb98c3705655695c",
+      "contact": "mailto:brb@coinkite.com",
+      "software": "BRB-noserver",
+      "version": "0.6",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        40
+      ],
+      "limitation": {
+        "max_message_length": 16384,
+        "max_content_length": 12000,
+        "max_subscriptions": 100,
+        "max_filters": 200,
+        "max_limit": 2000,
+        "max_subid_length": 100,
+        "min_prefix": 4,
+        "max_event_tags": 500,
+        "auth_required": false
+      },
+      "relay_countries": [
+        "CA",
+        "DE"
+      ],
+      "tags": [
+        "bitcoin-only"
+      ],
+      "retention": []
+    }
+  },
+  {
+    "url": "wss://relay.snort.social",
+    "info": {
+      "id": "wss://relay.snort.social/",
+      "name": "Snort Relay",
+      "description": "decent nostr relay",
+      "pubkey": "63fe6318dc58583cfe16810f86dd09e18bfd76aabc24a0081ce2856f330504ed",
+      "contact": "realy@snort.social",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.8",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.milou.lol",
+    "info": {
+      "name": "milou",
+      "description": "The dopest paid nostr relay in the multiverse.",
+      "pubkey": "eda6845cc2269bea10f010744ad79409acb7129d96857d4bf19e027696299292",
+      "contact": "bhd@milou.lol",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.milou.lol/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 1000000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay1.nostrchat.io",
+    "info": {
+      "name": "relay1.nostrchat.io",
+      "description": "nostrchat.io",
+      "pubkey": "npub15945fccsu6vv3axmumaj0gyvrpajnlynvgtaadl5f22f7623dzzsqkh6gu",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.0",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://relay1.nostrchat.io/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay2.nostrchat.io",
+    "info": {
+      "name": "relay2.nostrchat.io",
+      "description": "nostrchat.io",
+      "pubkey": "npub1nnmwkczdwzxpesjgzjjrjdetny4g6nljzeuzn3n2zvw7ygxt7tvqqwgh2g",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.0",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://relay2.nostrchat.io/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr-dev.wellorder.net",
+    "info": {
+      "id": "wss://nostr-dev.wellorder.net/",
+      "name": "dev-relay",
+      "description": "Relay for nostr-rs-relay development.",
+      "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://relay.damus.io",
+    "info": {
+      "contact": "jb55@jb55.com",
+      "description": "Damus strfry relay",
+      "name": "damus.io ",
+      "pubkey": "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v78-30b8c38"
+    }
+  },
+  {
+    "url": "wss://nostr.wine",
+    "info": {
+      "contact": "wino@nostr.wine",
+      "description": "A paid nostr relay for wine enthusiasts and everyone else.",
+      "fees": {
+        "admission": [
+          {
+            "amount": 18888000,
+            "unit": "msats"
+          }
+        ],
+        "retention": []
+      },
+      "limitation": {
+        "auth_required": false,
+        "max_event_tags": 2000,
+        "max_limit": 1000,
+        "max_message_length": 131072,
+        "max_subid_length": 71,
+        "max_subscriptions": 50,
+        "min_pow_difficulty": 0,
+        "payment_required": true
+      },
+      "name": "nostr.wine",
+      "payments_url": "https://nostr.wine/invoices",
+      "pubkey": "4918eb332a41b71ba9a74b1dc64276cfff592e55107b93baae38af3520e55975",
+      "software": "https://github.com/hoytech/strfry",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        28,
+        33
+      ],
+      "version": "main"
+    }
+  },
+  {
+    "url": "wss://nostr.foundrydigital.com",
+    "info": {
+      "contact": "noderunner11@protonmail.com",
+      "description": "This is a strfry relay run by Foundry Mining Pool.",
+      "name": "Foundry",
+      "pubkey": "npub1qgwhaaa2lsp54rl0hfx7qa3z678ax6wlre0em475rhpvl7n54cpqgg7y7n",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v115-a42e4ed"
+    }
+  },
+  {
+    "url": "wss://deschooling.us",
+    "info": {
+      "name": "deschooling relay",
+      "description": "verified relay",
+      "pubkey": "00004e1769c51dde98a7deefd8c7fddf384d804513e1527b4b97ffcb901ce654",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        5,
+        9,
+        11,
+        12,
+        15,
+        20,
+        26,
+        33,
+        40,
+        42,
+        50
+      ],
+      "software": "https://code.pobblelabs.org/fossil/nostr_relay",
+      "version": "1.12.2"
+    }
+  },
+  {
+    "url": "wss://nostr.bitcoiner.social",
+    "info": {
+      "contact": "jim@bitcoiner.social",
+      "description": "NOSTR.bitcoiner.social high performance free relay with heavy-handed spam filtering. Events may be deleted after a period of time. For our premium pay2relay including LONG-TERM storage and NIP-05 verification, connect to BITCOINER.social instead.",
+      "name": "NOSTR.bitcoiner.social public relay",
+      "pubkey": "ece3317bf8163930b5dafae50596b740b0608433b78568886a9a712a91a5d59b",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v78-30b8c38"
+    }
+  },
+  {
+    "url": "wss://relay.nostriches.org",
+    "info": {
+      "name": "relay.nostriches.org",
+      "description": "A nostr relay at nostriches.org",
+      "pubkey": "64f776a8fe0b0c6b51c5de0984aa3d62ab3861d67b7be18d3ded1c0afcf7866f",
+      "contact": "ibrokeit@nostriches.org",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 362144,
+        "max_subscriptions": 50,
+        "max_filters": 50,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostriches.org/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 421000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://knostr.neutrine.com",
+    "info": {
+      "name": "relay.nostrview.com",
+      "description": "Nostrview relay",
+      "pubkey": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "contact": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40,
+        111
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostrview.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 4000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.fmt.wiz.biz",
+    "info": {
+      "name": "nostr.fmt.wiz.biz",
+      "description": "wiz's nostr relay in fremont",
+      "pubkey": "npub1uvl7vhclmezvdhqha6eclkksln40rjhgwgsggvew683jf93fr4pq3mq3sd",
+      "contact": "noc@wiz.biz",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.18.0"
+    }
+  },
+  {
+    "url": "wss://offchain.pub",
+    "info": {
+      "contact": "admin@offchain.pub",
+      "description": "public nostr relay running strfry",
+      "name": "offchain.pub",
+      "pubkey": "6b1b35c6dee48851bac53a4494ca8f819503be00212dbceb899dc03acd7641db",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v80-30b8c38"
+    }
+  },
+  {
+    "url": "wss://nostr.mom",
+    "info": {
+      "contact": "unset",
+      "description": "This is a strfry instance.",
+      "name": "strfry default",
+      "pubkey": "unset",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        16,
+        20,
+        22,
+        28,
+        33,
+        40
+      ],
+      "version": "0.9.2"
+    }
+  },
+  {
+    "url": "wss://btc.klendazu.com",
+    "info": {
+      "id": "wss://btc.klendazu.com/",
+      "name": "Klendazu-Nostr-relay",
+      "description": "A Relay For Freedom.",
+      "pubkey": "0786d4e070409fd9e6c530d756a3d0aeb8b2d0adbbdb473d7b9835bace237a75",
+      "contact": "mailto:klendazu@duck.com",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.2b9t.xyz",
+    "info": {
+      "name": "Unnamed nostr-rs-relay",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.orangepill.dev",
+    "info": {
+      "name": "relay.orangepill.dev",
+      "description": "A nostr paid relay running on orangepill.dev",
+      "pubkey": "d4843f4c280abba3d43d84ed7924b2567d7c166f5e72985b9f06d355601b5d78",
+      "contact": "support@orangepill.dev",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 262144,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.orangepill.dev/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 4500000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostr.wirednet.jp",
+    "info": {
+      "name": "relay.nostr.wirednet.jp",
+      "description": "relay.nostr.wirednet.jp",
+      "pubkey": "634bd19e5c87db216555c814bf88e66ace175805291a6be90b15ac3b2247da9b",
+      "contact": "mailto:kirino.minato+relay@gmail.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 100,
+        "max_filters": 25000,
+        "max_limit": 50000,
+        "max_subid_length": 2560,
+        "min_prefix": 40,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://relay.nostr.wirednet.jp/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.plebchain.org",
+    "info": {
+      "name": "ca.orangepill.dev",
+      "description": "A nostr paid relay located in Canada running on orangepill.dev",
+      "pubkey": "e2979bdc71266bf655b83f733522c64e85f934298d350426404f26f71b376038",
+      "contact": "support@orangepill.dev",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 262144,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://ca.orangepill.dev/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 6400000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr-verified.wellorder.net",
+    "info": {
+      "id": "wss://nostr-verified.wellorder.net/",
+      "name": "verified-relay",
+      "description": "Relay for NIP-05 verified users.",
+      "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.mikedilger.com",
+    "info": {
+      "id": "wss://nostr.mikedilger.com",
+      "name": "nostr-rs-relay",
+      "description": "Mike Dilger's archive relay, not for general use.",
+      "pubkey": "ee11a5dff40c19a555f41fe42b48f00e618c91225622ae37b6c2bb67b76c4e49",
+      "contact": "mailto:mike@mikedilger.com",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.sagaciousd.com",
+    "info": {
+      "name": "NostagiousD",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "replace-with-your-pubkey-in-hex",
+      "contact": "figaro@sagaciousd.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.sagaciousd.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 100000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://nostr-relay.lnmarkets.com",
+    "info": {
+      "id": "wss://nostr-relay.lnmarkets.com/",
+      "name": "lnmarkets",
+      "description": "LN Markets' Nostr relay, running nostr-rs-relay.",
+      "contact": "mailto:contact@lnmarkets.com",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.15"
+    }
+  },
+  {
+    "url": "wss://filter.nostr.wine",
+    "info": {
+      "name": "filter.nostr.wine",
+      "description": "A filter/broadcast relay for nostr.wine users",
+      "pubkey": "4918eb332a41b71ba9a74b1dc64276cfff592e55107b93baae38af3520e55975",
+      "contact": "wino@nostr.wine",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        28,
+        33,
+        42,
+        50
+      ],
+      "software": "https://github.com/nostr-wine/filter-relay",
+      "version": "1.2",
+      "limitation": {
+        "max_message_length": 131072,
+        "max_limit": 2000,
+        "max_subid_length": 71,
+        "max_event_tags": 2000,
+        "min_pow_difficulty": 0,
+        "auth_required": true,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.wine/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 18888000,
+            "unit": "msats"
+          }
+        ],
+        "retention": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostr.com.au",
+    "info": {
+      "name": "relay.nostr.com.au",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "e07773a92a610a28da20748fdd98bfb5af694b0cad085224801265594a98108a",
+      "contact": "admin@nostr.com.au",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 262144,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostr.com.au/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 6969000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay.stoner.com",
+    "info": {
+      "id": "wss://relay.stoner.com/",
+      "name": "stoner",
+      "description": "The dankest of relays.\n\nHand picked curated list of nostr devs, bitcoiners, and security professionals.\n\n--For write access DM the admin--",
+      "pubkey": "0497384b57b43c107a778870462901bf68e0e8583b32e2816563543c059784a4",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.einundzwanzig.space",
+    "info": {
+      "id": "wss://nostr.einundzwanzig.space/",
+      "name": "nostr-einundzwanzig-space",
+      "description": "In code we trust.",
+      "pubkey": "031ea306188fee631a86f1a0e49cee8f3d62592b2e7be5f8eb1788e327db340a",
+      "contact": "mail@einundzwanzig.space",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.8"
+    }
+  },
+  {
+    "url": "wss://nostr.slothy.win",
+    "info": {
+      "name": "nostr.slothy.win",
+      "description": "An experimental nostr relay on OK hardware. PAID RELAY at 5K sats.",
+      "pubkey": "dd6c2887a9a36d488f76fd662a979db3dffb93ba080fa7c12e8cf695d3460551",
+      "contact": "nostr-relay@slothy.win",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 131072,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.slothy.win/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ],
+        "publication": [
+          {
+            "amount": 50,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostr.bg",
+    "info": {
+      "contact": "dcdd29d5f71beaa1c362e6aa384dd073fdcca1155caccd29f82d43acf8be7598",
+      "description": "Nostr Public Relay",
+      "name": "relay.nostr.bg powered by strfry",
+      "pubkey": "dcdd29d5f71beaa1c362e6aa384dd073fdcca1155caccd29f82d43acf8be7598",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        16,
+        20,
+        22,
+        28,
+        33,
+        40
+      ],
+      "version": "0.9.3"
+    }
+  },
+  {
+    "url": "wss://nostr-verif.slothy.win",
+    "info": {
+      "id": "wss://nostr-verif.slothy.win/",
+      "name": "slothy_nostr-rs-relay_verified",
+      "description": "An experimental nostr relay on OK hardware. Writes are NIP-05 Verified ONLY.",
+      "pubkey": "246ca9df2cea8a42e647ea9597fb21e18737d46c4114773214a929e9799031b8",
+      "contact": "mailto:nostr-relay@slothy.win",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.8"
+    }
+  },
+  {
+    "url": "wss://nostr.roundrockbitcoiners.com",
+    "info": {
+      "name": "nostr.roundrockbitcoiners.com",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "f121d2210ee6ec1b051007a9d337d96951c73e2e1165f68a8d78876409f89754",
+      "contact": "admin@roundrockbitcoiners.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr.roundrockbitcoiners.com/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr-relay.derekross.me",
+    "info": {
+      "name": "nostr-relay.derekross.me",
+      "description": "A Derek Ross private relay with anti-rug protection..",
+      "pubkey": "3f770d65d3a764a9c5cb503ae123e62ec7598ad035d836e2a810f3877a745b24",
+      "contact": "nostr@derekross.me",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr-relay.derekross.me/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 100000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostr.band",
+    "info": {
+      "name": "Nostr.Band Relay",
+      "description": "This is a fast relay with full archive of textual posts",
+      "pubkey": "818a39b5f164235f86254b12ca586efccc1f95e98b45cb1c91c71dc5d9486dda",
+      "contact": "mailto:admin@nostr.band",
+      "supported_nips": [
+        1,
+        11,
+        12,
+        15,
+        20,
+        22,
+        33,
+        45,
+        50
+      ],
+      "software": "https://relay.nostr.band",
+      "version": "0.4"
+    }
+  },
+  {
+    "url": "wss://nostrue.com",
+    "info": {
+      "contact": "chris@kcmo.io",
+      "description": "This is a nostr relay for a free Missouri.",
+      "name": "Nostrue nostr relay",
+      "pubkey": "e83db196184f61f66163854ba5a816b78e094974beeb51c9b1e843284b6400c3",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v103-e5ec135"
+    }
+  },
+  {
+    "url": "wss://e.nos.lol",
+    "info": {
+      "contact": "unset",
+      "description": "This is a strfry instance.",
+      "name": "strfry default",
+      "pubkey": "unset",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        16,
+        20,
+        22,
+        28,
+        33,
+        40
+      ],
+      "version": "0.9.3-1-g80915f9"
+    }
+  },
+  {
+    "url": "wss://nostr.bitcoinplebs.de",
+    "info": {
+      "name": "nostr.bitcoinplebs.de",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "cb4763237f0e04e73568b7cb58198f19dccb953a920e325fbf819e9584b372fa",
+      "contact": "info@bitcoinplebs.de",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.bitcoinplebs.de/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://n-word.sharivegas.com",
+    "info": {
+      "contact": "unset",
+      "description": "Say The N Word: Shari Vegas' dev strfry relay.",
+      "name": "Shari Vegas dev strfry",
+      "pubkey": "unset",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v106-68fc85e"
+    }
+  },
+  {
+    "url": "wss://nostr1.current.fyi",
+    "info": {
+      "contact": "hello@getcurrent.io",
+      "description": "Default relay used by clients such as Damus, Current, Iris.to.",
+      "name": "relay.current.fyi",
+      "pubkey": "npub1current7ntwqmh2twlrtl2llequeks0zfh36v69x4d3wmckg427safsh3w",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v103-e5ec135"
+    }
+  },
+  {
+    "url": "wss://relay.shitforce.one",
+    "info": {
+      "contact": "support@shitforce.one",
+      "description": "shitposting relay, hosted by https://poa.st",
+      "name": "shitforce one",
+      "pubkey": "",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v92-84ba68b"
+    }
+  },
+  {
+    "url": "wss://relay-pub.deschooling.us",
+    "info": {
+      "name": "deschooling relay",
+      "description": "public relay",
+      "pubkey": "00004e1769c51dde98a7deefd8c7fddf384d804513e1527b4b97ffcb901ce654",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        5,
+        9,
+        11,
+        12,
+        15,
+        20,
+        26,
+        33,
+        40,
+        42
+      ],
+      "software": "https://code.pobblelabs.org/fossil/nostr_relay",
+      "version": "1.12.2"
+    }
+  },
+  {
+    "url": "wss://relay.orange-crush.com",
+    "info": {
+      "name": "relay.orange-crush.com",
+      "description": "Nostr relay for bitcoiners and those who don't yet know they are bitcoiners",
+      "pubkey": "6c0e9016b9c1efe7edef87e505e2a1e03db1fbbcfdc3ed6b4f8aaa4b540ad98f",
+      "contact": "pvorangecrush@proton.me",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.orange-crush.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 8000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.s3x.social",
+    "info": {
+      "name": "s3x.social relay",
+      "description": "A sex-positive, LGBTQ-friendly 🏳️‍🌈 Nostr relay that genuinely values your privacy",
+      "pubkey": "b2bcb25e082dc002285bf7d06b1671b753021f3e369bcd5e7981c1aa6c6aec3e",
+      "contact": "mailto:support@studio3x.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.s3x.social/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 10000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.orangepill.dev",
+    "info": {
+      "name": "relay.orangepill.dev",
+      "description": "A nostr paid relay running on orangepill.dev",
+      "pubkey": "d4843f4c280abba3d43d84ed7924b2567d7c166f5e72985b9f06d355601b5d78",
+      "contact": "support@orangepill.dev",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 262144,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.orangepill.dev/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 4500000,
+            "unit": "msats"
+          }
+        ],
+        "publication": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay.mostr.pub",
+    "info": {
+      "contact": "unset",
+      "description": "Relay to bridge Nostr with ActivityPub.",
+      "name": "Mostr relay",
+      "pubkey": "unset",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v103-e5ec135"
+    }
+  },
+  {
+    "url": "wss://rsslay.nostr.net",
+    "info": {
+      "name": "relayer-rss-bridge",
+      "description": "relay powered by the relayer framework",
+      "pubkey": "~",
+      "contact": "~",
+      "supported_nips": [
+        9,
+        15,
+        16
+      ],
+      "software": "https://github.com/fiatjaf/relayer",
+      "version": "~"
+    }
+  },
+  {
+    "url": "wss://nostr.actn.io",
+    "info": {
+      "id": "wss://nostr.actn.io/",
+      "name": "actn-nostr-rs-relay",
+      "description": "Public nostr-rs-relay located in British Columbia, Canada.\n\n",
+      "pubkey": "6e6ba732a5db4271797769fb295e81ffaac7f06a056c924dacf149e2f6a4466f",
+      "contact": "mailto:support@expor.io",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.10"
+    }
+  },
+  {
+    "url": "wss://nostr.supremestack.xyz",
+    "info": {
+      "name": "supremestack",
+      "description": "A nostr relay operated by linkinparkrulz.",
+      "pubkey": "d3646691ba5b1d796c1e1b3430df00fe1189ec9c232877adde18c8f656af18f0",
+      "contact": "linkinparkrulz@protonmail.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40,
+        111
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr.supremestack.xyz/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://relay.cryptocculture.com",
+    "info": {
+      "name": "Unnamed nostr-rs-relay",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.10"
+    }
+  },
+  {
+    "url": "wss://relay.nostr.au",
+    "info": {
+      "id": "wss://relay.nostr.au/",
+      "name": "nostr-rs-relay",
+      "description": "A nostr relay",
+      "pubkey": "decaf1c5361563a0d6485db00692bc667e8344c3e6b3255556599e5d27fbdde5",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.12"
+    }
+  },
+  {
+    "url": "wss://nostr.gromeul.eu",
+    "info": {
+      "name": "nostr.gromeul.eu",
+      "description": "French antispam only paid relay 4C/8Go D2-8 vps@OVH ---> https://nostr.gromeul.org <---",
+      "pubkey": "0abe593a4dca94960be3931fc015a41ed3b543f050dfed3b0c6d1e0af0f0c09c",
+      "contact": "nostr@gromeul.eu",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.gromeul.eu/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.massmux.com",
+    "info": {
+      "name": "massmux relay",
+      "description": "A nostr relay by massmux.com",
+      "pubkey": "8664ff363efcd36a154efdcbc629a4d1e4c511f9114e1d35de73fff31cb783b3",
+      "contact": "go@massmux.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40,
+        111
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.1",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 80,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr.massmux.com/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.klabo.blog",
+    "info": {
+      "id": "wss://nostr.klabo.blog/",
+      "name": "Klabo",
+      "description": "My personal Nostr relay",
+      "pubkey": "2f4fa408d85b962d1fe717daae148a4c98424ab2e10c7dd11927e101ed3257b2",
+      "contact": "joel@klabo.blog",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.0"
+    }
+  },
+  {
+    "url": "wss://nostr-pub1.southflorida.ninja",
+    "info": {
+      "name": "nostr-pub1.southflorida.ninja",
+      "description": "A public nostr relay hosted in South Florida.",
+      "pubkey": "5db776f3e7a9ca7cf22b2d469e7a44092f343bb3a25c2c5162a2931d4c696f17",
+      "contact": "troy@southflorida.ninja",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr-pub1.southflorida.ninja/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.bitcoin.sex",
+    "info": {
+      "id": "wss://nostr.bitcoin.sex/",
+      "name": "nostr-bitcoin-sex",
+      "description": "A newly created nostr-rs-relay.",
+      "pubkey": "wnpub1t6wpld070ctftqe4893k5vxk0rj5u0jwzg2070flw9gph07k9ngqxsq82f",
+      "contact": "mailto:admin@bitcoin.sex",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.15"
+    }
+  },
+  {
+    "url": "wss://sg.qemura.xyz",
+    "info": {
+      "name": "global.relay.red",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "c61ca1ee4f85a8d0733a07434fd460602da9345abf9a0592a0a5948f16dd3c5e",
+      "contact": "sebastian@relay.red",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://global.relay.red/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.easydns.ca",
+    "info": {
+      "name": "nostr.easydns.ca",
+      "description": "A nostr relay written in TypeScript.",
+      "pubkey": "npub1elwpzsul8d9k4tgxqdjuzxp0wa94ysr4zu9xeudrcxe2h3sazqkq5mehan",
+      "contact": "relays@easynostr.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.16.0"
+    }
+  },
+  {
+    "url": "wss://nostr.koning-degraaf.nl",
+    "info": {
+      "name": "nostr.koning-degraaf.nl",
+      "description": "My PAID Nostr Relay.",
+      "pubkey": "42c4e973a81c60d8524eeda435d94fb91b3e1724aa1af0fd8820fe564c56958f",
+      "contact": "info@koning-degraaf.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 131072,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.koning-degraaf.nl/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 1000000,
+            "unit": "msats"
+          }
+        ],
+        "publication": [
+          {
+            "amount": 10,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostrich.de",
+    "info": {
+      "id": "wss://relay.nostrich.de/",
+      "name": "relay.nostrich.de",
+      "description": "Fast and reliable relay for NIP-05 validated users",
+      "pubkey": "9839a36d51b5f190497f9b2d268ee08903eec7f5ed2e9ae3ceeb5db89aabba10",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostr.ro",
+    "info": {
+      "id": "wss://relay.nostr.ro/",
+      "name": "Romanian Nostr Relay",
+      "description": "A nostr relay supporting the protocol in Romania and beyond.",
+      "contact": "mailto:op@nostr.ro",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.15"
+    }
+  },
+  {
+    "url": "wss://tmp-relay.cesc.trade",
+    "info": {
+      "name": "tmp-relay.cesc.trade",
+      "description": "A Relay",
+      "pubkey": "38c3c53e5ca539da76c26c5d3faf4b9215500cf894ccfdd40dd9267154fcc7fa",
+      "contact": "geral+nostrrelay@cesc.trade",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.23.0",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 30,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.kollider.xyz",
+    "info": {
+      "id": "wss://nostr.kollider.xyz/",
+      "name": "nostr-rs-relay",
+      "description": "Kollider's nostr relay. To get admitted visit https://kollider.xyz/nostr and check out the details",
+      "pubkey": "c92520080004e0181d58b8a91fd76dbf43dce168444613de37b2ac428cd54afa",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.8",
+      "limitation": {
+        "payment_required": true
+      },
+      "payment_url": "https://nostr.kollider.xyz/join",
+      "fees": {
+        "admission": [
+          {
+            "amount": 200,
+            "unit": "sats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://relay.honk.pw",
+    "info": {
+      "name": "BasicRelay",
+      "description": "relay powered by the relayer framework",
+      "pubkey": "~",
+      "contact": "~",
+      "supported_nips": [
+        9,
+        12,
+        15,
+        16,
+        20
+      ],
+      "software": "https://github.com/fiatjaf/relayer",
+      "version": "~"
+    }
+  },
+  {
+    "url": "wss://ragnar-relay.com",
+    "info": {
+      "id": "wss://ragnar-relay.com",
+      "name": "ragnar",
+      "description": "A nostr-rs-relay.\n\n Dedicated to the liberty of the individual.",
+      "pubkey": "5a1c5cbd83900008b27e091a80730fd954909a86df89eebe9d0314a274c2b633",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.7.17"
+    }
+  },
+  {
+    "url": "wss://nostr.sidnlabs.nl",
+    "info": {
+      "id": "wss://nostr.sidnlabs.nl/",
+      "name": "nostr.sidnlabs.nl",
+      "description": "Hello, this is an experimental Nostr relay provided by SIDN Labs.\n\nEnjoy!",
+      "pubkey": "11ed01ff277d94705c2931867b8d900d8bacce6f27aaf7440ce98bb50e02fb34",
+      "contact": "https://www.sidnlabs.nl/",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr21.com",
+    "info": {
+      "description": "nostr21.com",
+      "name": "nostr21.com",
+      "pubkey": "7cc328a08ddb2afdf9f9be77beff4c83489ff979721827d628a542f32a247c0e",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        16,
+        20,
+        22,
+        28,
+        33,
+        40
+      ],
+      "version": "0.9.3"
+    }
+  },
+  {
+    "url": "wss://nostr1676129486335.app.runonflux.io",
+    "info": {
+      "id": "undefined",
+      "name": "Lazzerelay1",
+      "description": "undefined",
+      "pubkey": "dd12fba17d45e6632e09c02888d8e0696569c821a8bfb7822fa1555770ae0dfb",
+      "contact": "undefined",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.2"
+    }
+  },
+  {
+    "url": "wss://relay.nostrdocs.com",
+    "info": {
+      "name": "relay.nostrdocs.com",
+      "description": "Nostr, just the way you like it :)",
+      "pubkey": "npub17k76drpaeaungjltz9zlrr89ua0rlawgzs8fasaar49w0mnytrssgtk09g",
+      "contact": null,
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://relay.nostrdocs.com/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.globals.fans",
+    "info": {
+      "id": "wss://nostr.globals.fans/",
+      "name": "free-globals-fans-nostr-relay",
+      "description": "Free Nostr Relay of https://globals.fans",
+      "pubkey": "npub17tmsnmkwyydyuhmmvhkr8g2t76dlqz3fjf44txx47pemtlz3mr4qq4lfzn",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.9.0"
+    }
+  },
+  {
+    "url": "wss://nostr.danvergara.com",
+    "info": {
+      "name": "Dan Vergara's Private Relay",
+      "description": "A nostr relay written in Typescript.",
+      "pubkey": "ba8bd241daa1ee240af45456710dda963ca04e4813eb41e51ff5a375dbfca42a",
+      "contact": "daniel.omar.vergara@gmail.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 2500,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": false
+      },
+      "payments_url": "https://nostr.danvergara.com/invoices",
+      "fees": {
+        "admission": []
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.mutinywallet.com",
+    "info": {
+      "name": "Mutiny blastr relay",
+      "description": "Mutiny blastr relay",
+      "pubkey": "df173277182f3155d37b330211ba1de4a81500c02d195e964f91be774ec96708",
+      "contact": "team@mutinywallet.com",
+      "supported_nips": [
+        1,
+        11,
+        15,
+        20
+      ],
+      "software": "git+https://github.com/MutinyWallet/blastr.git",
+      "version": "0.0.0"
+    }
+  },
+  {
+    "url": "wss://nostream-production-5895.up.railway.app",
+    "info": {
+      "name": "nostream.your-domain.com",
+      "description": "A nostr relay written in TypeScript.",
+      "pubkey": "replace-with-your-pubkey",
+      "contact": "operator@your-domain.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.17.2"
+    }
+  },
+  {
+    "url": "wss://relay.vanderwarker.family",
+    "info": {
+      "id": "wss://relay.vanderwarker.family",
+      "name": "VF Relay",
+      "description": "A read-only relay for my posts (archived)",
+      "pubkey": "f839fb6714598a7233d09dbd42af82cc9781d0faa57474f1841af90b5c930939",
+      "contact": "mailto:stephen+relay@vanderwarker.family",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://nostr.retroware.run.place",
+    "info": {
+      "id": "wss://nostr.retroware.run.place/",
+      "name": "retroware nostr relay",
+      "description": "A newly created nostr-rs-relay.\n\nCustomize this with your own info.",
+      "pubkey": "90b951b1e65141116f19f2bc00f159319d2017b09a0819610b2c399f397f1157",
+      "contact": "mailto:retroware.run.place@proton.me",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://relay.nostrbr.online",
+    "info": {
+      "id": "wss://nostr.retroware.run.place/",
+      "name": "retroware nostr relay",
+      "description": "A newly created nostr-rs-relay.\n\nCustomize this with your own info.",
+      "pubkey": "90b951b1e65141116f19f2bc00f159319d2017b09a0819610b2c399f397f1157",
+      "contact": "mailto:retroware.run.place@proton.me",
+      "supported_nips": [
+        1,
+        2,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        33,
+        40,
+        42
+      ],
+      "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
+      "version": "0.8.9",
+      "limitation": {
+        "payment_required": false
+      }
+    }
+  },
+  {
+    "url": "wss://adult.18plus.social",
+    "info": {
+      "name": "adult.18plus.social",
+      "description": "A Nostr relay for the adult industry, creators, providers, related services, fans and allies.",
+      "pubkey": "npub1xdt4sm0whlleve2jp2dwz75gh92zv36n0tl75f6htaxtnzl0lrrqjpxyv8",
+      "contact": "admin@dirtyfunpeople.com",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.22.6",
+      "limitation": {
+        "max_message_length": 524288,
+        "max_subscriptions": 10,
+        "max_filters": 10,
+        "max_limit": 5000,
+        "max_subid_length": 256,
+        "min_prefix": 4,
+        "max_event_tags": 2500,
+        "max_content_length": 102400,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://adult.18plus.social/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 6969000,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "url": "wss://free.nostr.lc",
+    "info": {
+      "contact": "hello@nostr.lc",
+      "description": "This is a free Nostr relay offered by https://nostr.lc. Please consider upgrading to our premium service paid.nostr.lc for only 10K sats/yr with guaranteed performance & daily backups - 1 full year for the price of a cup of bad coffee! Upgrade here: https://paid.nostr.lc/invoices",
+      "name": "free.nostr.lc",
+      "pubkey": "npub1n5zapuulneh2zd37ssuh5kl88qvtznhzmsree4d7vwypqsvea9ksa6nadu",
+      "software": "git+https://github.com/hoytech/strfry.git",
+      "supported_nips": [
+        1,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22
+      ],
+      "version": "v107-f192adb"
+    }
+  },
+  {
+    "url": "wss://nostr.inosta.cc",
+    "info": {
+      "name": "nostr.inosta.cc",
+      "description": "This Nostr relay requires a one-time admission fee. Please see https://nostr.inosta.cc for more information",
+      "pubkey": "1c6b3be353041dd9e09bb568a4a92344e240b39ef5eb390f5e9e821273f0ae6f",
+      "contact": "1c6b3be353041dd9e09bb568a4a92344e240b39ef5eb390f5e9e821273f0ae6f",
+      "supported_nips": [
+        1,
+        2,
+        4,
+        9,
+        11,
+        12,
+        15,
+        16,
+        20,
+        22,
+        26,
+        28,
+        33,
+        40
+      ],
+      "supported_nip_extensions": [
+        "11a"
+      ],
+      "software": "git+https://github.com/Cameri/nostream.git",
+      "version": "1.25.2",
+      "limitation": {
+        "max_message_length": 131072,
+        "max_subscriptions": 20,
+        "max_event_tags": 2500,
+        "max_content_length": 65536,
+        "min_pow_difficulty": 0,
+        "auth_required": false,
+        "payment_required": true
+      },
+      "payments_url": "https://nostr.inosta.cc/invoices",
+      "fees": {
+        "admission": [
+          {
+            "amount": 5000000,
+            "unit": "msats"
+          }
+        ],
+        "publication": [
+          {
+            "amount": 10,
+            "unit": "msats"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -67,7 +67,7 @@ client.sendEvent(ev)
 **Receive messages**:
 
 ```js
-const filters = new NewFilters()
+const filters = new NFilters()
 filters.addAuthor(keypair.pub)
 
 client.subscribe({
@@ -218,7 +218,7 @@ ev.addExpirationTag(1690990889);
 
 ```js
 import {
-  NewFilters,
+  NFilters,
   logRelayMessage,
 } from "@nostr-ts/common";
 import {
@@ -266,7 +266,7 @@ You will get two files
 1. `discovered-relays.json` with all valid relays
 2. `discovered-relays-error.json` with all invalid relays
 
-This is what an excerpt of `discovered-relays.json` looks like:
+This is what an excerpt of `discovered-relays.json` looks like (a more complete one is included in this repo):
 
 ```json
 [
@@ -414,7 +414,7 @@ await relayDiscovery.loadFromFile();
 await client.loadFromDiscovered(relayDiscovery.get());
 
 // Now continue as usual ...
-const filters = new NewFilters();
+const filters = new NFilters();
 filters.addKind(1);
 
 client.subscribe({

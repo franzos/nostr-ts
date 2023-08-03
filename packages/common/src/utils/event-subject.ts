@@ -1,8 +1,10 @@
+import { EventBase } from "../types";
+
 /**
  * Check array of tags if any are NIP-14
  */
-export function eventHasSubject(tags: string[][]): string | undefined {
-  const subjectTags = tags.filter((tag) => tag[0] === "subject");
+export function eventHasSubject(event: EventBase): string | undefined {
+  const subjectTags = event.tags.filter((tag) => tag[0] === "subject");
   if (subjectTags.length === 0) {
     return;
   }

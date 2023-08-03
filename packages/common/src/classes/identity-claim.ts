@@ -1,4 +1,8 @@
-import { ExternalIdentityClaimBase, IDENTITY_CLAIM_TYPE } from "../types";
+import {
+  EventBase,
+  ExternalIdentityClaimBase,
+  IDENTITY_CLAIM_TYPE,
+} from "../types";
 import { isValidProviderName, normalizeProviderName } from "../utils";
 
 /**
@@ -85,8 +89,8 @@ export function isValidExternalIdentityClaim(tag: string[]) {
  * @param tags
  * @returns
  */
-export function eventHasExternalIdentityClaim(tags: string[][]) {
-  const identityClaimTags = tags.filter(
+export function eventHasExternalIdentityClaim(event: EventBase) {
+  const identityClaimTags = event.tags.filter(
     (tag) => tag[0] === "i" && isValidExternalIdentityClaim(tag)
   );
   return identityClaimTags.length > 0;

@@ -1,5 +1,5 @@
-import { Event } from "./event";
-import { Filters } from "./filter";
+import { EventBase } from "./event";
+import { FiltersBase } from "./filter";
 
 /**
  * Relay message to client
@@ -63,7 +63,7 @@ export interface RelayCount extends Array<string | { count: number }> {
 /**
  * Relay end of stream
  */
-export interface RelayEose extends Array<string | Filters> {
+export interface RelayEose extends Array<string | FiltersBase> {
   0: RELAY_MESSAGE_TYPE.EOSE;
   1: string;
 }
@@ -71,19 +71,19 @@ export interface RelayEose extends Array<string | Filters> {
 /**
  * Relay event
  */
-export interface RelayEvent extends Array<string | Event> {
+export interface RelayEvent extends Array<string | EventBase> {
   0: RELAY_MESSAGE_TYPE.EVENT;
   /**
    * Subscription ID
    */
   1: string;
-  2: Event;
+  2: EventBase;
 }
 
 /**
  * Relay notice
  */
-export interface RelayNotice extends Array<string | Filters> {
+export interface RelayNotice extends Array<string | FiltersBase> {
   0: RELAY_MESSAGE_TYPE.NOTICE;
   /**
    * Message

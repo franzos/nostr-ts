@@ -1,13 +1,13 @@
-import { EVENT_KIND } from "./event-kind";
+import { NEVENT_KIND } from "./event-kind";
 
-export interface Event {
+export interface EventBase {
   id?: string;
   pubkey?: string;
   /**
    * Unix timestamp in seconds
    */
   created_at?: number;
-  kind?: EVENT_KIND;
+  kind?: NEVENT_KIND;
   tags?: string[][];
   content?: string;
   sig?: string;

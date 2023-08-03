@@ -1,4 +1,4 @@
-import { NewEvent } from "./event.js";
+import { NEvent } from "./event.js";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
@@ -154,7 +154,7 @@ export class RelayClientBase {
    * Send an event to the relay
    * @param event
    */
-  sendEvent(event: NewEvent) {
+  sendEvent(event: NEvent) {
     const message: ClientEvent = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: event,
@@ -166,10 +166,16 @@ export class RelayClientBase {
     for (const relay of this.clients) {
       if (relay.connection) {
         // TODO: CLeanuo logs
+        const valid = event.isReadyToPublish();
+        if (!valid.isReady) {
+          throw new Error(
+            `Event ${event.id} not published because it is not ready. Reason: ${valid.reason}.`
+          );
+        }
         const neededNips = event.determineRequiredNIP();
-        console.log("neededNips", neededNips);
+        console.log(`Required NIP: ${neededNips.join(", ")}`);
         const supportedNips = relay.info?.supported_nips || [];
-        console.log("supportedNips", supportedNips);
+        console.log(`Supported NIP: ${supportedNips.join(", ")}`);
 
         const allNipsSupported = neededNips.every((nip) =>
           supportedNips.includes(nip)

@@ -1,4 +1,5 @@
-import { Event, EVENT_KIND, UserMetadata } from "../types";
+import { NNIP } from "src/types/nips";
+import { EventBase, NEVENT_KIND, UserMetadata } from "../types";
 import {
   hash,
   sign,
@@ -18,7 +19,7 @@ import {
   ExternalIdentityClaim,
 } from "./identity-claim";
 
-export class NewEvent implements Event {
+export class NEvent implements EventBase {
   /**
    * Hex string of event hash
    */
@@ -28,18 +29,18 @@ export class NewEvent implements Event {
    * Unix timestamp in seconds
    */
   created_at: number;
-  kind: EVENT_KIND | number;
+  kind: NEVENT_KIND | number;
   tags: string[][] | undefined;
   content: string;
   sig: string;
 
-  constructor(data: Event) {
+  constructor(data: EventBase) {
     this.id = data.id ? data.id : "";
     this.pubkey = data.pubkey ? data.pubkey : "";
     this.created_at = data.created_at
       ? data.created_at
       : Math.floor(Date.now() / 1000);
-    this.kind = data.kind != null ? data.kind : EVENT_KIND.SHORT_TEXT_NOTE;
+    this.kind = data.kind != null ? data.kind : NEVENT_KIND.SHORT_TEXT_NOTE;
     this.tags = data.tags && data.tags.length > 0 ? data.tags : [];
     this.content = data.content;
     this.sig = data.sig ? data.sig : "";
@@ -120,8 +121,8 @@ export class NewEvent implements Event {
   /**
    * Check if event has expiration tag
    */
-  private hasExpirationTag() {
-    return eventHasExpiration(this.tags);
+  public hasExpirationTag() {
+    return eventHasExpiration(this);
   }
 
   /**
@@ -131,7 +132,7 @@ export class NewEvent implements Event {
    * @param subject
    */
   public addSubjectTag(subject: string) {
-    if (this.kind !== EVENT_KIND.SHORT_TEXT_NOTE) {
+    if (this.kind !== NEVENT_KIND.SHORT_TEXT_NOTE) {
       throw new Error(`Event kind ${this.kind} should not have a subject.`);
     }
     if (this.hasSubjectTag()) {
@@ -145,10 +146,10 @@ export class NewEvent implements Event {
    * This is primarily for events of kind 1
    */
   public hasSubjectTag() {
-    if (this.kind !== EVENT_KIND.SHORT_TEXT_NOTE) {
+    if (this.kind !== NEVENT_KIND.SHORT_TEXT_NOTE) {
       console.log(`Event kind ${this.kind} should not have a subject.`);
     }
-    return eventHasSubject(this.tags);
+    return eventHasSubject(this);
   }
 
   /**
@@ -166,8 +167,8 @@ export class NewEvent implements Event {
   /**
    * Check if event has a nonce
    */
-  private hasNonceTag() {
-    return eventHasNonce(this.tags);
+  public hasNonceTag() {
+    return eventHasNonce(this);
   }
 
   /**
@@ -186,7 +187,7 @@ export class NewEvent implements Event {
    * Check if event has a content warning
    */
   public hasContentWarningTag() {
-    return eventHasContentWarning(this.tags);
+    return eventHasContentWarning(this);
   }
 
   /**
@@ -202,23 +203,56 @@ export class NewEvent implements Event {
   /**
    * Check if event has external identity claim
    */
-  private hasExternalIdentityClaimTag() {
-    return eventHasExternalIdentityClaim(this.tags);
+  public hasExternalIdentityClaimTag() {
+    return eventHasExternalIdentityClaim(this);
   }
 
-  public determineRequiredNIP(): number[] {
+  public determineRequiredNIP(): NNIP[] {
     const nips = [];
     if (this.hasNonceTag()) {
-      nips.push(13);
+      nips.push(NNIP.NIP_13);
     }
     if (this.hasExpirationTag()) {
-      nips.push(40);
+      nips.push(NNIP.NIP_40);
     }
     if (this.hasExternalIdentityClaimTag()) {
-      nips.push(41);
+      nips.push(NNIP.NIP_39);
     }
 
     return nips;
+  }
+
+  /**
+   * Real basic check to make sure the event is signed and ready to go.
+   */
+  public isReadyToPublish(): {
+    isReady: boolean;
+    reason?: string;
+  } {
+    if (this.id === "") {
+      return {
+        isReady: false,
+        reason: "Event has no ID.",
+      };
+    }
+    if (this.pubkey === "") {
+      return {
+        isReady: false,
+        reason: "Event has no pubkey.",
+      };
+    }
+    if (this.content === "") {
+      return {
+        isReady: false,
+        reason: "Event has no content.",
+      };
+    }
+    if (this.sig === "") {
+      return {
+        isReady: false,
+        reason: "Event has no signature.",
+      };
+    }
   }
 }
 
@@ -226,9 +260,9 @@ export class NewEvent implements Event {
  * Generate a short text note
  */
 export function NewShortTextNote(text: string, subject?: string) {
-  const newEvent = new NewEvent({
+  const newEvent = new NEvent({
     content: text,
-    kind: EVENT_KIND.SHORT_TEXT_NOTE,
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
   });
   if (subject) {
     newEvent.addSubjectTag(subject);
@@ -244,17 +278,17 @@ export function NewShortTextNote(text: string, subject?: string) {
  */
 export function NewShortTextNoteResponse(
   text: string,
-  respondingToEvent: Event,
+  respondingToEvent: EventBase,
   relayUrl?: string
-): NewEvent {
-  const newEvent = new NewEvent({
+): NEvent {
+  const newEvent = new NEvent({
     content: text,
-    kind: EVENT_KIND.SHORT_TEXT_NOTE,
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
   });
 
   // Append subject
-  const inResponseToEvent = new NewEvent(respondingToEvent);
-  if (inResponseToEvent.kind !== EVENT_KIND.SHORT_TEXT_NOTE) {
+  const inResponseToEvent = new NEvent(respondingToEvent);
+  if (inResponseToEvent.kind !== NEVENT_KIND.SHORT_TEXT_NOTE) {
     throw new Error("Event you are responding to be SHORT_TEXT_NOTE");
   }
   const subject = inResponseToEvent.hasSubjectTag();
@@ -294,9 +328,9 @@ export function NewReaction(
     pubkey: string;
   }
 ) {
-  return new NewEvent({
+  return new NEvent({
     content: reaction,
-    kind: EVENT_KIND.REACTION,
+    kind: NEVENT_KIND.REACTION,
     tags: [
       ["e", event.id],
       ["p", event.pubkey],
@@ -315,13 +349,13 @@ export function NewReaction(
  * @param event event to repost
  * @returns
  */
-export function NewQuoteRepost(relay: string, event: Event) {
-  return new NewEvent({
+export function NewQuoteRepost(relay: string, event: EventBase) {
+  return new NEvent({
     content: JSON.stringify({
       ...event,
       relay: relay,
     }),
-    kind: EVENT_KIND.REPOST,
+    kind: NEVENT_KIND.REPOST,
     tags: [
       ["e", event.id],
       ["p", event.pubkey],
@@ -335,13 +369,13 @@ export function NewQuoteRepost(relay: string, event: Event) {
  * @param event event to repost
  * @returns
  */
-export function NewGenericRepost(relay: string, event: Event) {
-  return new NewEvent({
+export function NewGenericRepost(relay: string, event: EventBase) {
+  return new NEvent({
     content: JSON.stringify({
       ...event,
       relay,
     }),
-    kind: EVENT_KIND.GENERIC_REPOST,
+    kind: NEVENT_KIND.GENERIC_REPOST,
     tags: [
       ["e", event.id],
       ["p", event.pubkey],
@@ -363,9 +397,9 @@ export function NewUpdateUserMetadata(options: {
   claims?: ExternalIdentityClaim[];
   userMetadata?: UserMetadata;
 }) {
-  const newEvent = new NewEvent({
+  const newEvent = new NEvent({
     content: createUserMetadataString(options.userMetadata),
-    kind: EVENT_KIND.METADATA,
+    kind: NEVENT_KIND.METADATA,
     tags: [],
   });
   if (options.claims) {
@@ -381,7 +415,6 @@ export function NewUpdateUserMetadata(options: {
       }
     }
   }
-  console.log(`NewUpdateUserMetadata`, newEvent);
   return newEvent;
 }
 
@@ -400,9 +433,9 @@ export function NewRecommendRelay(options: {
   if (!isValidWebSocketUrl(options.server)) {
     throw new Error("Invalid server URL");
   }
-  const newEvent = new NewEvent({
+  const newEvent = new NEvent({
     content: options.server,
-    kind: EVENT_KIND.RECOMMEND_RELAY,
+    kind: NEVENT_KIND.RECOMMEND_RELAY,
   });
   if (options.nonce) {
     newEvent.addTag(["nonce", ...options.nonce]);

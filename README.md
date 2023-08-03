@@ -59,9 +59,9 @@ await client.getRelayInformation();
 **Send a message**:
 
 ```js
-const note = NewShortTextNote('Hello nostr!')
-note.signAndGenerateId(keypair)
-client.sendEvent(note)
+const ev = NewShortTextNote('Hello nostr!')
+ev.signAndGenerateId(keypair)
+client.sendEvent(ev)
 ```
 
 **Receive messages**:
@@ -83,11 +83,11 @@ client.listen((payload) => {
 **Recommend a relay**
 
 ```js
-const rec = NewRecommendRelay({
+const ev = NewRecommendRelay({
     server: 'wss://nostr.rocks',
 })
-rec.signAndGenerateId(keypair)
-client.sendEvent(rec)
+ev.signAndGenerateId(keypair)
+client.sendEvent(ev)
 ```
 
 - [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
@@ -111,16 +111,24 @@ Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not publi
 - [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
 
 ```js
-const newEvent = NewShortTextNote("Let's have a discussion about Bitcoin!");
-newEvent.addSubjectTag("All things Bitcoin");
+const ev = NewShortTextNote("Let's have a discussion about Bitcoin!");
+ev.addSubjectTag("All things Bitcoin");
 ```
 
 If you want to respond to a note, keeping the subject:
 
 ```js
-const previousEvent
-const relaySourceUrl
-const newEvent = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", previousEvent, relaySourceUrl);
+const event = {
+    id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
+    pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
+    created_at: 1690881792,
+    kind: 1,
+    tags: [["subject", "All things Bitcoin"]],
+    content: "Let's have a discussion about Bitcoin!",
+    sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
+}
+const relaySourceUrl = "wss://nostr.rocks"
+const ev = NewShortTextNoteResponse("Sounds like a great idea. What do you think about the Lightning Network?", event, relaySourceUrl);
 ```
 
 If this is the first response, we prepend the subject with `Re: ` automatically. So you'd be responding with subject `Re: All things Bitcoin`.
@@ -128,7 +136,7 @@ If this is the first response, we prepend the subject with `Re: ` automatically.
 - [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js
-const repost = NewQuoteRepost(
+const ev = NewQuoteRepost(
     'https://nostr.rocks',
     {
         id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
@@ -140,8 +148,8 @@ const repost = NewQuoteRepost(
         sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
     }
 )
-repost.signAndGenerateId(keypair)
-client.sendEvent(repost)
+ev.signAndGenerateId(keypair)
+client.sendEvent(ev)
 ```
 
 You can also utilize `NewGenericRepost` to repost any kind of event.
@@ -149,20 +157,20 @@ You can also utilize `NewGenericRepost` to repost any kind of event.
 - [ ] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
 
 ```js
-const reaction = NewReaction('+', {
+const ev = NewReaction('+', {
     id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
     pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
 })
 
-reaction.signAndGenerateId(keypair)
-client.sendEvent(reaction)
+ev.signAndGenerateId(keypair)
+client.sendEvent(ev)
 ```
 
 - [ ] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
 
 ```js
-const newEvent = NewShortTextNote("This is explicit sh** right here.");
-newEvent.addContentWarningTag("explicit language");
+const ev = NewShortTextNote("This is explicit sh** right here.");
+ev.addContentWarningTag("explicit language");
 ```
 
 - [ ] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
@@ -174,22 +182,22 @@ const githubClaim = new ExternalIdentityClaim({
     proof: "9721ce4ee4fceb91c9711ca2a6c9a5ab",
 });
 
-const identity = NewUpdateUserMetadata({
+const ev = NewUpdateUserMetadata({
     claims: [githubClaim],
     userMetadata: {
         name: "Semisol",
     },
 });
 
-identity.signAndGenerateId(keypair);
-client.sendEvent(identity);
+ev.signAndGenerateId(keypair);
+client.sendEvent(ev);
 ```
 
 - [ ] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
 
 ```js
-const newEvent = NewShortTextNote("Meeting starts in 10 minutes ...");
-newEvent.addExpirationTag(1690990889);
+const ev = NewShortTextNote("Meeting starts in 10 minutes ...");
+ev.addExpirationTag(1690990889);
 ```
 
 ## Examples
@@ -224,8 +232,8 @@ const main = async () => {
   ]);
 
   const relayDiscovery = new RelayDiscovery();
-  const filters = new NewFilters();
-  filters.addKind(2);
+  const filters = new NFilters();
+  filters.addKind(NEVENT_KIND.RECOMMEND_RELAY);
 
   client.subscribe({
     filters,

@@ -1,5 +1,5 @@
-import { NewEvent, NewFilters } from "../classes/index.js";
-import { Filters } from "./filter.js";
+import { NEvent, NFilters } from "../classes/index.js";
+import { FiltersBase } from "./filter.js";
 
 /**
  * Client message to relay
@@ -13,7 +13,7 @@ export enum CLIENT_MESSAGE_TYPE {
   REQ = "REQ",
 }
 
-export interface ClientMessageBase {
+interface ClientMessageBase {
   type: CLIENT_MESSAGE_TYPE;
 }
 
@@ -26,10 +26,14 @@ export interface ClientClose extends ClientMessageBase {
   subscriptionId: string;
 }
 
+/**
+ * Client count
+ * Used to get the number of events
+ */
 export interface ClientCount extends ClientMessageBase {
   type: CLIENT_MESSAGE_TYPE.COUNT;
   subscriptionId: string;
-  filters: Filters;
+  filters: FiltersBase;
 }
 
 /**
@@ -38,7 +42,7 @@ export interface ClientCount extends ClientMessageBase {
  */
 export interface ClientEvent extends ClientMessageBase {
   type: CLIENT_MESSAGE_TYPE.EVENT;
-  data: NewEvent;
+  data: NEvent;
 }
 
 /**
@@ -48,12 +52,12 @@ export interface ClientEvent extends ClientMessageBase {
 export interface ClientRequest extends ClientMessageBase {
   type: CLIENT_MESSAGE_TYPE.REQ;
   subscriptionId: string;
-  filters: Filters;
+  filters: FiltersBase;
 }
 
 export interface Subscribe {
   subscriptionId?: string;
-  filters?: NewFilters;
+  filters?: NFilters;
 }
 
 export interface Count extends Subscribe {}

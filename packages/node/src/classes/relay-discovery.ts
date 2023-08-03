@@ -1,8 +1,8 @@
 import { writeFile, readFile } from "fs/promises";
 import {
   eventHasRelayRecommendation,
-  EVENT_KIND,
-  Event,
+  NEVENT_KIND,
+  EventBase,
   RelayEvent,
   RELAY_MESSAGE_TYPE,
   DiscoveredRelay,
@@ -19,7 +19,7 @@ import { getRelayInformationDocument } from "../utils/relay-information.js";
  * - discovered-relays-error.json: contains the relays that failed to be discovered
  */
 export class RelayDiscovery {
-  public recommendedRelays: Event[] = [];
+  public recommendedRelays: EventBase[] = [];
   public discoveredRelays: DiscoveredRelay[] = [];
   public discoveredRelaysWithErrors: DiscoveredRelayWithError[] = [];
 
@@ -58,8 +58,8 @@ export class RelayDiscovery {
   public async add(event: RelayEvent) {
     if (!event) return;
     if (event[0] !== RELAY_MESSAGE_TYPE.EVENT) return;
-    const eventData = event[2] as Event;
-    if (eventData.kind != EVENT_KIND.RECOMMEND_RELAY) {
+    const eventData = event[2] as EventBase;
+    if (eventData.kind != NEVENT_KIND.RECOMMEND_RELAY) {
       return;
     }
     const relayUrl = eventHasRelayRecommendation(eventData);

@@ -1,15 +1,16 @@
-import { NNIP } from "src/types/nips";
+import { NNIP } from "../types/nips";
 import {
   EventBase,
   NEVENT_KIND,
-  UserMetadata,
   iNewGenericRepost,
   iNewQuoteRepost,
   iNewReaction,
   iNewRecommendRelay,
+  iNewReport,
   iNewShortTextNote,
   iNewShortTextNoteResponse,
   iNewUpdateUserMetadata,
+  Report,
 } from "../types";
 import {
   hash,
@@ -24,6 +25,8 @@ import {
   subjectIsRespone,
   makeSubjectResponse,
   eventHasContentWarning,
+  eventHasReport,
+  generateReportTags,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -223,17 +226,42 @@ export class NEvent implements EventBase {
     return eventHasExternalIdentityClaim(this);
   }
 
+  /**
+   * Standard tag
+   * @param report
+   */
+  public addReportTags(report: Report) {
+    if (this.kind !== NEVENT_KIND.REPORTING) {
+      throw new Error(
+        `Event kind ${this.kind} should not have a report. Expected ${NEVENT_KIND.REPORTING}.`
+      );
+    }
+    if (this.hasReportTags()) {
+      throw new Error("Event already has report tags.");
+    }
+    const tags = generateReportTags(report);
+    tags.forEach((t) => this.addTag(t));
+  }
+
+  public hasReportTags() {
+    return eventHasReport(this);
+  }
+
   public determineRequiredNIP(): NNIP[] {
     const nips = [];
     if (this.hasNonceTag()) {
       nips.push(NNIP.NIP_13);
     }
-    if (this.hasExpirationTag()) {
-      nips.push(NNIP.NIP_40);
-    }
     if (this.hasExternalIdentityClaimTag()) {
       nips.push(NNIP.NIP_39);
     }
+    if (this.hasExpirationTag()) {
+      nips.push(NNIP.NIP_40);
+    }
+    // It doesn't seem any relay specifically supports this
+    // if (this.hasReportTags()) {
+    //   nips.push(NNIP.NIP_56);
+    // }
 
     return nips;
   }
@@ -464,5 +492,14 @@ export function NewRecommendRelay(opts: iNewRecommendRelay) {
     nEv.addNonceTag(opts.nonce);
   }
 
+  return nEv;
+}
+
+export function NewReport(opts: iNewReport) {
+  const nEv = new NEvent({
+    content: opts.content || "",
+    kind: NEVENT_KIND.REPORTING,
+  });
+  nEv.addReportTags(opts);
   return nEv;
 }

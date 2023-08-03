@@ -7,5 +7,7 @@ export * from "./identity-claim.js";
 export * from "./relay-information.js";
 export * from "./relay-message.js";
 export * from "./relay.js";
+export * from "./report-types.js";
+export * from "./report.js";
 export * from "./user-metadata.js";
 export * from "./websocket.js";

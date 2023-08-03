@@ -1,6 +1,7 @@
 import { ExternalIdentityClaim } from "src/classes";
 import { NEVENT_KIND } from "./event-kind";
 import { UserMetadata } from "./user-metadata";
+import { Report } from "./report";
 
 export interface EventBase {
   id?: string;
@@ -55,3 +56,5 @@ export interface iNewRecommendRelay {
   relayUrl: string;
   nonce?: [number, number];
 }
+
+export interface iNewReport extends Report {}

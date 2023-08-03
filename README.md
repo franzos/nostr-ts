@@ -207,6 +207,32 @@ const ev = NewShortTextNote({ text: "Meeting starts in 10 minutes ..." });
 ev.addExpirationTag(1690990889);
 ```
 
+- [ ] NIP-56 [Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)
+
+The `publicKey` usually refers to the user that is being reported.
+If the report refers to another event, use the `eventId` too (for ex. spam, illegal, profanity, nudity).
+
+Impersonation:
+
+```js
+const ev = NewReport({
+  publicKey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+  kind: NREPORT_KIND.IMPERSONATION,
+})
+```
+
+Spam:
+
+```js
+const ev = NewReport({
+  publicKey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+  eventId: "e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466",
+  kind: NREPORT_KIND.SPAM,
+  // optionally pass some text
+  content: "This is spam",
+})
+```
+
 ## Examples
 
 ### Collect a list of recommended relays

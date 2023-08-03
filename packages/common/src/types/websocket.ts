@@ -27,7 +27,7 @@ export interface WebSocketClientBase {
 }
 
 export interface WebSocketClientConfig {
-  id: string;
+  id?: string;
   url: string;
 }
 

@@ -13,18 +13,18 @@ export class RelayClient extends RelayClientBase {
   constructor(urls?: string[]) {
     super(urls);
     if (urls) {
-      this.connectClients();
+      this.connectRelays();
     }
   }
 
   /**
    * Initiates the connection to all relays
    */
-  private connectClients() {
-    for (const client of this.clients) {
-      if (!client.connection) {
+  private connectRelays() {
+    for (const relay of this.relays) {
+      if (!relay.isConnected()) {
         try {
-          client.connection = new WebSocketClient(client);
+          relay.connection = new WebSocketClient(relay);
         } catch (e) {
           console.error("Error connecting to relay", e);
         }
@@ -38,8 +38,8 @@ export class RelayClient extends RelayClientBase {
    * 2. Run getRelayInformation
    */
   public loadFromDiscovered(relays: DiscoveredRelay[]) {
-    this.addInitialClients(relays.flatMap((r) => r.url));
-    this.connectClients();
+    this.addInitialRelays(relays.flatMap((r) => r.url));
+    this.connectRelays();
   }
 
   /**
@@ -53,15 +53,15 @@ export class RelayClient extends RelayClientBase {
    */
   public async getRelayInformation(): Promise<WebSocketClientInfo[]> {
     const info: WebSocketClientInfo[] = [];
-    for (const client of this.clients) {
-      if (!client.info) {
+    for (const relay of this.relays) {
+      if (!relay.info) {
         try {
-          client.info = await getRelayInformationDocument(client.url);
-          console.log(`Relay ${client.url} information`, client.info);
+          relay.info = await getRelayInformationDocument(relay.url);
+          console.log(`Relay ${relay.url} information`, relay.info);
           info.push({
-            id: client.id,
-            url: client.url,
-            info: client.info,
+            id: relay.id,
+            url: relay.url,
+            info: relay.info,
           });
         } catch (e) {
           console.error("Error getting relay information", e);

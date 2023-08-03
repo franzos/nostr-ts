@@ -1,14 +1,13 @@
+import { v4 as uuidv4 } from "uuid";
 import { NEvent } from "./event.js";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
-  ClientCommands,
   ClientCount,
   ClientEvent,
   ClientRequest,
   ClientSubscription,
   Count,
-  RELAY_MESSAGE_TYPE,
   RelayAuth,
   RelayCount,
   RelayEose,
@@ -17,30 +16,23 @@ import {
   RelayOK,
   Subscribe,
   WebSocketClientConfig,
-  WebSocketClientConnection,
 } from "../types/index.js";
-import { v4 as uuidv4 } from "uuid";
+import { RelayConnection } from "./relay-connection.js";
 
 export class RelayClientBase {
-  public clients: WebSocketClientConnection[] = [];
-  private subscriptions: ClientSubscription[] = [];
-
-  public commands: ClientCommands[] = [];
+  public relays: RelayConnection[] = [];
 
   constructor(urls?: string[]) {
-    this.addInitialClients(urls);
+    this.addInitialRelays(urls);
   }
 
   /**
    * Only to be used if you want to initialize Relay Client manually
    */
-  public addInitialClients(urls?: string[]) {
-    if (urls && (!this.clients || this.clients.length === 0)) {
+  public addInitialRelays(urls?: string[]) {
+    if (urls && (!this.relays || this.relays.length === 0)) {
       for (const url of urls) {
-        this.clients.push({
-          id: uuidv4(),
-          url,
-        });
+        this.relays.push(new RelayConnection({ url }));
       }
     }
   }
@@ -57,17 +49,29 @@ export class RelayClientBase {
 
     const newSubscriptions: ClientSubscription[] = [];
 
-    for (const relay of this.clients) {
-      if (relay.connection) {
-        relay.connection.sendMessage(data);
-        newSubscriptions.push({
-          url: relay.url,
-          connectionId: relay.id,
-          subscriptionId,
-        });
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
+        try {
+          relay.connection.sendMessage(data);
+          relay.addSubscription({
+            url: relay.url,
+            connectionId: relay.id,
+            subscriptionId,
+            type: message.type,
+            filters: message.filters,
+          });
+          newSubscriptions.push({
+            url: relay.url,
+            connectionId: relay.id,
+            subscriptionId,
+            type: message.type,
+            filters: message.filters,
+          });
+        } catch (e) {
+          console.error(e);
+        }
       }
     }
-    this.subscriptions.push(...newSubscriptions);
     return newSubscriptions;
   }
 
@@ -103,12 +107,14 @@ export class RelayClientBase {
     const subscriptions = this.sendSubscribe(message, subscriptionId);
 
     for (const sub of subscriptions) {
-      const command: ClientCommands = {
-        connectionId: sub.connectionId,
-        subscriptionId: sub.subscriptionId,
-        request: message,
-      };
-      this.commands.push(command);
+      const relay = this.relays.find((r) => r.id === sub.connectionId);
+      if (relay) {
+        relay.addCommand({
+          connectionId: sub.connectionId,
+          subscriptionId: sub.subscriptionId,
+          request: message,
+        });
+      }
     }
 
     return subscriptions;
@@ -126,28 +132,81 @@ export class RelayClientBase {
     };
     const data = JSON.stringify([message.type, message.subscriptionId]);
 
-    if (relayId) {
-      const relay = this.clients.find((client) => client.id === relayId);
-      if (relay && relay.connection) {
-        relay.connection.sendMessage(data);
-        this.subscriptions = this.subscriptions.filter(
-          (sub) =>
-            sub.connectionId !== relayId &&
-            sub.subscriptionId !== subscriptionId
-        );
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
+        continue;
       }
-    } else {
-      for (const relay of this.clients) {
-        if (relay.connection) {
-          relay.connection.sendMessage(data);
-          this.subscriptions = this.subscriptions.filter(
-            (sub) =>
-              sub.connectionId !== relayId &&
-              sub.subscriptionId !== subscriptionId
-          );
+
+      if ((relayId && relay.id === relayId) || !relayId) {
+        // Relay ID given and matches
+        // No relay ID given, remove from all relays
+        const hasSubscription = relay.hasSubscription(subscriptionId);
+        if (hasSubscription) {
+          try {
+            relay.connection.sendMessage(data);
+            relay.removeSubscription(subscriptionId);
+          } catch (e) {
+            console.error(e);
+          }
         }
       }
     }
+  }
+
+  unsubscribeAll() {
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
+        continue;
+      }
+
+      const subscriptions = relay.subscriptions.map(
+        (sub) => sub.subscriptionId
+      );
+
+      for (const subscriptionId of subscriptions) {
+        this.unsubscribe(subscriptionId, relay.id);
+      }
+    }
+  }
+
+  countSubscriptions() {
+    let total = 0;
+    for (const relay of this.relays) {
+      total += relay.subscriptions.length;
+    }
+    return total;
+  }
+
+  disconnectAll() {
+    for (const relay of this.relays) {
+      relay.connection?.closeConnection();
+    }
+  }
+
+  countConnections() {
+    let total = 0;
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
+        total++;
+      }
+    }
+    return total;
+  }
+
+  countCommands(): {
+    total: number;
+    completed: number;
+  } {
+    let total = 0;
+    let completed = 0;
+    for (const relay of this.relays) {
+      total += relay.commands.length;
+      completed += relay.commands.filter((c) => c.response !== null).length;
+    }
+    return {
+      total,
+      completed,
+    };
   }
 
   /**
@@ -155,44 +214,29 @@ export class RelayClientBase {
    * @param event
    */
   sendEvent(event: NEvent) {
+    event.isReadyToPublishOrThrow();
+
     const message: ClientEvent = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: event,
     };
     const data = JSON.stringify([message.type, message.data]);
 
-    let sent = false;
+    let isSent = false;
 
-    for (const relay of this.clients) {
-      if (relay.connection) {
-        // TODO: CLeanuo logs
-        const valid = event.isReadyToPublish();
-        if (!valid.isReady) {
-          throw new Error(
-            `Event ${event.id} not published because it is not ready. Reason: ${valid.reason}.`
-          );
-        }
-        const neededNips = event.determineRequiredNIP();
-        console.log(`Required NIP: ${neededNips.join(", ")}`);
-        const supportedNips = relay.info?.supported_nips || [];
-        console.log(`Supported NIP: ${supportedNips.join(", ")}`);
-
-        const allNipsSupported = neededNips.every((nip) =>
-          supportedNips.includes(nip)
-        );
-
-        if (allNipsSupported) {
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
+        if (relay.supportsEvent(event)) {
           relay.connection.sendMessage(data);
 
-          const command: ClientCommands = {
+          relay.addCommand({
             connectionId: relay.id,
             eventId: event.id,
             request: message,
-          };
-          this.commands.push(command);
+          });
 
           console.log(`Sent event to ${relay.url}`, message);
-          sent = true;
+          isSent = true;
         } else {
           console.log(
             `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
@@ -202,7 +246,7 @@ export class RelayClientBase {
       }
     }
 
-    if (!sent) {
+    if (!isSent) {
       console.log(
         `Event ${event.id} not published because no supported relay is available.`
       );
@@ -226,41 +270,10 @@ export class RelayClientBase {
       meta: WebSocketClientConfig;
     }) => void
   ) {
-    for (const relay of this.clients) {
-      if (relay.connection) {
+    for (const relay of this.relays) {
+      if (relay.isConnected()) {
         relay.connection.listen((payload) => {
-          /**
-           * At this stage we match received events to expected states (published event, count, ...)
-           */
-          if (payload.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
-            const index = this.commands.findIndex(
-              (cmd) =>
-                cmd.connectionId === relay.id &&
-                cmd.subscriptionId === (payload.data as RelayCount)[1]
-            );
-            if (index > 0) {
-              this.commands[index].response = payload.data[2];
-              this.commands[index].success = true;
-            }
-          } else if (payload.data[0] === RELAY_MESSAGE_TYPE.NOTICE) {
-            const index = this.commands.findIndex(
-              // TODO: This is not exact. How do we know what the notice is related to?
-              (cmd) => cmd.connectionId === relay.id && cmd.eventId
-            );
-            if (index > 0) {
-              this.commands[index].response = payload.data[1];
-            }
-          } else if (payload.data[0] === RELAY_MESSAGE_TYPE.OK) {
-            const index = this.commands.findIndex(
-              (cmd) =>
-                cmd.connectionId === relay.id &&
-                cmd.eventId === (payload.data as RelayOK)[1]
-            );
-            if (index > 0) {
-              this.commands[index].response = payload.data[3];
-              this.commands[index].success = payload.data[2];
-            }
-          }
+          relay.updateCommandFromRelayMessage(payload);
           onMessage(payload);
         });
       }
@@ -268,25 +281,14 @@ export class RelayClientBase {
   }
 
   closeConnection() {
-    const completedCommands = this.commands.filter(
-      (cmd) => cmd.response !== null
-    );
-    console.log(
-      `Completed ${completedCommands.length}/${this.commands.length} commands ...`
-    );
-    const activeSubscriptions = this.subscriptions.filter(
-      (sub) => sub.subscriptionId
-    );
-    console.log(
-      `-> Cancelling ${activeSubscriptions.length} active subscriptions ...`
-    );
-    this.subscriptions.forEach((sub) => this.unsubscribe(sub.subscriptionId));
-    const activeConnections = this.clients.filter(
-      (client) => client.connection
-    );
-    console.log(
-      `-> Closing ${activeConnections.length} active connections ...`
-    );
-    this.clients.forEach((client) => client.connection?.closeConnection());
+    const { completed, total } = this.countCommands();
+    console.log(`Completed ${completed}/${total} commands ...`);
+    const activeSub = this.countSubscriptions();
+    const activeCon = this.countConnections();
+
+    console.log(`-> Cancelling ${activeSub} active subscriptions ...`);
+    this.unsubscribeAll();
+    console.log(`-> Closing ${activeCon} active connections ...`);
+    this.disconnectAll();
   }
 }

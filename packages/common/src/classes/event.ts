@@ -1,5 +1,16 @@
 import { NNIP } from "src/types/nips";
-import { EventBase, NEVENT_KIND, UserMetadata } from "../types";
+import {
+  EventBase,
+  NEVENT_KIND,
+  UserMetadata,
+  iNewGenericRepost,
+  iNewQuoteRepost,
+  iNewReaction,
+  iNewRecommendRelay,
+  iNewShortTextNote,
+  iNewShortTextNoteResponse,
+  iNewUpdateUserMetadata,
+} from "../types";
 import {
   hash,
   sign,
@@ -79,8 +90,6 @@ export class NEvent implements EventBase {
   /**
    * Standard tag
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
-   * @param eventId
-   * @param relayUrl
    */
   public addEventTag(eventId: string, relayUrl?: string) {
     const tag = ["e", eventId];
@@ -94,8 +103,6 @@ export class NEvent implements EventBase {
    * Standard tag
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
    * https://github.com/nostr-protocol/nips/blob/master/01.md
-   * @param pubkey
-   * @param relayUrl
    */
   public addPublicKeyTag(pubkey: string, relayUrl?: string) {
     const tag = ["p", pubkey];
@@ -103,6 +110,15 @@ export class NEvent implements EventBase {
       tag[1] = `${tag[1]}, ${relayUrl}`;
     }
     this.addTag(tag);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   * https://github.com/nostr-protocol/nips/blob/master/18.md
+   */
+  public addKindTag(kind: NEVENT_KIND) {
+    this.addTag(["k", kind.toString()]);
   }
 
   /**
@@ -254,18 +270,25 @@ export class NEvent implements EventBase {
       };
     }
   }
+
+  public isReadyToPublishOrThrow() {
+    const check = this.isReadyToPublish();
+    if (!check.isReady) {
+      throw new Error(check.reason);
+    }
+  }
 }
 
 /**
  * Generate a short text note
  */
-export function NewShortTextNote(text: string, subject?: string) {
+export function NewShortTextNote(opts: iNewShortTextNote) {
   const newEvent = new NEvent({
-    content: text,
+    content: opts.text,
     kind: NEVENT_KIND.SHORT_TEXT_NOTE,
   });
-  if (subject) {
-    newEvent.addSubjectTag(subject);
+  if (opts.subject) {
+    newEvent.addSubjectTag(opts.subject);
   }
   return newEvent;
 }
@@ -277,17 +300,15 @@ export function NewShortTextNote(text: string, subject?: string) {
  * https://github.com/nostr-protocol/nips/blob/master/14.md
  */
 export function NewShortTextNoteResponse(
-  text: string,
-  respondingToEvent: EventBase,
-  relayUrl?: string
+  opts: iNewShortTextNoteResponse
 ): NEvent {
   const newEvent = new NEvent({
-    content: text,
+    content: opts.text,
     kind: NEVENT_KIND.SHORT_TEXT_NOTE,
   });
 
   // Append subject
-  const inResponseToEvent = new NEvent(respondingToEvent);
+  const inResponseToEvent = new NEvent(opts.inResponseTo);
   if (inResponseToEvent.kind !== NEVENT_KIND.SHORT_TEXT_NOTE) {
     throw new Error("Event you are responding to be SHORT_TEXT_NOTE");
   }
@@ -304,8 +325,8 @@ export function NewShortTextNoteResponse(
   }
 
   // Append tags
-  newEvent.addEventTag(inResponseToEvent.id, relayUrl);
-  newEvent.addPublicKeyTag(inResponseToEvent.pubkey, relayUrl);
+  newEvent.addEventTag(inResponseToEvent.id, opts.relayUrl);
+  newEvent.addPublicKeyTag(inResponseToEvent.pubkey, opts.relayUrl);
 
   return newEvent;
 }
@@ -321,21 +342,20 @@ export function NewShortTextNoteResponse(
  * @param event event to react to
  * @returns
  */
-export function NewReaction(
-  reaction: "+" | "-",
-  event: {
-    id: string;
-    pubkey: string;
-  }
-) {
-  return new NEvent({
-    content: reaction,
+export function NewReaction(opts: iNewReaction) {
+  const nEv = new NEvent({
+    content: opts.text,
     kind: NEVENT_KIND.REACTION,
     tags: [
-      ["e", event.id],
-      ["p", event.pubkey],
+      // ["e", opts.inResponseTo.id],
+      // ["p", opts.inResponseTo.pubkey],
     ],
   });
+
+  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
+
+  return nEv;
 }
 
 // TODO: Support custom reactions https://github.com/nostr-protocol/nips/blob/master/25.md#custom-emoji-reaction
@@ -349,18 +369,23 @@ export function NewReaction(
  * @param event event to repost
  * @returns
  */
-export function NewQuoteRepost(relay: string, event: EventBase) {
-  return new NEvent({
+export function NewQuoteRepost(opts: iNewQuoteRepost) {
+  const nEv = new NEvent({
     content: JSON.stringify({
       ...event,
-      relay: relay,
+      relay: opts.relayUrl,
     }),
     kind: NEVENT_KIND.REPOST,
     tags: [
-      ["e", event.id],
-      ["p", event.pubkey],
+      // ["e", opts.inResponseTo.id],
+      // ["p", opts.inResponseTo.pubkey],
     ],
   });
+
+  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
+
+  return nEv;
 }
 
 /**
@@ -369,19 +394,25 @@ export function NewQuoteRepost(relay: string, event: EventBase) {
  * @param event event to repost
  * @returns
  */
-export function NewGenericRepost(relay: string, event: EventBase) {
-  return new NEvent({
+export function NewGenericRepost(opts: iNewGenericRepost) {
+  const nEv = new NEvent({
     content: JSON.stringify({
-      ...event,
-      relay,
+      ...opts.inResponseTo,
+      relay: opts.relayUrl,
     }),
     kind: NEVENT_KIND.GENERIC_REPOST,
-    tags: [
-      ["e", event.id],
-      ["p", event.pubkey],
-      ["k", event.kind.toString()],
-    ],
+    // tags: [
+    //   ["e", opts.inResponseTo.id],
+    //   ["p", opts.inResponseTo.pubkey],
+    //   ["k", opts.inResponseTo.kind.toString()],
+    // ],
   });
+
+  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
+  nEv.addKindTag(opts.inResponseTo.kind);
+
+  return nEv;
 }
 
 /**
@@ -393,29 +424,24 @@ export function NewGenericRepost(relay: string, event: EventBase) {
  * External Identities in Profiles
  * https://github.com/nostr-protocol/nips/blob/master/39.md
  */
-export function NewUpdateUserMetadata(options: {
-  claims?: ExternalIdentityClaim[];
-  userMetadata?: UserMetadata;
-}) {
-  const newEvent = new NEvent({
-    content: createUserMetadataString(options.userMetadata),
+export function NewUpdateUserMetadata(opts: iNewUpdateUserMetadata) {
+  const nEv = new NEvent({
+    content: createUserMetadataString(opts.userMetadata),
     kind: NEVENT_KIND.METADATA,
     tags: [],
   });
-  if (options.claims) {
-    for (const claim of options.claims) {
+  if (opts.claims) {
+    for (const claim of opts.claims) {
       const isValid = isValidProviderName(claim.identity);
       if (isValid) {
-        const tag = claim.toTag();
-        if (tag) {
-          newEvent.addTag(tag);
-        }
+        nEv.addExternalIdentityClaimTag(claim);
       } else {
         console.log("Invalid provider name", claim.identity);
       }
     }
   }
-  return newEvent;
+
+  return nEv;
 }
 
 /**
@@ -426,18 +452,17 @@ export function NewUpdateUserMetadata(options: {
  * @param server
  * @returns NewEvent
  */
-export function NewRecommendRelay(options: {
-  server: string;
-  nonce?: string[];
-}) {
-  if (!isValidWebSocketUrl(options.server)) {
+export function NewRecommendRelay(opts: iNewRecommendRelay) {
+  if (!isValidWebSocketUrl(opts.relayUrl)) {
     throw new Error("Invalid server URL");
   }
-  const newEvent = new NEvent({
-    content: options.server,
+  const nEv = new NEvent({
+    content: opts.relayUrl,
     kind: NEVENT_KIND.RECOMMEND_RELAY,
   });
-  if (options.nonce) {
-    newEvent.addTag(["nonce", ...options.nonce]);
+  if (opts.nonce) {
+    nEv.addNonceTag(opts.nonce);
   }
+
+  return nEv;
 }

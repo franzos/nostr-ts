@@ -9,6 +9,13 @@ import {
   DiscoveredRelayWithError,
 } from "@nostr-ts/common";
 import { getRelayInformationDocument } from "../utils/relay-information.js";
+import {
+  RelayAuth,
+  RelayCount,
+  RelayEose,
+  RelayNotice,
+  RelayOK,
+} from "@nostr-ts/common";
 
 /**
  * The RelayDiscovery is responsible for discovering relays and storing them in a file.
@@ -19,7 +26,7 @@ import { getRelayInformationDocument } from "../utils/relay-information.js";
  * - discovered-relays-error.json: contains the relays that failed to be discovered
  */
 export class RelayDiscovery {
-  public recommendedRelays: EventBase[] = [];
+  public recommendedRelays: string[] = [];
   public discoveredRelays: DiscoveredRelay[] = [];
   public discoveredRelaysWithErrors: DiscoveredRelayWithError[] = [];
 
@@ -48,14 +55,23 @@ export class RelayDiscovery {
   }
 
   private exists(url: string): boolean {
-    const discovered =
-      this.discoveredRelays.find((r) => r.url === url) !== undefined;
-    const errors =
-      this.discoveredRelaysWithErrors.find((r) => r.url === url) !== undefined;
-    return discovered || errors;
+    // check if in discoveredRelays or discoveredRelaysWithErrors
+    return (
+      this.recommendedRelays.some((relay) => relay === url) ||
+      this.discoveredRelays.some((relay) => relay.url === url) ||
+      this.discoveredRelaysWithErrors.some((relay) => relay.url === url)
+    );
   }
 
-  public async add(event: RelayEvent) {
+  public async add(
+    event:
+      | RelayAuth
+      | RelayCount
+      | RelayEose
+      | RelayEvent
+      | RelayNotice
+      | RelayOK
+  ) {
     if (!event) return;
     if (event[0] !== RELAY_MESSAGE_TYPE.EVENT) return;
     const eventData = event[2] as EventBase;
@@ -64,10 +80,10 @@ export class RelayDiscovery {
     }
     const relayUrl = eventHasRelayRecommendation(eventData);
     if (relayUrl && !this.exists(relayUrl)) {
+      this.recommendedRelays.push(relayUrl);
       try {
         const info = await getRelayInformationDocument(relayUrl);
         console.log("=> Adding relay ...", relayUrl);
-        this.recommendedRelays.push(eventData);
         this.discoveredRelays.push({ url: relayUrl, info });
       } catch (e) {
         this.discoveredRelaysWithErrors.push({
@@ -103,30 +119,24 @@ export class RelayDiscovery {
 
   /**
    * Saves discovered relays and relays with errors
-   * This will try to merge existing data.
    */
   public async saveToFile() {
-    // TODO: It might be more predictable not to merge data
-    // It should be safe to assume the user loads previous data first?
-    const uniqueDiscoveredRelays = this.mergeUnique(this.discoveredRelays);
-    const uniqueDiscoveredRelaysWithErrors = this.mergeUnique(
-      this.discoveredRelaysWithErrors
-    );
+    try {
+      await writeFile(
+        this.discoveredRelaysPath,
+        JSON.stringify(this.discoveredRelays, null, 2)
+      );
+    } catch (error) {
+      console.error("Error saving discoveredRelays to file:", error);
+    }
 
-    await writeFile(
-      this.discoveredRelaysPath,
-      JSON.stringify(uniqueDiscoveredRelays, null, 2)
-    );
-    await writeFile(
-      this.discoveredRelaysPath,
-      JSON.stringify(uniqueDiscoveredRelaysWithErrors, null, 2)
-    );
-  }
-
-  private mergeUnique(relays: any[]) {
-    return relays.filter(
-      (relay, index, self) =>
-        index === self.findIndex((r) => r.url === relay.url)
-    );
+    try {
+      await writeFile(
+        this.errorsFilePath,
+        JSON.stringify(this.discoveredRelaysWithErrors, null, 2)
+      );
+    } catch (error) {
+      console.error("Error saving discoveredRelaysWithErrors to file:", error);
+    }
   }
 }

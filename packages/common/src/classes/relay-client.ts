@@ -1,70 +1,25 @@
-import { NewEvent } from "../classes/event.js";
+import { NewEvent } from "./event.js";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
+  ClientCommands,
   ClientCount,
   ClientEvent,
   ClientRequest,
+  ClientSubscription,
   Count,
   RELAY_MESSAGE_TYPE,
   RelayAuth,
   RelayCount,
   RelayEose,
   RelayEvent,
-  RelayInformationDocument,
   RelayNotice,
   RelayOK,
   Subscribe,
+  WebSocketClientConfig,
+  WebSocketClientConnection,
 } from "../types/index.js";
 import { v4 as uuidv4 } from "uuid";
-
-export interface WebSocketClientBase {
-  config: WebSocketClientConfig;
-  sendMessage: (data: string) => void;
-  listen: (
-    onMessage: (payload: {
-      data:
-        | RelayAuth
-        | RelayCount
-        | RelayEose
-        | RelayEvent
-        | RelayNotice
-        | RelayOK;
-      meta: WebSocketClientConfig;
-    }) => void
-  ) => void;
-  closeConnection: () => void;
-}
-
-export interface WebSocketClientConfig {
-  id: string;
-  url: string;
-}
-
-export interface WebSocketClientInfo extends WebSocketClientConfig {
-  id: string;
-  url: string;
-  info?: RelayInformationDocument;
-}
-
-export interface WebSocketClientConnection extends WebSocketClientInfo {
-  connection?: WebSocketClientBase;
-}
-
-export interface ClientSubscription {
-  url: string;
-  connectionId: string;
-  subscriptionId: string;
-}
-
-export interface ClientCommands {
-  connectionId: string;
-  subscriptionId?: string;
-  eventId?: string;
-  request?: ClientRequest | ClientCount | ClientEvent;
-  response?: string | {};
-  success?: boolean;
-}
 
 export class RelayClientBase {
   public clients: WebSocketClientConnection[] = [];
@@ -72,12 +27,21 @@ export class RelayClientBase {
 
   public commands: ClientCommands[] = [];
 
-  constructor(urls: string[]) {
-    for (const url of urls) {
-      this.clients.push({
-        id: uuidv4(),
-        url,
-      });
+  constructor(urls?: string[]) {
+    this.addInitialClients(urls);
+  }
+
+  /**
+   * Only to be used if you want to initialize Relay Client manually
+   */
+  public addInitialClients(urls?: string[]) {
+    if (urls && (!this.clients || this.clients.length === 0)) {
+      for (const url of urls) {
+        this.clients.push({
+          id: uuidv4(),
+          url,
+        });
+      }
     }
   }
 

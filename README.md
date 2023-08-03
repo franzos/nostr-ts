@@ -247,8 +247,11 @@ const main = async () => {
 main();
 ```
 
-You will have get a file (`discovered-relays.json`) that looks similiar to this excerpt: 
+You will get two files
+1. `discovered-relays.json` with all valid relays
+2. `discovered-relays-error.json` with all invalid relays
 
+This is what an excerpt of `discovered-relays.json` looks like:
 
 ```json
 [
@@ -355,7 +358,73 @@ You will have get a file (`discovered-relays.json`) that looks similiar to this 
 ]
 ```
 
+and here's `discovered-relays-error.json`:
+
+```json
+[
+  {
+    "url": "wss://nostr.rocks"
+  },
+  {
+    "url": "wss://rsslay.fiatjaf.com"
+  },
+  {
+    "url": "wss://nostr.rdfriedl.com"
+  },
+  {
+    "url": "wss://expensive-relay.fiatjaf.com"
+  },
+  {
+    "url": "wss://relayer.fiatjaf.com"
+  },
+  {
+    "url": "wss://nostr-relay.wlvs.space"
+  },
+]
+```
+
+### Use list of relays with Relay Client
+
+Once you've collected a list of relays, you can feed them to Relay Client.
+
+A couple of points:
+- You might not want to connect to hundreds of relays at once
+- I will add some randomization and limits in the future
+
+```js
+const client = new RelayClient();
+const relayDiscovery = new RelayDiscovery();
+await relayDiscovery.loadFromFile();
+
+await client.loadFromDiscovered(relayDiscovery.get());
+
+// Now continue as usual ...
+const filters = new NewFilters();
+filters.addKind(1);
+
+client.subscribe({
+  filters,
+});
+
+client.listen(async (payload) => {
+  logRelayMessage(payload.data);
+});
+
+await client.getRelayInformation();
+```
+
+If you prefer to apply limits yourself, you could do something like this:
+
+```js
+const relays = relayDiscovery.get().slice(0, 10)
+await client.loadFromDiscovered(relays);
+```
+
 ## TODO
 
 - [ ] Tests
 - [ ] More NIP's
+
+## Notes
+
+If you're new to Nostr, also checkout [awesome-nostr](https://github.com/aljazceru/awesome-nostr).

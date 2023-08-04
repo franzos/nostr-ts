@@ -2,6 +2,7 @@ export * from "./bech32";
 export * from "./event-content-warning";
 export * from "./event-content";
 export * from "./event-expiration";
+export * from "./event-labels";
 export * from "./event-nonce";
 export * from "./event-recommendation";
 export * from "./event-reporting";

@@ -93,6 +93,7 @@ client.sendEvent(ev)
 **Supported messages (events)**
 
 - `NewShortTextNote`: Send a short text note
+- `NewLongFormContent`: Send a long form content note
 - `NewShortTextNoteResponse`: Respond to a short text note
 - `NewReaction`: React to a note (`+`, `-`)
 - `NewQuoteRepost`: Repost a note
@@ -217,6 +218,16 @@ client.sendEvent(ev)
 ```
 
 You can also utilize `NewGenericRepost` to repost any kind of event.
+
+- [ ] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
+
+```js
+const ev = NewLongFormContent({
+  text: "This is a really long one. Like I mean, not your usual short note. This is a long one. I mean, really long. Like, really really long. Like, really really really long. Like, really really really really long. Like, really really really really really long. Like, really really really really really really long."
+  isDraft: false,
+  identifier: "really-really-really-long"
+})
+```
 
 - [ ] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
 

@@ -12,6 +12,7 @@ import {
   iNewUpdateUserMetadata,
   Report,
   NEventContent,
+  iNewLongFormContent,
 } from "../types";
 import {
   hash,
@@ -30,6 +31,7 @@ import {
   generateReportTags,
   createEventContent,
   extractEventContent,
+  isValidEventContent,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -325,10 +327,10 @@ export class NEvent implements EventBase {
         reason: "Event has no pubkey.",
       };
     }
-    if (this.content === "") {
+    if (!isValidEventContent(this.content)) {
       return {
         isReady: false,
-        reason: "Event has no content.",
+        reason: "Event has invalid content.",
       };
     }
     if (this.sig === "") {
@@ -357,6 +359,27 @@ export function NewShortTextNote(opts: iNewShortTextNote) {
   });
   if (opts.subject) {
     newEvent.addSubjectTag(opts.subject);
+  }
+  return newEvent;
+}
+
+/**
+ * Generate a long form content
+ * Basically a longer short text note
+ *
+ * https://github.com/nostr-protocol/nips/blob/master/23.md
+ * @param opts
+ * @returns
+ */
+export function NewLongFormContent(opts: iNewLongFormContent) {
+  const newEvent = new NEvent({
+    content: opts.text,
+    kind: opts.isDraft
+      ? NEVENT_KIND.DRAFT_LONG_FORM_CONTENT
+      : NEVENT_KIND.LONG_FORM_CONTENT,
+  });
+  if (opts.identifier) {
+    newEvent.addEventTag(opts.identifier);
   }
   return newEvent;
 }

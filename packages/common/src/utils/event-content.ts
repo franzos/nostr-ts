@@ -12,6 +12,10 @@ import { NEventContent } from "../types";
 export function extractEventContent(
   content: string
 ): NEventContent | undefined {
+  if (!isValidEventContent(content)) {
+    return;
+  }
+
   const urlRegex = /(.*)?(wss:\/\/[a-zA-Z0-9.-]+)/;
   const nostrRegex = /(nostr:[a-fA-F0-9]{64})/g;
 
@@ -60,4 +64,54 @@ export function createEventContent(content: NEventContent) {
       ? `${content.message} ${publicKeysStr}`
       : publicKeysStr;
   }
+}
+
+/**
+ * Validate event content
+ *
+ * Accepts:
+ * - "wss://relay.example.com"
+ * - "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
+ * - "Checkout nostr:2234567890123456789012345678901234567890123456789012345678901234"
+ * - "Checkout nostr:2234567890123456789012345678901234567890123456789012345678901234 nostr:2234567890123456789012345678901234567890123456789012345678901234"
+ * - "Checkout [picture](https://picture.com/pic.jpg)"
+ *
+ * Specifically does not accept
+ * - HTML
+ * - Line breaks
+ *
+ * @param content
+ */
+export function isValidEventContent(content: string): boolean {
+  // No content is valid content
+  if (!content || content === "") {
+    return true;
+  }
+
+  // Does not contain HTML
+  const htmlRegex = /<[^>]*>/;
+  if (htmlRegex.test(content)) {
+    return false;
+  }
+
+  // Does not contain line breaks
+  if (content.includes("\n")) {
+    return false;
+  }
+
+  // Adheres to one of the accepted formats
+  const validUrlRegex = /^(.*)(wss:\/\/[a-zA-Z0-9.-]+)/;
+  const validNostrRegex = /^(.*)(nostr:[a-fA-F0-9]{64})/;
+  const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/; // matches markdown links like [picture](https://picture.com/pic.jpg)
+
+  if (
+    validUrlRegex.test(content) ||
+    validNostrRegex.test(content) ||
+    markdownLinkRegex.test(content)
+  ) {
+    return true;
+  }
+
+  // If none of the conditions are met
+  return false;
 }

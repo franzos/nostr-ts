@@ -21,6 +21,13 @@ export interface iNewShortTextNote {
   subject?: string;
 }
 
+export interface iNewLongFormContent {
+  text: string;
+  isDraft?: boolean;
+  // d identifier to make it replaceable
+  identifier?: string;
+}
+
 interface inResponse {
   /**
    * The event that this is in response to

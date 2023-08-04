@@ -1,13 +1,18 @@
 {
   "name": "@nostr-ts/node",
-  "version": "0.0.1",
-  "description": "Commonly used snippets",
+  "version": "0.0.2",
+  "description": "nostr on the backend: node.js implementation of the nostr protocol",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/franzos/nostr-ts"
   },
+  "keywords": [
+    "nostr",
+    "blockchain",
+    "crypto"
+  ],
   "type": "module",
   "scripts": {
     "prebuild": "rimraf dist",

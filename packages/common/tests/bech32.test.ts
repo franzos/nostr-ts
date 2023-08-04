@@ -1,4 +1,4 @@
-import { encodeBech32, decodeBech32 } from "../src"; // replace './nostr' with the actual module path
+import { encodeBech32, decodeBech32, BECH32_PREFIX } from "../src";
 
 test("encode and decode nostr entity", () => {
   // Decode npub
@@ -40,13 +40,13 @@ test("encode and decode nostr entity", () => {
   // ]);
 
   // Encode npub
-  const encodedNpub = encodeBech32("npub", npub.tlvItems);
+  const encodedNpub = encodeBech32(BECH32_PREFIX.PublicKeys, npub.tlvItems);
   expect(encodedNpub).toEqual(
     "npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg"
   );
 
   // Encode nsec
-  const encodedNsec = encodeBech32("nsec", nsec.tlvItems);
+  const encodedNsec = encodeBech32(BECH32_PREFIX.PrivateKeys, nsec.tlvItems);
   expect(encodedNsec).toEqual(
     "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5"
   );

@@ -90,6 +90,66 @@ ev.signAndGenerateId(keypair)
 client.sendEvent(ev)
 ```
 
+**Supported messages (events)**
+
+- `NewShortTextNote`: Send a short text note
+- `NewShortTextNoteResponse`: Respond to a short text note
+- `NewReaction`: React to a note (`+`, `-`)
+- `NewQuoteRepost`: Repost a note
+- `NewGenericRepost`: Report any event
+- `NewUpdateUserMetadata`: Update user metadata (profile)
+- `NewRecommendRelay`: Recommend a relay
+- `NewReport`: Report an event or user
+
+**Event**
+
+You can manually assemble an event:
+
+```js
+const ev = new NEvent({
+   kind: NEVENT_KIND_SHORT_TEXT_NOTE,
+   tags: [],
+   content: 'Hello nostr!',
+})
+
+// These are all the options; you do not (and usually should not) use all of them
+// If something doesn't add-up, these sometimes throw an error
+ev.addEventTag(...)
+ev.addPublicKeyTag(...)
+ev.addKindTag(...)
+ev.addExpirationTag(...)
+ev.addSubjectTag(...)
+ev.addSubjectTag(makeSubjectResponse(subject));
+ev.addNonceTag(...)
+ev.addContentWarningTag(...)
+ev.addExternalIdentityClaimTag(...)
+ev.addReportTags(...)
+
+// Add custom tags
+ev.addTag(['p', 'myvalue'])
+
+// Mentions in event content; for ex. Checkout nostr:e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466
+ev.mentionUsers([pubkey1, pubkey2])
+ev.hasMentions()
+
+// Sign
+ev.signAndGenerateId(keypair)
+
+// Ready to publish?
+const ready = ev.isReadyToPublish()
+
+// Required NIP? [13, 39, 40]
+const nip = ev.determineRequiredNIP()
+
+// Properties
+ev.hasExpirationTag()
+ev.hasSubjectTag()
+ev.hasNonceTag()
+ev.hasContentWarningTag()
+ev.hasExternalIdentityClaimTag()
+ev.hasReportTags()
+```
+
 - [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
 ```js

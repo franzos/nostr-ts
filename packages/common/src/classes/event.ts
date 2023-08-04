@@ -11,6 +11,7 @@ import {
   iNewShortTextNoteResponse,
   iNewUpdateUserMetadata,
   Report,
+  NEventContent,
 } from "../types";
 import {
   hash,
@@ -27,6 +28,8 @@ import {
   eventHasContentWarning,
   eventHasReport,
   generateReportTags,
+  createEventContent,
+  extractEventContent,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -74,6 +77,46 @@ export class NEvent implements EventBase {
 
   public toJson() {
     return JSON.parse(JSON.stringify(this));
+  }
+
+  /**
+   * Mention one or more users in the event content
+   * this will merge the mentions with any existing content
+   */
+  public mentionUsers(publicKeys: string[]) {
+    const extracted = this.extractContent();
+    if (!extracted) {
+      this.content = createEventContent({
+        message: this.content,
+        publicKeys,
+      });
+    } else {
+      throw new Error("Already has motified content");
+    }
+  }
+
+  /**
+   * Check if any user has been mentioned in the event content
+   * @returns
+   */
+  public hasMentions(): string[] | undefined {
+    const extracted = this.extractContent();
+    if (
+      !extracted ||
+      !extracted.publicKeys ||
+      extracted.publicKeys.length < 1
+    ) {
+      return;
+    }
+    return extracted.publicKeys;
+  }
+
+  /**
+   * Extract all (if any) information from the event content
+   * @returns
+   */
+  public extractContent(): NEventContent | undefined {
+    return extractEventContent(this.content);
   }
 
   public addTag(val: string[]) {

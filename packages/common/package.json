@@ -1,6 +1,6 @@
 {
   "name": "@nostr-ts/common",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Commonly used nostr types and utils",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",
@@ -8,6 +8,11 @@
     "type": "git",
     "url": "https://github.com/franzos/nostr"
   },
+  "keywords": [
+    "nostr",
+    "blockchain",
+    "crypto"
+  ],
   "type": "module",
   "scripts": {
     "prebuild": "rimraf dist",

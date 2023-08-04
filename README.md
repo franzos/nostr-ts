@@ -12,15 +12,15 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 On Node.js use:
 
 ```js
-import {  } from '@nostr-ts/common'
+import { NewShortTextNote } from '@nostr-ts/common'
 import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/node'
 ```
 
-In the browser use (PLANNED):
+In the browser use:
 
 ```js
-import {  } from '@nostr-ts/common'
-import { RelayClient } from '@nostr-ts/web'
+import { NewShortTextNote } from '@nostr-ts/common'
+import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/web'
 ```
 
 ### Install & Build

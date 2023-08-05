@@ -11,7 +11,7 @@ This is WIP.
 
 ## Highlights
 
-- Supported NIP: 1, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56
+- Supported NIP: 1, 10, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56
 - Partial NIP: 19, 32, 57
 - `RelayClient` to handle websocket connection and message sending (node, web)
 - `RelayDiscovery` to make it easy to pickup new relays (node)
@@ -119,6 +119,10 @@ client.sendEvent(ev)
 - `NewUpdateUserMetadata`: Update user metadata (profile)
 - `NewRecommendRelay`: Recommend a relay
 - `NewReport`: Report an event or user
+- `NewZapRequest`: Request a zap
+- `NewSignedZapRequest`: Request a zap helper
+- `NewZapReceipt`: Zap receipt
+- `NewEventDeletion`: Delete an event
 
 **Event**
 
@@ -135,6 +139,11 @@ const ev = new NEvent({
 // If something doesn't add-up, these sometimes throw an error
 ev.addEventTag(...)
 ev.addPublicKeyTag(...)
+ev.addRelaysTag(...)
+ev.addEventCoordinatesTag(...)
+ev.addIdentifierTag(...)
+ev.addLnurlTag(...)
+ev.addAmountTag(...)
 ev.addKindTag(...)
 ev.addExpirationTag(...)
 ev.addSubjectTag(...)
@@ -161,6 +170,12 @@ const ready = ev.isReadyToPublish()
 const nip = ev.determineRequiredNIP()
 
 // Properties
+ev.hasPublicKeyTags()
+ev.hasRelaysTag()
+ev.hasEventCoordinatesTags()
+ev.hasIdentifierTags()
+ev.hasLnurlTags()
+ev.hasAmountTags()
 ev.hasExpirationTag()
 ev.hasSubjectTag()
 ev.hasNonceTag()

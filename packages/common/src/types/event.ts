@@ -124,3 +124,17 @@ export interface iNewZAPReceipt {
    */
   zapRequest?: EventBase;
 }
+
+export interface iNewEventDeletion {
+  text: string;
+  events: EventBase[];
+
+  /**
+   * Use 'a' instead of 'e' tag
+   */
+  useEventCoordinatesTags?: boolean;
+  /**
+   * Use with useEventCoordinatesTags
+   */
+  relayUrl?: string;
+}

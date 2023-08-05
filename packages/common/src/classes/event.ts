@@ -15,6 +15,8 @@ import {
   iNewLongFormContent,
   iNewZAPRequest,
   iNewZAPReceipt,
+  iNewEventDeletion,
+  EventCoordinatesTag,
 } from "../types";
 import {
   hash,
@@ -35,6 +37,17 @@ import {
   extractEventContent,
   isValidEventContent,
   makeLnurlZapRequestUrl,
+  eventHasPublicKeyTags,
+  eventHasEventCoordinatesTags,
+  eventHasRelaysTag,
+  makeZapReceiptDescription,
+  eventHasIdentifierTags,
+  makeEventIdentifierTag,
+  makeEventLnurlTag,
+  eventHasLnurlTags,
+  makeEventAmountTag,
+  eventHasAmountTags,
+  makeEventCoordinatesTag,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -167,6 +180,79 @@ export class NEvent implements EventBase {
     this.addTag(tag);
   }
 
+  public hasPublicKeyTags(): string[] | undefined {
+    return eventHasPublicKeyTags(this);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   */
+  public addRelaysTag(relays: string[]) {
+    const relayTags = this.tags.filter((tag) => tag[0] === "relays");
+    if (relayTags.length === 0) {
+      this.tags.push(["relays", ...relays]);
+    } else {
+      for (const tag of relayTags) {
+        tag.splice(1, 0, ...relays);
+      }
+    }
+  }
+
+  public hasRelaysTag(): string[] | undefined {
+    return eventHasRelaysTag(this);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   */
+  public addEventCoordinatesTag(opts: EventCoordinatesTag) {
+    this.addTag(makeEventCoordinatesTag(opts));
+  }
+
+  public hasEventCoordinatesTags(): EventCoordinatesTag[] | undefined {
+    return eventHasEventCoordinatesTags(this);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   */
+  public addIdentifierTag(identifier: string) {
+    this.addTag(makeEventIdentifierTag(identifier));
+  }
+
+  public hasIdentifierTags() {
+    return eventHasIdentifierTags(this);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   */
+  public addLnurlTag(lnurl: string) {
+    this.addTag(makeEventLnurlTag(lnurl));
+  }
+
+  public hasLnurlTags() {
+    return eventHasLnurlTags(this);
+  }
+
+  /**
+   * Standard tag
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   *
+   * @param amount millisats
+   */
+  public addAmountTag(amount: string) {
+    this.addTag(makeEventAmountTag(amount));
+  }
+
+  public hasAmountTags() {
+    return eventHasAmountTags(this);
+  }
+
   /**
    * Standard tag
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
@@ -297,6 +383,11 @@ export class NEvent implements EventBase {
   }
 
   public newZapReceipt(opts: iNewZAPReceipt) {
+    if (this.kind !== NEVENT_KIND.ZAP_REQUEST) {
+      throw new Error(
+        `Event kind ${this.kind} should not have a zap receipt. Expected ${NEVENT_KIND.ZAP_REQUEST}.`
+      );
+    }
     return NewZapReceipt({
       bolt11: opts.bolt11,
       description: opts.description,
@@ -482,14 +573,10 @@ export function NewReaction(opts: iNewReaction) {
 export function NewQuoteRepost(opts: iNewQuoteRepost) {
   const nEv = new NEvent({
     content: JSON.stringify({
-      ...event,
+      ...opts.inResponseTo,
       relay: opts.relayUrl,
     }),
     kind: NEVENT_KIND.REPOST,
-    tags: [
-      // ["e", opts.inResponseTo.id],
-      // ["p", opts.inResponseTo.pubkey],
-    ],
   });
 
   nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
@@ -511,11 +598,6 @@ export function NewGenericRepost(opts: iNewGenericRepost) {
       relay: opts.relayUrl,
     }),
     kind: NEVENT_KIND.GENERIC_REPOST,
-    // tags: [
-    //   ["e", opts.inResponseTo.id],
-    //   ["p", opts.inResponseTo.pubkey],
-    //   ["k", opts.inResponseTo.kind.toString()],
-    // ],
   });
 
   nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
@@ -605,13 +687,12 @@ export function NewZapRequest(opts: iNewZAPRequest) {
   const nEv = new NEvent({
     content: "",
     kind: NEVENT_KIND.ZAP_REQUEST,
-    tags: [
-      ["relays", ...opts.relayUrls],
-      ["amount", opts.amount.toString()],
-      ["lnurl", opts.lnurl],
-      ["p", opts.recipientPubkey],
-    ],
   });
+
+  nEv.addRelaysTag(opts.relayUrls);
+  nEv.addAmountTag(opts.amount.toString());
+  nEv.addLnurlTag(opts.lnurl);
+  nEv.addPublicKeyTag(opts.recipientPubkey);
 
   if (opts.eventId) {
     nEv.addEventTag(opts.eventId);
@@ -670,10 +751,12 @@ export function NewZapReceipt(opts: iNewZAPReceipt) {
   const pTag = opts.zapRequest.tags.find((t) => t[0] === "p");
   const eTag = opts.zapRequest.tags.find((t) => t[0] === "e");
 
+  const description = makeZapReceiptDescription(opts.zapRequest);
+
   const nEv = new NEvent({
     content: "",
     kind: NEVENT_KIND.ZAP_RECEIPT,
-    tags: [pTag, ["bolt11", opts.bolt11], ["description", opts.description]],
+    tags: [pTag, ["bolt11", opts.bolt11], ["description", description]],
     created_at: opts.zapRequest.created_at,
   });
 
@@ -683,6 +766,43 @@ export function NewZapReceipt(opts: iNewZAPReceipt) {
 
   if (opts.preimage) {
     nEv.addTag(["preimage", opts.preimage]);
+  }
+
+  return nEv;
+}
+
+export function NewEventDeletion(opts: iNewEventDeletion) {
+  const nEv = new NEvent({
+    content: "",
+    kind: NEVENT_KIND.EVENT_DELETION,
+    tags: [],
+  });
+
+  if (opts.useEventCoordinatesTags) {
+    for (const ev of opts.events) {
+      const identifiers = eventHasIdentifierTags(ev);
+      if (!identifiers) {
+        throw new Error(
+          "Event does not have identifier tags (you set useEventCoordinatesTags = true)"
+        );
+      }
+
+      for (const identifier of identifiers) {
+        nEv.addEventCoordinatesTag({
+          kind: ev.kind,
+          pubkey: ev.pubkey,
+          identifier,
+        });
+      }
+    }
+  } else {
+    for (const ev of opts.events) {
+      nEv.addEventTag(ev.id);
+    }
+  }
+
+  if (nEv.tags.length === 0) {
+    throw new Error("No tags added to event deletion");
   }
 
   return nEv;

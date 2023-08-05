@@ -2,6 +2,8 @@ export * from "./bech32";
 export * from "./client-message";
 export * from "./client";
 export * from "./content";
+export * from "./event-coordinates-tag";
+export * from "./event-event-tag";
 export * from "./event-kind";
 export * from "./event";
 export * from "./filter";

@@ -4,9 +4,12 @@
  * @returns
  */
 
+import { NEvent } from "../classes";
 import {
+  EventBase,
   LnurlEndpointResponse,
   LnurlInvoiceResponse,
+  NEVENT_KIND,
   iNewZAPRequest,
 } from "../types";
 import { decodeLightnightPayRequest } from "./bolt11";
@@ -53,4 +56,31 @@ export function isValidLnurlInvoiceResponse(
   // TODO: Check if lnurl is valid (invoice.tags)
 
   return true;
+}
+
+export function makeZapReceiptDescription(event: EventBase) {
+  const ev = new NEvent(event);
+  const pubkeys = ev.hasPublicKeyTags();
+  if (!pubkeys) {
+    throw new Error("No pubkey tags found");
+  }
+
+  if (event.kind !== NEVENT_KIND.ZAP_REQUEST) {
+    throw new Error("Event is not a zap request");
+  }
+
+  const pubkey = pubkeys[0];
+  const relays = ev.hasRelaysTag();
+
+  const description = {
+    pubkey,
+    content: "",
+    id: ev.id,
+    sig: ev.sig,
+    kind: ev.kind,
+    tags: ev.tags,
+    relays,
+  };
+
+  return JSON.stringify(description);
 }

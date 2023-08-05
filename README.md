@@ -5,12 +5,12 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 - `./client`: node client example
 - `./packages/common`: common types and functions
 - `./packages/node`: client for usage with node `ws` library
-- `./packages/web`: client for usage with browser `WebSocket` API (TODO)
+- `./packages/web`: client for usage with browser `WebSocket` API
 
 ## Highlights
 
-- Supported NIP: 1, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56, 57
-- Partial NIP: 19, 32
+- Supported NIP: 1, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56
+- Partial NIP: 19, 32, 57
 
 ## Usage notes
 
@@ -354,7 +354,7 @@ client.listen(async (payload) => {
     if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
 
         // Load user data from event
-        const success = recipient.fromEvent(payload.data[0])
+        const success = recipient.fromEvent(payload.data[2])
 
         if (success) {
             // Make ZAP request

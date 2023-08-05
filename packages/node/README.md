@@ -6,7 +6,7 @@ This package is part of [nostr-ts](https://github.com/franzos/nostr-ts).
 
 - `@nostr-ts/common`: common types and functions
 - `@nostr-ts/node`: client for usage with node `ws` library
-- `@nostr-ts/web`: client for usage with browser `WebSocket` API (TODO)
+- `@nostr-ts/web`: client for usage with browser `WebSocket` API
 
 Checkout the [documentation](https://franzos.github.io/nostr-ts/) for more information.
 

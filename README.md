@@ -7,6 +7,11 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 - `./packages/node`: client for usage with node `ws` library
 - `./packages/web`: client for usage with browser `WebSocket` API (TODO)
 
+## Highlights
+
+- Supported NIP: 1, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56, 57
+- Partial NIP: 19, 32
+
 ## Usage notes
 
 On Node.js use:
@@ -219,6 +224,14 @@ client.sendEvent(ev)
 
 You can also utilize `NewGenericRepost` to repost any kind of event.
 
+- [ ] NIP-19 [bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)
+
+There are some utilities to get you started (WIP):
+
+- `encodeBech32(...)`
+- `decodeBech32(...)`
+
+
 - [ ] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
 
 ```js
@@ -301,6 +314,69 @@ const ev = NewReport({
   kind: NREPORT_KIND.SPAM,
   // optionally pass some text
   content: "This is spam",
+})
+```
+
+- [ ] NIP-57 [Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)
+
+This is a really rudimentary example to show the steps required.
+I will follow-up with a more realistig implementation.
+
+Supports:
+- Zap to a user: YES
+- Zap to from / to event: NO (WIP)
+
+```js
+const recipient = new NUser({
+    pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+})
+
+// Get filters for subscription to get user information
+const filters = recipient.getMetadataFilter()
+
+let client = new RelayClient([
+    'wss://nostr.rocks',
+    'wss://nostr.lu.ke'
+]);
+await client.getRelayInformation();
+
+client.subscribe({
+    filters
+})
+
+client.listen(async (payload) => {
+    console.log(payload.meta.id, payload.meta.url)
+    logRelayMessage(payload.data)
+
+    // Don't actually do exactly this
+    // for ex. if you're subscribed to multiple relays, you'll generate multiple payments
+    // This should be part of client logic
+    if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
+
+        // Load user data from event
+        const success = recipient.fromEvent(payload.data[0])
+
+        if (success) {
+            // Make ZAP request
+            const { p: invoice, event } = await recipient.makeZapRequest(
+                {
+                    relayUrls: ["wss://nostr.rocks"],
+                    amount: 1000,
+                },
+                keypair
+            )
+
+            // Pay invoice with lightning wallet then continue here
+            const bolt11FromYourWallet = "lnbc1..."
+
+            const receipt = event.newZapReceipt({
+                bolt11: bolt11FromYourWallet,
+                description: 'Keep stacking sats!'
+            })
+            receipt.signAndGenerateId(keypair)
+            client.sendEvent(receipt)
+      }
+    }
 })
 ```
 

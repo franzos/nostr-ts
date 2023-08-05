@@ -48,7 +48,7 @@ export enum NEVENT_KIND {
   /**
    * Regular event (NIP 16)
    */
-  ZAP = 9735,
+  ZAP_RECEIPT = 9735,
 
   /**
    * Replaceable event (NIP 16)

@@ -14,10 +14,29 @@ export interface UserMetadata {
   picture?: string;
   banner?: string;
   /**
+   * Static internet identifiers.
+   * <username>@<domainname>
+   *
    * https://github.com/nostr-protocol/nips/blob/master/05.md
    */
   nip05?: string;
   website?: string;
   about?: string;
   image?: string;
+
+  npub?: string;
+
+  /**
+   * Static internet identifiers.
+   * <username>@<domainname>
+   *
+   * https://github.com/lnurl/luds/blob/luds/16.md
+   */
+  lud16?: string;
+
+  /**
+   * bech32 encoded lnurl with the prefix `lnurl`
+   * ex:. lnurl....
+   */
+  lud06?: string;
 }

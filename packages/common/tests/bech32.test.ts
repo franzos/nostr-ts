@@ -25,6 +25,19 @@ test("encode and decode nostr entity", () => {
     },
   ]);
 
+  // Device lnurl1: lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp
+  const lnurl1 = decodeBech32(
+    "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"
+  );
+  expect(lnurl1.prefix).toEqual("lnurl");
+  expect(lnurl1.tlvItems).toEqual([
+    {
+      type: 0,
+      value:
+        "68747470733a2f2f737461636b65722e6e6577732f2e77656c6c2d6b6e6f776e2f6c6e75726c702f6f64656c6c",
+    },
+  ]);
+
   // Decode nprofile
   // const nprofile = decodeBech32(
   //   "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p"

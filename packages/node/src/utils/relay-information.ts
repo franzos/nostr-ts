@@ -1,5 +1,5 @@
 import { RelayInformationDocument } from "@nostr-ts/common";
-import type { Response } from "node-fetch";
+import { makeRequest } from "./make-request";
 
 /**
  * Get relay information document
@@ -20,23 +20,5 @@ export async function getRelayInformationDocument(
   console.log("###############");
 
   // Use inline import for 'node-fetch'
-  const fetch = (await import("node-fetch")).default;
-
-  let response = (await Promise.race([
-    fetch(httpsUrl, {
-      headers: {
-        Accept: "application/nostr+json",
-      },
-    }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), 5000)
-    ),
-  ])) as Response;
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const result = await response.json();
-  return result;
+  return makeRequest(httpsUrl);
 }

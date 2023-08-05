@@ -46,3 +46,16 @@ export class NFilters implements FiltersBase {
     return JSON.parse(JSON.stringify(this));
   }
 }
+
+// TODO: #e
+export function NewZAPReceiptFilter() {
+  return new NFilters({
+    kinds: [NEVENT_KIND.ZAP_RECEIPT],
+  });
+}
+
+export function NewMetadataFilter() {
+  return new NFilters({
+    kinds: [NEVENT_KIND.METADATA],
+  });
+}

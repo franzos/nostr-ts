@@ -88,7 +88,8 @@ export function encodeBech32(
   if (
     prefix === BECH32_PREFIX.PublicKeys ||
     prefix === BECH32_PREFIX.PrivateKeys ||
-    prefix === BECH32_PREFIX.NoteIDs
+    prefix === BECH32_PREFIX.NoteIDs ||
+    prefix === BECH32_PREFIX.LNURL
   ) {
     tlvData = hexToBytes(tlvItems[0].value as string);
   } else {
@@ -110,7 +111,8 @@ export function decodeBech32(bech32Str: string) {
   if (
     prefix === BECH32_PREFIX.PublicKeys ||
     prefix === BECH32_PREFIX.PrivateKeys ||
-    prefix === BECH32_PREFIX.NoteIDs
+    prefix === BECH32_PREFIX.NoteIDs ||
+    prefix === BECH32_PREFIX.LNURL
   ) {
     tlvItems = [{ type: 0, value: bytesToHex(tlvData) }];
   } else {

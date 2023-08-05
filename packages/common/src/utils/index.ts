@@ -1,4 +1,5 @@
 export * from "./bech32";
+export * from "./bolt11";
 export * from "./event-content-warning";
 export * from "./event-content";
 export * from "./event-expiration";
@@ -9,6 +10,10 @@ export * from "./event-reporting";
 export * from "./event-subject";
 export * from "./generate-keypair";
 export * from "./hash-event";
+export * from "./lnurl-zap";
+export * from "./lnurl";
+export * from "./lud16-to-url";
+export * from "./nip05-to-url";
 export * from "./provider-names";
 export * from "./serialize-event";
 export * from "./sign-event";

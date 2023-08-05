@@ -52,7 +52,7 @@ export class ExternalIdentityClaim implements ExternalIdentityClaimBase {
    * @returns
    */
   public fromTag(tag: string[]): ExternalIdentityClaim | undefined {
-    if (tag.length !== 3) {
+    if (!isValidExternalIdentityClaim(tag)) {
       return;
     }
     this.type = tag[1].split(":")[0] as IDENTITY_CLAIM_TYPE;
@@ -89,9 +89,20 @@ export function isValidExternalIdentityClaim(tag: string[]) {
  * @param tags
  * @returns
  */
-export function eventHasExternalIdentityClaim(event: EventBase) {
+export function eventHasExternalIdentityClaim(
+  event: EventBase
+): ExternalIdentityClaim[] | undefined {
   const identityClaimTags = event.tags.filter(
     (tag) => tag[0] === "i" && isValidExternalIdentityClaim(tag)
   );
-  return identityClaimTags.length > 0;
+  if (identityClaimTags.length === 0) {
+    return undefined;
+  }
+  const identityClaims: ExternalIdentityClaim[] = [];
+  for (const tag of identityClaimTags) {
+    const claim = new ExternalIdentityClaim();
+    claim.fromTag(tag);
+    identityClaims.push(claim);
+  }
+  return identityClaims;
 }

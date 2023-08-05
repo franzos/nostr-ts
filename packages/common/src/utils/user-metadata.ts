@@ -28,6 +28,9 @@ export function loadFromUserMetadataString(meta: string): UserMetadata | null {
       website: data.website ?? null,
       about: data.about ?? null,
       image: data.image ?? null,
+      npub: data.npub ?? null,
+      lud16: data.lud16 ?? null,
+      lud06: data.lud06 ?? null,
     };
   } catch (error) {
     console.error("Unable to parse user metadata string", error);

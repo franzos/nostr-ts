@@ -1,6 +1,8 @@
 # Nostr Typescript Starterpack
 
-I wanted to learn more about Nostr, so I decided to implement libraries and clients. WIP.
+I wanted to learn more about Nostr, so I decided to implement libraries and clients.
+
+This is WIP.
 
 - `./client`: node client example
 - `./packages/common`: common types and functions
@@ -11,22 +13,33 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 
 - Supported NIP: 1, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56
 - Partial NIP: 19, 32, 57
+- `RelayClient` to handle websocket connection and message sending (node, web)
+- `RelayDiscovery` to make it easy to pickup new relays (node)
+- `NEvent` to assemble events (universal)
+- `NFilters` to filter events (universal)
+- `NUser` to handle user metadata (node, web - WIP)
+- `NUserStoreMemory` (universal, testing), `NUserStoreSQLite` (node - WIP), `NUserStoreIndexdDB` (web - WIP) ... to store user metadata (node, web)
+- `loadOrCreateKeypair` basic key handling (node, web)
+
+The goal here is to make it as easy as possible to get started, so there's usually a convenience function for everything (NewShortTextNote, NewRecommendRelay, ...).
 
 ## Usage notes
 
 On Node.js use:
 
 ```js
-import { NewShortTextNote } from '@nostr-ts/common'
-import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/node'
+import { NewShortTextNote, NFilters } from '@nostr-ts/common'
+import { RelayClient, RelayDiscovery, loadOrCreateKeypair, NUser } from '@nostr-ts/node'
 ```
 
 In the browser use:
 
 ```js
-import { NewShortTextNote } from '@nostr-ts/common'
-import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/web'
+import { NewShortTextNote, NFilters } from '@nostr-ts/common'
+import { RelayClient, loadOrCreateKeypair, NUser } from '@nostr-ts/web'
 ```
+
+So most types and utility functions comes from `@nostr-ts/common`, and anything related to file system, database or networking (requests), is in `@nostr-ts/node` and `@nostr-ts/web`.
 
 ### Install & Build
 
@@ -613,11 +626,6 @@ await client.loadFromDiscovered(relays);
 ```
 pnpm run tests
 ```
-
-## TODO
-
-- [ ] Tests
-- [ ] More NIP's
 
 ## Notes
 

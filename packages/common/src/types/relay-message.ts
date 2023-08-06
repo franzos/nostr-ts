@@ -1,5 +1,6 @@
 import { EventBase } from "./event";
 import { FiltersBase } from "./filter";
+import { UserBase } from "./user";
 
 /**
  * Relay message to client
@@ -150,20 +151,27 @@ export function extractRelayMessage(data: any) {
  * Format relay message for logging
  * @param data
  */
-export function logRelayMessage(data: any) {
+export function logRelayMessage(
+  data: RelayAuth | RelayCount | RelayEose | RelayEvent | RelayNotice | RelayOK,
+  user?: UserBase
+) {
   const [type, ...rest] = data;
   switch (type) {
     case RELAY_MESSAGE_TYPE.AUTH:
       console.log(`RECEIVED AUTH CHALLENGE: ${rest[0]}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.COUNT:
-      console.log(`RECEIVED COUNT: ${rest[1].count}`, ...rest);
+      console.log(`RECEIVED COUNT: ${(rest as RelayCount)[2].count}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.EOSE:
       console.log(`RECEIVED EOSE: ${rest[0]}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.EVENT:
-      console.log(`RECEIVED EVENT: ${rest[1].id}`, ...rest);
+      console.log(`RECEIVED EVENT: ${(rest as RelayEvent)[1]}`, ...rest);
+      if (user) {
+        console.log(`USER ########`);
+        console.log(user);
+      }
       break;
     case RELAY_MESSAGE_TYPE.NOTICE:
       console.log(`RECEIVED NOTICE: ${rest[0]}`, ...rest);

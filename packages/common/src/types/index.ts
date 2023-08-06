@@ -5,6 +5,7 @@ export * from "./content";
 export * from "./event-coordinates-tag";
 export * from "./event-event-tag";
 export * from "./event-kind";
+export * from "./event-with-user";
 export * from "./event";
 export * from "./filter";
 export * from "./identifier-well-known";

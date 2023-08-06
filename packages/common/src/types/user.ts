@@ -38,7 +38,7 @@ export interface UserBase {
    * https://<domain>/.well-known/nostr.json?name=<local-part>
    * @returns
    */
-  getNip05Url?: () => string;
+  getNip05Url?: () => string | undefined;
 
   /**
    * Pass response from https://<domain>/.well-known/nostr.json?name=<local-part>
@@ -53,23 +53,25 @@ export interface UserBase {
    * http://<domain>/.well-known/lnurlp/<username>
    * @returns
    */
-  getLud16Url?: () => string;
+  getLud16Url?: () => string | undefined;
 
   /**
    * Url to send payment request
    * http://<domain>/.well-known/lnurlp/<username>
    * @returns
    */
-  getLud06Url?: () => string;
+  getLud06Url?: () => string | undefined;
 
   /**
    * Shortcut; returns lud16 first if found
    * @returns
    */
-  getLud16Or06Url?: () => {
-    type: "lud16" | "lud06";
-    url: string;
-  } | null;
+  getLud16Or06Url?: () =>
+    | {
+        type: "lud16" | "lud06";
+        url: string;
+      }
+    | undefined;
 
   /**
    * A signed zap request event is not published,

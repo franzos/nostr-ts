@@ -1,4 +1,5 @@
 import { NUserBase } from "../classes/user";
+import { EventBase } from "./event";
 
 /**
  * User store skeleton
@@ -17,6 +18,7 @@ export interface UserStoreBase {
 
   byPubkey(pubkey: string): NUserBase | undefined;
   add(user: NUserBase): void;
+  addFromEvent(event: EventBase): void;
   update(user: NUserBase): void;
   remove(pubkey: string): void;
 }

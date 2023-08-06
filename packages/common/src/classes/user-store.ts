@@ -1,3 +1,4 @@
+import { EventBase } from "../types";
 import { UserStoreBase } from "../types/user-store";
 import { NUserBase } from "./user";
 
@@ -21,7 +22,25 @@ export class NUserStoreMemory implements UserStoreBase {
   }
 
   public add(user: NUserBase): void {
+    if (this.byPubkey(user.pubkey)) {
+      return;
+    }
     this.users.push(user);
+  }
+
+  public addFromEvent(event: EventBase) {
+    if (event.kind !== 0) {
+      return undefined;
+    }
+    const user = this.byPubkey(event.pubkey);
+    if (!user) {
+      const newUser = new NUserBase();
+      newUser.fromEvent(event);
+      this.add(newUser);
+      console.log("added user", newUser);
+    } else {
+      console.log(`already have user ${user.pubkey}`);
+    }
   }
 
   public update(user: NUserBase): void {

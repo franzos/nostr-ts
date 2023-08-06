@@ -63,3 +63,11 @@ export function NewMetadataFilter() {
     kinds: [NEVENT_KIND.METADATA],
   });
 }
+
+export function NewUserMetadataFilter(pubkey: string) {
+  return new NFilters({
+    kinds: [NEVENT_KIND.METADATA],
+    authors: [pubkey],
+    limit: 3,
+  });
+}

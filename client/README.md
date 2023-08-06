@@ -2,6 +2,12 @@
 
 Open up `./src/index.ts` and explore ...
 
+Install:
+
+```bash
+pnpm install
+```
+
 Build:
 
 ```bash

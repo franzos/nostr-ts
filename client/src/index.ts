@@ -68,7 +68,7 @@ const main = async () => {
   // delay by 10800 seconds client.closeConnection()
   await new Promise((resolve) => setTimeout(resolve, 1 * 60 * 1000)).then(
     () => {
-      client.closeConnection();
+      client.disconnect();
     }
   );
 };

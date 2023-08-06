@@ -2,13 +2,11 @@
 
 I wanted to learn more about Nostr, so I decided to implement libraries and clients.
 
-This is WIP.
-
 - `./client`: node client example
 - `./client-web`: react client example (`NUserStoreMemory`, React, Chakra, Zustand)
-- `./packages/common`: common types and functions
-- `./packages/node`: client for usage with node `ws` library
-- `./packages/web`: client for usage with browser `WebSocket` API
+- `@nostr-ts/common`: `./packages/common`: common types and functions
+- `@nostr-ts/node`: `./packages/node`: client for usage with node `ws` library
+- `@nostr-ts/web`: `./packages/web`: client for usage with browser `WebSocket` API
 
 ### Preview of the web client
 
@@ -39,11 +37,25 @@ import { NewShortTextNote, NFilters } from '@nostr-ts/common'
 import { RelayClient, RelayDiscovery, loadOrCreateKeypair, NUser } from '@nostr-ts/node'
 ```
 
+install with:
+
+```bash
+# or npm install, or yarn install
+pnpm install @nostr-ts/common @nostr-ts/node
+```
+
 In the browser use:
 
 ```js
 import { NewShortTextNote, NFilters } from '@nostr-ts/common'
 import { RelayClient, loadOrCreateKeypair, NUser } from '@nostr-ts/web'
+```
+
+install with:
+
+```bash
+# or npm install, or yarn install
+pnpm install @nostr-ts/common @nostr-ts/web
 ```
 
 So most types and utility functions comes from `@nostr-ts/common`, and anything related to file system, database or networking (requests), is in `@nostr-ts/node` and `@nostr-ts/web`.

@@ -5,10 +5,16 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 This is WIP.
 
 - `./client`: node client example
-- `./client-web`: react client example
+- `./client-web`: react client example (`NUserStoreMemory`, React, Chakra, Zustand)
 - `./packages/common`: common types and functions
 - `./packages/node`: client for usage with node `ws` library
 - `./packages/web`: client for usage with browser `WebSocket` API
+
+### Preview of the web client
+
+At the moment I use the client implementations mostly for testing, so not all library features have been implemened.
+
+![Preview](./client-web/preview.png)
 
 ## Highlights
 

@@ -17,6 +17,7 @@ import {
 import "./App.css";
 import { useNClient } from "./state/client";
 import { Event } from "./components/event";
+import { UserFollowing } from "./components/user-header";
 
 function App() {
   const [relayCount] = useNClient((state) => [state.relayCount]);
@@ -24,6 +25,7 @@ function App() {
   const [subscriptions] = useNClient((state) => [state.subscriptions]);
   const [connected] = useNClient((state) => [state.connected]);
   const [events] = useNClient((state) => [state.events]);
+  const [followingUsers] = useNClient((state) => [state.followingUsers]);
 
   return (
     <Container maxW="8xl" p={5}>
@@ -71,6 +73,18 @@ function App() {
                   })}
                 </Tbody>
               </Table>
+              <Heading as="h2" size="md">
+                Following Users
+              </Heading>
+              <Box>
+                {followingUsers.length > 0 ? (
+                  followingUsers.map((user) => {
+                    return UserFollowing({ user: user });
+                  })
+                ) : (
+                  <Text>No users being followed.</Text>
+                )}
+              </Box>
             </Box>
 
             <Box>
@@ -95,13 +109,25 @@ function App() {
               background: "rgba(0,0,0,0.1)",
             }}
           >
-            {events.map((event) => (
-              <Event
-                event={event.event}
-                user={event.user}
-                key={event.event.id}
-              />
-            ))}
+            {events.map((event, index) => {
+              if (events.length === index + 1) {
+                return (
+                  <Event
+                    event={event.event}
+                    user={event.user}
+                    key={event.event.id}
+                  />
+                );
+              } else {
+                return (
+                  <Event
+                    event={event.event}
+                    user={event.user}
+                    key={event.event.id}
+                  />
+                );
+              }
+            })}
           </Box>
         </Grid>
       </VStack>

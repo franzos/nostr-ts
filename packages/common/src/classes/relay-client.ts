@@ -129,7 +129,7 @@ export class RelayClientBase {
     const data = JSON.stringify([message.type, message.subscriptionId]);
 
     for (const relay of this.relays) {
-      if (relay.isEnabled) {
+      if (!relay.isEnabled) {
         continue;
       }
 

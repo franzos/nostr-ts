@@ -3,14 +3,13 @@ import {
   CardHeader,
   CardBody,
   CardFooter,
-  Heading,
   Text,
   Button,
-  Flex,
   Box,
-  Avatar,
 } from "@chakra-ui/react";
-import { NEventWithUserBase, UserBase } from "@nostr-ts/common";
+import { NEventWithUserBase } from "@nostr-ts/common";
+import { useNClient } from "../state/client";
+import { UserKnown, UserUnknown } from "./user-header";
 
 const unixTimeToRelative = (time: number) => {
   const now = new Date();
@@ -31,42 +30,8 @@ const unixTimeToRelative = (time: number) => {
   }
 };
 
-const UserKnown = ({ user }: { user: UserBase }) => {
-  const data = user.data ? user.data : null;
-  const display_name =
-    data && data.display_name ? data.display_name : "Anonymous";
-  const name = data && data.name ? data.name : "Anonymous";
-  const picture =
-    data && data.picture ? data.picture : "https://via.placeholder.com/150";
-
-  return (
-    <Flex>
-      <Box mr="3">
-        <Avatar size="sm" src={picture} />
-      </Box>
-      <Box>
-        <Heading size="sm">{display_name}</Heading>
-        <Text fontSize="sm">{name}</Text>
-      </Box>
-    </Flex>
-  );
-};
-
-const UserUnknown = ({ pubkey }: { pubkey: string }) => {
-  return (
-    <Flex>
-      <Box mr="3">
-        <Avatar size="sm" src="https://via.placeholder.com/150" />
-      </Box>
-      <Box>
-        <Heading size="sm">Anonymous</Heading>
-        <Text fontSize="sm">{pubkey}</Text>
-      </Box>
-    </Flex>
-  );
-};
-
 export function Event({ user, event }: NEventWithUserBase) {
+  const isFollowing = useNClient.getState().following(event.pubkey);
   return (
     <Card borderWidth="1px" borderRadius="lg" overflow="hidden">
       <CardHeader p={4}>
@@ -86,6 +51,23 @@ export function Event({ user, event }: NEventWithUserBase) {
         <Button variant="solid" colorScheme="blue">
           Reply
         </Button>
+        {isFollowing ? (
+          <Button
+            variant="solid"
+            colorScheme="red"
+            onClick={() => useNClient.getState().unfollowUser(event.pubkey)}
+          >
+            Unfollow
+          </Button>
+        ) : (
+          <Button
+            variant="solid"
+            colorScheme="green"
+            onClick={() => useNClient.getState().followUser(event.pubkey)}
+          >
+            Follow
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

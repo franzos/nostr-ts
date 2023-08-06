@@ -8,7 +8,7 @@ This package is part of [nostr-ts](https://github.com/franzos/nostr-ts).
 - `@nostr-ts/node`: client for usage with node `ws` library
 - `@nostr-ts/web`: client for usage with browser `WebSocket` API
 
-Checkout the [documentation](https://franzos.github.io/nostr-ts/) for more information.
+Checkout the [documentation](https://github.com/franzos/nostr-ts) for more information.
 
 ## Installation
 
@@ -28,13 +28,13 @@ for ex.
 On Node.js use:
 
 ```js
-import { NewShortTextNote } from '@nostr-ts/common'
-import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/node'
+import { NewShortTextNote, NFilters } from '@nostr-ts/common'
+import { RelayClient, RelayDiscovery, loadOrCreateKeypair, NUser } from '@nostr-ts/node'
 ```
 
 In the browser use:
 
 ```js
-import { NewShortTextNote } from '@nostr-ts/common'
-import { RelayClient, loadOrCreateKeypair } from '@nostr-ts/web'
+import { NewShortTextNote, NFilters } from '@nostr-ts/common'
+import { RelayClient, loadOrCreateKeypair, NUser } from '@nostr-ts/web'
 ```

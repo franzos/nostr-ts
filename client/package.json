@@ -1,7 +1,7 @@
 {
   "name": "client",
   "version": "0.0.1",
-  "description": "Commonly used snippets",
+  "description": "Nostr node playground",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",
   "main": "dist/index.js",

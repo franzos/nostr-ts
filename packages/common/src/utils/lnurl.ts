@@ -1,11 +1,5 @@
 import { bech32 } from "bech32";
 
-// Detect if we're in a Node.js environment
-const isNode =
-  typeof process !== "undefined" &&
-  process.versions != null &&
-  process.versions.node != null;
-
 // Create encoder/decoder instances
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -38,10 +32,7 @@ export function decodeLnurl(lnurl: string): string {
     const { words } = bech32.decode(lnurl, 20000);
     const decodedData = new Uint8Array(bech32.fromWords(words));
 
-    // Use TextDecoder for browser or Buffer for Node.js
-    return isNode
-      ? Buffer.from(decodedData).toString()
-      : textDecoder.decode(decodedData);
+    return textDecoder.decode(decodedData);
   } else if (
     lnurl.slice(0, 9) === "lnurlc://" ||
     lnurl.slice(0, 9) === "lnurlw://" ||
@@ -57,10 +48,7 @@ export function decodeLnurl(lnurl: string): string {
       const { words } = bech32.decode(bech32lnurl, 20000);
       const decodedData = new Uint8Array(bech32.fromWords(words));
 
-      // Use TextDecoder for browser or Buffer for Node.js
-      return isNode
-        ? Buffer.from(decodedData).toString()
-        : textDecoder.decode(decodedData);
+      return textDecoder.decode(decodedData);
     }
 
     return lnurl;
@@ -80,8 +68,7 @@ export function decodeLnurl(lnurl: string): string {
  * @returns
  */
 export function encodeLnurl(str: string): string {
-  // Use TextEncoder for browser or Buffer for Node.js
-  const data = isNode ? Buffer.from(str) : textEncoder.encode(str);
+  const data = textEncoder.encode(str);
 
   const words = bech32.toWords(new Uint8Array(data));
   return bech32.encode("lnurl", words, 20000);

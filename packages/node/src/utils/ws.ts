@@ -1,55 +1,94 @@
 import { WebSocket, CloseEvent, MessageEvent, ErrorEvent } from "ws";
-import { WebSocketClientBase, WebSocketClientConfig } from "@nostr-ts/common";
+import {
+  RelayAuth,
+  RelayCount,
+  RelayEose,
+  RelayEvent,
+  RelayNotice,
+  RelayOK,
+  WebSocketClientBase,
+} from "@nostr-ts/common";
 
 export class WebSocketClient implements WebSocketClientBase {
-  private connection: WebSocket;
+  connection: WebSocket;
+  error: {
+    error: any;
+    message: string;
+    type: string;
+  } | null;
 
-  public config: WebSocketClientConfig;
+  constructor() {}
 
-  constructor(conf: WebSocketClientConfig) {
-    this.connection = new WebSocket(conf.url);
-    this.config = conf;
+  connect(url: string) {
+    this.connection = new WebSocket(url);
 
     this.connection.onopen = () => {
-      console.log(
-        `Websocket ID ${this.config.id} connected to ${this.config.url}`
-      );
+      console.log(`Websocket connected to ${url}`);
     };
-
-    this.connection.onerror = (error: ErrorEvent) => {
-      console.log(`WebSocket ID ${this.config.id} error: ${error.message}`);
-    };
-
     this.connection.onclose = (event: CloseEvent) => {
       console.log(
-        `WebSocket ID ${this.config.id} disconnected from ${this.config.url}`,
+        `WebSocket disconnected from ${url}`,
         event.code,
         event.reason
       );
     };
+    this.connection.onerror = (event: ErrorEvent) => {
+      console.log(`WebSocket error: ${event.message}`);
+      this.error = {
+        error: event.error,
+        message: event.message,
+        type: event.type,
+      };
+    };
   }
 
-  sendMessage(data: string) {
+  isConnected() {
+    return (
+      this.connection && this.connection.readyState === this.connection.OPEN
+    );
+  }
+
+  sendMessage(
+    data: string,
+    options?: {
+      retries: number;
+      retryTimeout: number;
+      retryCount: number;
+    }
+  ) {
     // Wait until the connection is open
-    if (this.connection.readyState !== this.connection.OPEN) {
-      setTimeout(() => this.sendMessage(data), 100);
+    const opts = options
+      ? options
+      : { retries: 10, retryTimeout: 100, retryCount: 0 };
+
+    if (!this.isConnected()) {
+      const count = opts.retryCount + 1;
+      if (count === 10) {
+        throw new Error(`Could not send message after ${count} retries`);
+      }
+      setTimeout(() => this.sendMessage(data, opts), 100);
     } else {
       this.connection.send(data);
     }
   }
 
   listen(
-    onMessage: (payload: { data: any; meta: WebSocketClientConfig }) => void
+    onMessage: (
+      data:
+        | RelayAuth
+        | RelayCount
+        | RelayEose
+        | RelayEvent
+        | RelayNotice
+        | RelayOK
+    ) => void
   ) {
     this.connection.onmessage = (event: MessageEvent) => {
-      onMessage({
-        data: JSON.parse(event.data.toString()),
-        meta: this.config,
-      });
+      onMessage(JSON.parse(event.data as string));
     };
   }
 
-  closeConnection() {
+  disconnect() {
     this.connection.close();
   }
 }

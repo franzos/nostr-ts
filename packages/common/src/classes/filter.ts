@@ -42,6 +42,10 @@ export class NFilters implements FiltersBase {
     this.kinds.push(kind);
   }
 
+  public updateLimit(limit: number) {
+    this.limit = limit;
+  }
+
   public toJson() {
     return JSON.parse(JSON.stringify(this));
   }

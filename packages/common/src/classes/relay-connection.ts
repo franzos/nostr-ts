@@ -20,7 +20,11 @@ export class RelayConnection implements WebSocketClientConnection {
   id: string;
   url: string;
   info?: RelayInformationDocument;
-  connection?: WebSocketClientBase;
+  ws?: WebSocketClientBase;
+  /**
+   * Whether connection is in use; defaults to true for now
+   */
+  isEnabled: boolean;
 
   /**
    * Commands that have been send to the relay
@@ -32,10 +36,13 @@ export class RelayConnection implements WebSocketClientConnection {
   constructor(conf: WebSocketClientConfig) {
     this.id = conf.id ? conf.id : uuidv4();
     this.url = conf.url;
+    this.info = conf.info;
+    // TODO: Implement limits
+    this.isEnabled = true;
   }
 
   public isConnected() {
-    return this.connection !== undefined;
+    return this.ws !== undefined && this.ws.isConnected();
   }
 
   /**

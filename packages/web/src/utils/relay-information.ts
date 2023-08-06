@@ -1,4 +1,5 @@
 import { RelayInformationDocument } from "@nostr-ts/common";
+import { makeRequest } from "./make-request";
 
 /**
  * Get relay information document
@@ -23,27 +24,5 @@ export async function getRelayInformationDocument(
     controller.abort();
   }, 5000);
 
-  let response;
-  try {
-    response = await fetch(httpsUrl, {
-      headers: {
-        Accept: "application/nostr+json",
-      },
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return makeRequest(httpsUrl);
 }

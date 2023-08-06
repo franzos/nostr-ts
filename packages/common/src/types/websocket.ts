@@ -9,34 +9,67 @@ import {
 } from "./relay-message";
 
 export interface WebSocketClientBase {
-  config: WebSocketClientConfig;
-  sendMessage: (data: string) => void;
+  /**
+   * Websocket
+   * Plugin from WebSocketClient
+   * Init from RelayClient
+   */
+  connection: any;
+  error: {
+    error: any;
+    message: string;
+    type: string;
+  } | null;
+
+  /**
+   * Actually make the connection
+   */
+  connect: (url: string) => void;
+
+  /**
+   * Check if WS is connected
+   * This should query the actual connection status
+   * connection.readyState === connection.OPEN
+   */
+  isConnected: () => boolean;
+
+  sendMessage: (
+    data: string,
+    options?: {
+      retries: number;
+      retryTimeout: number;
+      retryCount: number;
+    }
+  ) => void;
   listen: (
-    onMessage: (payload: {
+    onMessage: (
       data:
         | RelayAuth
         | RelayCount
         | RelayEose
         | RelayEvent
         | RelayNotice
-        | RelayOK;
-      meta: WebSocketClientConfig;
-    }) => void
+        | RelayOK
+    ) => void
   ) => void;
-  closeConnection: () => void;
+  disconnect: () => void;
 }
 
 export interface WebSocketClientConfig {
   id?: string;
   url: string;
+  info?: RelayInformationDocument;
 }
 
 export interface WebSocketClientInfo extends WebSocketClientConfig {
   id: string;
   url: string;
-  info?: RelayInformationDocument;
 }
 
-export interface WebSocketClientConnection extends WebSocketClientInfo {
-  connection?: WebSocketClientBase;
+export interface WebSocketClientConnection extends WebSocketClientConfig {
+  id: string;
+  url: string;
+  ws?: WebSocketClientBase;
+
+  isEnabled: boolean;
 }

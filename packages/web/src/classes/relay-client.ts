@@ -10,9 +10,18 @@ import { getRelayInformationDocument } from "../utils/relay-information";
  * The RelayClient is responsible for connecting to relays
  */
 export class RelayClient extends RelayClientBase {
-  constructor(urls?: string[]) {
+  constructor(
+    urls?: string[],
+    options?: {
+      /**
+       * If you want to connect to relays manually, set this to true
+       * then use connectRelays
+       */
+      connectManually?: boolean;
+    }
+  ) {
     super(urls);
-    if (urls) {
+    if ((!options && urls) || (urls && options.connectManually !== true)) {
       this.connectRelays();
     }
   }
@@ -20,11 +29,26 @@ export class RelayClient extends RelayClientBase {
   /**
    * Initiates the connection to all relays
    */
-  private connectRelays() {
+  public connectRelays() {
+    console.log(`=> Connecting to ${this.relays.length} relay(s) ...`);
     for (const relay of this.relays) {
       if (!relay.isConnected()) {
         try {
-          relay.connection = new WebSocketClient(relay);
+          relay.ws = new WebSocketClient();
+          relay.ws.connect(relay.url);
+          relay.ws.connection.onopen = () => {
+            `Websocket ID ${relay.id} connected to ${relay.url}`;
+          };
+          relay.ws.connection.onclose = (event: Event) => {
+            console.log(`WebSocket ID ${relay.id} error: `, event);
+          };
+          relay.ws.connection.onerror = (event: CloseEvent) => {
+            console.log(
+              `WebSocket ID ${relay.id} disconnected from ${relay.url}`,
+              event.code,
+              event.reason
+            );
+          };
         } catch (e) {
           console.error("Error connecting to relay", e);
         }

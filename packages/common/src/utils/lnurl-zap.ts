@@ -49,7 +49,15 @@ export function isValidLnurlInvoiceResponse(
 
   const invoice = decodeLightnightPayRequest(response.pr);
 
-  if (reqAmount && reqAmount.toString() !== invoice.millisatoshis) {
+  let amount = undefined;
+  const sMatch = invoice.sections.find((s) => s.name === "amount");
+  if (sMatch) {
+    amount = sMatch.value;
+  } else {
+    return false;
+  }
+
+  if (reqAmount && reqAmount.toString() !== amount) {
     return false;
   }
 

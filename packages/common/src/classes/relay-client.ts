@@ -50,23 +50,18 @@ export class RelayClientBase {
     const newSubscriptions: ClientSubscription[] = [];
 
     for (const relay of this.relays) {
-      if (relay.isConnected()) {
+      if (relay.isEnabled) {
         try {
-          relay.connection.sendMessage(data);
-          relay.addSubscription({
+          relay.ws.sendMessage(data);
+          const sub = {
             url: relay.url,
             connectionId: relay.id,
             subscriptionId,
             type: message.type,
             filters: message.filters,
-          });
-          newSubscriptions.push({
-            url: relay.url,
-            connectionId: relay.id,
-            subscriptionId,
-            type: message.type,
-            filters: message.filters,
-          });
+          };
+          relay.addSubscription(sub);
+          newSubscriptions.push(sub);
         } catch (e) {
           console.error(e);
         }
@@ -82,6 +77,7 @@ export class RelayClientBase {
    * @returns
    */
   subscribe(payload?: Subscribe): ClientSubscription[] {
+    console.log("=> Subscribing to events", payload);
     const subscriptionId = payload?.subscriptionId || uuidv4();
     const filters = payload?.filters ? payload.filters.toJson() : {};
 
@@ -133,7 +129,7 @@ export class RelayClientBase {
     const data = JSON.stringify([message.type, message.subscriptionId]);
 
     for (const relay of this.relays) {
-      if (relay.isConnected()) {
+      if (relay.isEnabled) {
         continue;
       }
 
@@ -143,7 +139,7 @@ export class RelayClientBase {
         const hasSubscription = relay.hasSubscription(subscriptionId);
         if (hasSubscription) {
           try {
-            relay.connection.sendMessage(data);
+            relay.ws.sendMessage(data);
             relay.removeSubscription(subscriptionId);
           } catch (e) {
             console.error(e);
@@ -169,18 +165,20 @@ export class RelayClientBase {
     }
   }
 
+  getSubscriptions() {
+    const subscriptions: ClientSubscription[] = [];
+    for (const relay of this.relays) {
+      subscriptions.push(...relay.subscriptions);
+    }
+    return subscriptions;
+  }
+
   countSubscriptions() {
     let total = 0;
     for (const relay of this.relays) {
       total += relay.subscriptions.length;
     }
     return total;
-  }
-
-  disconnectAll() {
-    for (const relay of this.relays) {
-      relay.connection?.closeConnection();
-    }
   }
 
   countConnections() {
@@ -225,9 +223,9 @@ export class RelayClientBase {
     let isSent = false;
 
     for (const relay of this.relays) {
-      if (relay.isConnected()) {
+      if (relay.isEnabled) {
         if (relay.supportsEvent(event)) {
-          relay.connection.sendMessage(data);
+          relay.ws.sendMessage(data);
 
           relay.addCommand({
             connectionId: relay.id,
@@ -271,24 +269,45 @@ export class RelayClientBase {
     }) => void
   ) {
     for (const relay of this.relays) {
-      if (relay.isConnected()) {
-        relay.connection.listen((payload) => {
-          relay.updateCommandFromRelayMessage(payload);
-          onMessage(payload);
+      if (relay.isEnabled) {
+        relay.ws.listen((data) => {
+          relay.updateCommandFromRelayMessage({
+            data,
+          });
+          onMessage({
+            data: data,
+            meta: {
+              id: relay.id,
+              url: relay.url,
+              info: relay.info,
+            },
+          });
         });
       }
     }
   }
 
-  closeConnection() {
+  disconnect() {
     const { completed, total } = this.countCommands();
-    console.log(`Completed ${completed}/${total} commands ...`);
-    const activeSub = this.countSubscriptions();
-    const activeCon = this.countConnections();
 
-    console.log(`-> Cancelling ${activeSub} active subscriptions ...`);
-    this.unsubscribeAll();
-    console.log(`-> Closing ${activeCon} active connections ...`);
-    this.disconnectAll();
+    const stats = {
+      commands: {
+        total,
+        completed,
+      },
+      subscriptions: this.countSubscriptions(),
+      connections: this.countConnections(),
+    };
+
+    console.log(`
+Stats:
+- Commands: ${stats.commands.completed}/${stats.commands.total}
+- Subscriptions: ${stats.subscriptions}
+- Connections: ${stats.connections}
+    `);
+
+    for (const relay of this.relays) {
+      relay.ws?.disconnect();
+    }
   }
 }

@@ -3,7 +3,10 @@
 ## Features
 
 - Events
-- Contacts
+- Users
+  - IndexedDB storage (thousands of users)
+  - Request information for unknown users in intervals
+  - Follow users
 - Filters
 
 ## Setup

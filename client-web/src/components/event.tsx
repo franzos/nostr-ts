@@ -10,6 +10,7 @@ import {
 import { NEventWithUserBase } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { UserKnown, UserUnknown } from "./user-header";
+import { useEffect, useState } from "react";
 
 const unixTimeToRelative = (time: number) => {
   const now = new Date();
@@ -31,7 +32,16 @@ const unixTimeToRelative = (time: number) => {
 };
 
 export function Event({ user, event }: NEventWithUserBase) {
-  const isFollowing = useNClient.getState().following(event.pubkey);
+  const [following, setFollowing] = useState<boolean>(false);
+
+  useEffect(() => {
+    const update = async () => {
+      const following = await useNClient.getState().followingUser(event.pubkey);
+      setFollowing(following);
+    };
+    update();
+  }, [event.pubkey]);
+
   return (
     <Card borderWidth="1px" borderRadius="lg" overflow="hidden">
       <CardHeader p={4}>
@@ -51,7 +61,7 @@ export function Event({ user, event }: NEventWithUserBase) {
         <Button variant="solid" colorScheme="blue">
           Reply
         </Button>
-        {isFollowing ? (
+        {following ? (
           <Button
             variant="solid"
             colorScheme="red"

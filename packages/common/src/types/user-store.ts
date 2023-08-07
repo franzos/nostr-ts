@@ -16,7 +16,9 @@ export interface UserStoreBase {
    */
   store: "memory" | "indexeddb" | "sqlite";
 
-  byPubkey(pubkey: string): NUserBase | undefined;
+  byPubkey(
+    pubkey: string
+  ): NUserBase | undefined | Promise<NUserBase | undefined>;
   add(user: NUserBase): void;
   addFromEvent(event: EventBase): void;
   update(user: NUserBase): void;

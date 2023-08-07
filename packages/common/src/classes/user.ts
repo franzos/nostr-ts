@@ -191,4 +191,38 @@ export class NUserBase implements UserBase {
     filters.addKind(0);
     return filters;
   }
+
+  /**
+   * Mostly used for DB storage
+   */
+  toJson() {
+    return {
+      pubkey: this.pubkey,
+      claims: this.claims,
+      data: this.data,
+      lightningZapInfo: this.lightningZapInfo,
+      lastUpdated: this.lastUpdated,
+      nip05isValid: this.nip05isValid,
+    };
+  }
+
+  /**
+   * Mostly used for DB storage
+   */
+  fromJson(data: {
+    pubkey: string;
+    claims: ExternalIdentityClaim[];
+    data: UserMetadata;
+    lightningZapInfo: LnurlEndpointResponse;
+    lastUpdated: number;
+    nip05isValid: boolean;
+  }) {
+    this.pubkey = data.pubkey;
+    this.claims = data.claims;
+    this.data = data.data;
+    this.lightningZapInfo = data.lightningZapInfo;
+    this.lastUpdated = data.lastUpdated;
+    this.nip05isValid = data.nip05isValid;
+    return this;
+  }
 }

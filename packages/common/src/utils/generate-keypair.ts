@@ -4,15 +4,18 @@ import { bytesToHex } from "@noble/curves/abstract/utils";
 /**
  * Generate keypair
  * @returns {
- *  priv: hex string
+ *  privateKey: hex string
  *  pub: hex string
  * }
  */
-export function generateClientKeys(): { priv: string; pub: string } {
-  const priv = schnorr.utils.randomPrivateKey();
-  const pub = schnorr.getPublicKey(priv);
+export function generateClientKeys(): {
+  privateKey: string;
+  publicKey: string;
+} {
+  const privateKey = schnorr.utils.randomPrivateKey();
+  const publicKey = schnorr.getPublicKey(privateKey);
   return {
-    priv: bytesToHex(priv),
-    pub: bytesToHex(pub),
+    privateKey: bytesToHex(privateKey),
+    publicKey: bytesToHex(publicKey),
   };
 }

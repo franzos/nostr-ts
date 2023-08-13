@@ -19,6 +19,70 @@ import {
 import { RelayClient } from "@nostr-ts/web";
 import { NEventWithUserBase } from "@nostr-ts/common";
 import { IDBPDatabase, openDB } from "idb";
+import { Pagination } from "../lib/pagination";
+
+interface NClientCKeystore {
+  keystore: "none" | "localstore" | "nos2x" | "download";
+  publicKey?: string;
+  privateKey?: string;
+}
+
+function loadKeyStoreConfig(): NClientCKeystore {
+  const keystore = localStorage.getItem("nostr-client:keystore:keystore");
+  if (keystore) {
+    if (keystore === "localstore") {
+      const publicKey = localStorage.getItem(
+        "nostr-client:keystore:public-key"
+      );
+      const privateKey = localStorage.getItem(
+        "nostr-client:keystore:private-key"
+      );
+      if (publicKey && privateKey) {
+        return {
+          keystore: "localstore",
+          publicKey,
+          privateKey,
+        };
+      }
+    } else if (keystore === "nos2x") {
+      return {
+        keystore: "nos2x",
+        publicKey: undefined,
+        privateKey: undefined,
+      };
+    } else if (keystore === "download") {
+      return {
+        keystore: "download",
+        publicKey: undefined,
+        privateKey: undefined,
+      };
+    }
+  }
+  return {
+    keystore: "none",
+    publicKey: undefined,
+    privateKey: undefined,
+  };
+}
+
+function saveKeyStoreConfig(config: NClientCKeystore) {
+  localStorage.setItem("nostr-client:keystore:keystore", config.keystore);
+  if (
+    config.keystore === "localstore" &&
+    config.publicKey &&
+    config.privateKey
+  ) {
+    localStorage.setItem("nostr-client:keystore:public-key", config.publicKey);
+    localStorage.setItem(
+      "nostr-client:keystore:private-key",
+      config.privateKey
+    );
+  } else if (config.keystore === "nos2x") {
+    // TODO: Implement
+  } else if (config.keystore === "download") {
+    // TODO: Implement
+  }
+}
 
 function shuffle(array: string[]) {
   let currentIndex = array.length,
@@ -58,11 +122,16 @@ export interface NClientStore {
   init(): Promise<void>;
   client: RelayClient | null;
   connected: boolean;
-  connect: () => void;
+  connect: (relayUrls?: string[]) => void;
   disconnect: () => void;
   subscribe: (filters: NFilters) => ClientSubscription[] | undefined;
   unsubscribe: (id: string) => void;
-  keypair: { pub: string; priv: string };
+  keystore: "none" | "localstore" | "nos2x" | "download";
+  loadKeyStore: () => void;
+  setKeyStore: (config: NClientCKeystore) => void;
+  keypair?: { publicKey: string; privateKey: string };
+  keypairIsLoaded: boolean;
+  eventsPagination: Pagination;
   events: NEventWithUserBase[];
   countUsers: () => Promise<number>;
   addEvent: (payload: {
@@ -98,15 +167,16 @@ export const useNClient = create<NClientStore>((set, get) => ({
         },
       }),
     });
+    get().loadKeyStore();
   },
   client: null,
   connected: false,
-  connect: () => {
+  connect: (relayUrls?: string[]) => {
     if (get().connected) {
       return;
     }
 
-    const client = new RelayClient(["wss://nos.lol"]);
+    const client = new RelayClient(relayUrls);
 
     client.listen(async (payload) => {
       console.log(`Event ${payload.meta.id} on ${payload.meta.url}.`);
@@ -143,7 +213,59 @@ export const useNClient = create<NClientStore>((set, get) => ({
     console.log(`Unsubscribing ${id}`);
     get().client?.unsubscribe(id);
   },
-  keypair: { pub: "", priv: "" },
+  keystore: "none",
+  loadKeyStore: () => {
+    const store = loadKeyStoreConfig();
+    set({
+      keystore: store.keystore,
+    });
+    if (
+      store.keystore === "localstore" &&
+      store.publicKey &&
+      store.privateKey
+    ) {
+      set({
+        keypair: {
+          publicKey: store.publicKey,
+          privateKey: store.privateKey,
+        },
+        keypairIsLoaded: true,
+      });
+    }
+  },
+  saveKeyStore: () => {
+    const keystore = get().keystore;
+    if (keystore === "localstore") {
+      const keypair = get().keypair;
+      if (keypair) {
+        saveKeyStoreConfig({
+          keystore,
+          publicKey: keypair.publicKey,
+          privateKey: keypair.privateKey,
+        });
+      } else {
+        saveKeyStoreConfig({
+          keystore: keystore,
+        });
+      }
+    }
+  },
+  setKeyStore: (config: NClientCKeystore) => {
+    if (config.keystore === "localstore") {
+      if (config.publicKey && config.privateKey) {
+        set({
+          keypair: {
+            publicKey: config.publicKey,
+            privateKey: config.privateKey,
+          },
+          keypairIsLoaded: true,
+        });
+      }
+    }
+  },
+  keypair: { publicKey: "", privateKey: "" },
+  keypairIsLoaded: false,
+  eventsPagination: { limit: 10, offset: 0 },
   events: [],
   countUsers: async () => {
     const db = await get().db;
@@ -177,9 +299,10 @@ export const useNClient = create<NClientStore>((set, get) => ({
         const event: EventBase = payload.data[2];
         const currentEvents = get().events;
 
-        // if more than 50 elements, remove the last 20
-        if (currentEvents.length >= 50) {
-          currentEvents.splice(30, 20);
+        if (currentEvents.length >= 100) {
+          console.log(`Exceeded limit; ignoring new events`);
+          // TODO: Cancel subscription
+          return;
         }
 
         // Check if event already exists

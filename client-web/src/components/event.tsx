@@ -55,10 +55,12 @@ export function Event({ user, event }: NEventWithUserBase) {
       </CardHeader>
       <CardBody p={4}>
         <Text>{event.content}</Text>
-        <Text>{unixTimeToRelative(event.created_at)}</Text>
+        <Text fontWeight="bold" marginTop={2}>
+          {unixTimeToRelative(event.created_at)}
+        </Text>
       </CardBody>
       <CardFooter p={4}>
-        <Button variant="solid" colorScheme="blue">
+        <Button variant="solid" colorScheme="blue" marginRight={2}>
           Reply
         </Button>
         {following ? (

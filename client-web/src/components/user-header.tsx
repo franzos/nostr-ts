@@ -1,4 +1,13 @@
-import { Flex, Avatar, Heading, Box, Text, Button } from "@chakra-ui/react";
+import {
+  Flex,
+  Avatar,
+  Heading,
+  Box,
+  Text,
+  Button,
+  Spacer,
+  HStack,
+} from "@chakra-ui/react";
 import { UserBase } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 
@@ -39,32 +48,27 @@ export const UserUnknown = ({ pubkey }: { pubkey: string }) => {
 
 export const UserFollowing = ({ user }: { user: UserBase }) => {
   const data = user.data ? user.data : null;
-  const display_name =
-    data && data.display_name ? data.display_name : "Anonymous";
-  const name = data && data.name ? data.name : "Anonymous";
-  const picture =
-    data && data.picture ? data.picture : "https://via.placeholder.com/150";
 
   return (
-    <Flex>
-      <Box mr="3">
-        <Avatar size="sm" src={picture} />
-      </Box>
-      <Box>
-        <Heading size="sm">{display_name}</Heading>
-        <Text fontSize="sm">{name}</Text>
-        <Text fontSize="xs" color="gray.300">
-          {user.pubkey}
-        </Text>
+    <Flex width="full" direction="row">
+      <HStack spacing={2}>
+        {data ? (
+          <UserKnown user={user} />
+        ) : (
+          <UserUnknown pubkey={user.pubkey} />
+        )}
+
+        <Spacer />
         <Button
           variant="solid"
           colorScheme="red"
           size={"xs"}
           onClick={() => useNClient.getState().unfollowUser(user.pubkey)}
+          mt={2} // added margin top for some space above the button
         >
           Unfollow
         </Button>
-      </Box>
+      </HStack>
     </Flex>
   );
 };

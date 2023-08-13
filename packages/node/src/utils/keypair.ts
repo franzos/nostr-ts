@@ -22,29 +22,29 @@ export async function loadKeyFromFile(path: string) {
 
 export async function saveKeyPair(
   keypair: {
-    priv: string;
-    pub: string;
+    privateKey: string;
+    publicKey: string;
   },
   privateKeyPath?: string
 ) {
   const keypath = privateKeyPath || "key";
-  const { priv, pub } = keypair;
-  await writeFile(keypath, priv);
-  await writeFile(`${keypath}.pub`, pub);
+  const { privateKey, publicKey } = keypair;
+  await writeFile(keypath, privateKey);
+  await writeFile(`${keypath}.pub`, publicKey);
 }
 
 export async function loadOrCreateKeypair(privateKeyPath?: string) {
   const keypath = privateKeyPath || "key";
-  const priv = await loadKeyFromFile(keypath);
-  if (priv) {
-    let pub = await loadKeyFromFile(`${keypath}.pub`);
-    if (!pub) {
+  const privateKey = await loadKeyFromFile(keypath);
+  if (privateKey) {
+    let publicKey = await loadKeyFromFile(`${keypath}.pub`);
+    if (!publicKey) {
       console.log(
         `Public key file ${keypath}.pub does not exist. Generating ...`
       );
-      pub = bytesToHex(schnorr.getPublicKey(priv));
+      publicKey = bytesToHex(schnorr.getPublicKey(privateKey));
     }
-    return { priv, pub };
+    return { privateKey, publicKey };
   } else {
     const keypair = generateClientKeys();
     await saveKeyPair(keypair);

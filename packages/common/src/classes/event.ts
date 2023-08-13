@@ -86,11 +86,11 @@ export class NEvent implements EventBase {
    * 2. Generate the event ID (event.id)
    * @param privateKey
    */
-  public signAndGenerateId(keyPair: { priv: string; pub: string }) {
-    this.pubkey = keyPair.pub;
+  public signAndGenerateId(keyPair: { privateKey: string; publicKey: string }) {
+    this.pubkey = keyPair.publicKey;
     const serial = serializeEvent(this.toJson());
     this.id = hash(serial);
-    this.sig = sign(this.id, keyPair.priv);
+    this.sig = sign(this.id, keyPair.privateKey);
   }
 
   public toJson() {
@@ -716,8 +716,8 @@ export function NewSignedZapRequest(
    */
   callbackUrl: string,
   keypair: {
-    priv: string;
-    pub: string;
+    privateKey: string;
+    publicKey: string;
   }
 ) {
   const nEv = NewZapRequest(opts);

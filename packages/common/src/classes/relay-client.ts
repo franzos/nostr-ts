@@ -245,7 +245,7 @@ export class RelayClientBase {
     }
 
     if (!isSent) {
-      console.log(
+      new Error(
         `Event ${event.id} not published because no supported relay is available.`
       );
     }

@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 import { NEventWithUserBase } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
-import { UserKnown, UserUnknown } from "./user-header";
+import { UserKnown, UserUnknown } from "./user";
 import { useEffect, useState } from "react";
 
 const unixTimeToRelative = (time: number) => {
@@ -43,7 +43,7 @@ export function Event({ user, event }: NEventWithUserBase) {
   }, [event.pubkey]);
 
   return (
-    <Card borderWidth="1px" borderRadius="lg" overflow="hidden">
+    <Card border="1px solid #e1e1e1" overflow="hidden">
       <CardHeader p={4}>
         <Box>
           {user ? (

@@ -128,6 +128,7 @@ export interface NClientStore {
   unsubscribe: (id: string) => void;
   keystore: "none" | "localstore" | "nos2x" | "download";
   loadKeyStore: () => void;
+  saveKeyStore: () => void;
   setKeyStore: (config: NClientCKeystore) => void;
   keypair?: { publicKey: string; privateKey: string };
   keypairIsLoaded: boolean;
@@ -145,6 +146,7 @@ export interface NClientStore {
     meta: WebSocketClientConfig;
   }) => void;
   getEventById: (id: string) => void;
+  sendEvent: (event: NEvent) => void;
   clearEvents: () => void;
   followUser(pubkey: string): void;
   unfollowUser(pubkey: string): void;
@@ -252,14 +254,17 @@ export const useNClient = create<NClientStore>((set, get) => ({
   },
   setKeyStore: (config: NClientCKeystore) => {
     if (config.keystore === "localstore") {
+      console.log(`Setting keystore for ${config.keystore}`, config);
       if (config.publicKey && config.privateKey) {
         set({
+          keystore: config.keystore,
           keypair: {
             publicKey: config.publicKey,
             privateKey: config.privateKey,
           },
           keypairIsLoaded: true,
         });
+        get().saveKeyStore();
       }
     }
   },
@@ -354,6 +359,26 @@ export const useNClient = create<NClientStore>((set, get) => ({
     const allEvents = get().events;
     const event = allEvents.find((ev) => ev.event.id === id);
     return event;
+  },
+  sendEvent: async (event: NEvent) => {
+    const client = get().client;
+    if (!client) {
+      throw new Error("Client not initialized");
+    }
+    const result = client.sendEvent(event);
+    if (
+      event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+      event.kind === NEVENT_KIND.LONG_FORM_CONTENT ||
+      event.kind === NEVENT_KIND.RECOMMEND_RELAY
+    ) {
+      set({
+        events: [
+          event.toJson(),
+          ...get().events.map((ev) => ev.event.toJson()),
+        ],
+      });
+    }
+    return result;
   },
   clearEvents: () => {
     set(() => ({ events: [] }));

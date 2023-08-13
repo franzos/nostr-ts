@@ -50,7 +50,13 @@ export const UserFollowing = ({ user }: { user: UserBase }) => {
   const data = user.data ? user.data : null;
 
   return (
-    <Flex width="full" direction="row">
+    <Box
+      padding={4}
+      marginBottom={2}
+      border="1px solid #e1e1e1"
+      width="100%"
+      key={user.pubkey}
+    >
       <HStack spacing={2}>
         {data ? (
           <UserKnown user={user} />
@@ -69,6 +75,6 @@ export const UserFollowing = ({ user }: { user: UserBase }) => {
           Unfollow
         </Button>
       </HStack>
-    </Flex>
+    </Box>
   );
 };

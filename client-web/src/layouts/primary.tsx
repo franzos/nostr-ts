@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import {
   Box,
   Button,
@@ -6,7 +6,9 @@ import {
   Flex,
   Grid,
   Heading,
+  Icon,
   Input,
+  Link,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -23,6 +25,10 @@ import { useNClient } from "../state/client";
 import { BottomBar } from "../components/bottom-bar";
 import { NUserBase } from "@nostr-ts/common";
 import { CreateEventForm } from "../components/create-event-form";
+import { MenuItem } from "../components/menu-item";
+import LanConnectIcon from "mdi-react/LanConnectIcon";
+import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
+import { DEFAULT_RELAYS } from "../defaults";
 
 export function PrimaryLayout() {
   const [connected] = useNClient((state) => [state.connected]);
@@ -31,9 +37,8 @@ export function PrimaryLayout() {
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
   const [keystore] = useNClient((state) => [state.keystore]);
 
-  const [initialRelayUrls, setInitialRelayUrls] = useState<string[]>([
-    "wss://nos.lol",
-  ]);
+  const [initialRelayUrls, setInitialRelayUrls] =
+    useState<string[]>(DEFAULT_RELAYS);
   const [newRelayUrl, setNewRelayUrl] = useState<string>("");
   const {
     isOpen: isConnectModalOpen,
@@ -70,10 +75,26 @@ export function PrimaryLayout() {
         <ModalBody>
           <Text>
             You can find a list of relays in the nostr-ts repository
-            https://github.com/franzos/nostr-ts/blob/master/discovered-relays.json,
-            https://nostr.info/relays/ and elsewhere.
+            <Link
+              marginLeft={1}
+              href="https://github.com/franzos/nostr-ts/blob/master/discovered-relays.json"
+              isExternal
+              color="blue.500"
+            >
+              github.com/franzos/nostr-ts
+            </Link>
+            ,
+            <Link
+              marginLeft={1}
+              marginRight={1}
+              href="https://nostr.info/relays/"
+              isExternal
+              color="blue.500"
+            >
+              nostr.info
+            </Link>
+            and elsewhere.
           </Text>
-
           {/* List of Relays */}
           <VStack spacing={3} width="100%">
             {initialRelayUrls.map((url, index) => (
@@ -138,7 +159,49 @@ export function PrimaryLayout() {
     </Modal>
   );
 
-  const nav = useNavigate();
+  const Sidebar = (
+    <VStack align="start" spacing={5} w="100%">
+      <MenuItem label="Home" to="/" />
+
+      {connected && (
+        <>
+          <MenuItem
+            label="Following"
+            value={followingUsers.length}
+            to="/following"
+          />
+
+          <MenuItem
+            label="Subscriptions"
+            value={subscriptionsCount}
+            to="/subscriptions"
+          />
+        </>
+      )}
+
+      <MenuItem label="Account" value={keystore} to="/account" />
+
+      {connected ? (
+        <Button
+          w="100%"
+          colorScheme="red"
+          onClick={useNClient.getState().disconnect}
+        >
+          <Icon as={LanDisconnectIcon} marginRight={1} />
+          Disconnect
+        </Button>
+      ) : (
+        <Button
+          w="100%"
+          colorScheme="green"
+          onClick={onConnectModalOpen}
+          leftIcon={<Icon as={LanConnectIcon} />}
+        >
+          Connect to relay(s)
+        </Button>
+      )}
+    </VStack>
+  );
 
   return (
     <Container maxW="8xl" p={5}>
@@ -150,51 +213,7 @@ export function PrimaryLayout() {
         </VStack>
 
         <Grid templateColumns={["1fr", "1fr 2fr 1fr"]} gap={20}>
-          <VStack align="start" spacing={5}>
-            <Button width="100%" onClick={() => nav("/")}>
-              <Text fontSize="sm">Home</Text>
-            </Button>
-            {connected && (
-              <>
-                <Button width="100%" onClick={() => nav("/following")}>
-                  <Text fontSize="sm">Following</Text>
-                  <Text fontSize="xl" marginLeft={1}>
-                    {followingUsers.length}
-                  </Text>
-                </Button>
-                <Button width="100%" onClick={() => nav("/subscriptions")}>
-                  <Text fontSize="sm">Subscriptions:</Text>
-                  <Text fontSize="xl" marginLeft={1}>
-                    {subscriptionsCount}
-                  </Text>
-                </Button>
-              </>
-            )}
-            <Button width="100%" onClick={() => nav("/account")}>
-              <Text fontSize="sm" textAlign="right">
-                Account ({keystore})
-              </Text>
-            </Button>
-            <VStack spacing={4} align="start" paddingTop={4}>
-              {connected ? (
-                <Button
-                  width="100%"
-                  colorScheme="red"
-                  onClick={useNClient.getState().disconnect}
-                >
-                  Disconnect
-                </Button>
-              ) : (
-                <Button
-                  width="100%"
-                  colorScheme="green"
-                  onClick={onConnectModalOpen}
-                >
-                  Connect to relay(s)
-                </Button>
-              )}
-            </VStack>
-          </VStack>
+          {Sidebar}
 
           <Box maxHeight="80vh" overflowY="auto">
             <Outlet />
@@ -203,11 +222,7 @@ export function PrimaryLayout() {
             <Heading as="h2" size="md">
               Broadcast
             </Heading>
-            {connected ? (
-              <CreateEventForm />
-            ) : (
-              <Text fontWeight="bold">Not connected to a relay.</Text>
-            )}
+            <CreateEventForm />
           </Box>
         </Grid>
       </VStack>

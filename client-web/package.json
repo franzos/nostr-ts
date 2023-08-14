@@ -19,6 +19,7 @@
     "@nostr-ts/web": "workspace:*",
     "framer-motion": "^10.15.0",
     "idb": "^7.1.1",
+    "mdi-react": "^9.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.15.0",

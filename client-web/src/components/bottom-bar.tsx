@@ -8,6 +8,7 @@ export function BottomBar() {
   const [userCount, setUserCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(0);
   const [events] = useNClient((state) => [state.events]);
+  const [maxEvents] = useNClient((state) => [state.maxEvents]);
 
   useEffect(() => {
     const statsUpdateInterval = setInterval(async () => {
@@ -45,7 +46,7 @@ export function BottomBar() {
             <HStack spacing={2}>
               <Text fontSize="sm">Events:</Text>
               <Text fontSize="xl" marginLeft={1}>
-                {events.length}
+                {events.length} (max {maxEvents})
               </Text>
             </HStack>
             <HStack spacing={2}>

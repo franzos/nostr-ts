@@ -1,10 +1,15 @@
-import { Box } from "@chakra-ui/react";
+import { Box, Button } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { MAX_EVENTS } from "../defaults";
 
 export function Events() {
   const [events] = useNClient((state) => [state.events]);
+  const [eventsCount] = useNClient((state) => [state.events.length]);
+  const [maxEvents] = useNClient((state) => [state.maxEvents]);
+
+  const [moreEventsCount, setMoreEventsCount] = useState(0);
 
   useEffect(() => {
     const userFetchInterval = setInterval(async () => {
@@ -18,8 +23,18 @@ export function Events() {
       await useNClient.getState().getUserInformation(eventUserPubkeys);
     }, 10000);
 
-    return () => clearInterval(userFetchInterval);
+    return () => {
+      clearInterval(userFetchInterval);
+      useNClient.getState().setMaxEvents(MAX_EVENTS);
+    };
   }, []);
+
+  const moreEvents = () => {
+    if (moreEventsCount === 0) {
+      setMoreEventsCount(moreEventsCount + 1);
+    }
+    useNClient.getState().setMaxEvents(maxEvents + 50);
+  };
 
   return (
     <Box maxHeight="80vh" overflowY="auto">
@@ -30,6 +45,13 @@ export function Events() {
           </Box>
         );
       })}
+      {eventsCount >= maxEvents && (
+        <Box padding={2}>
+          <Button onClick={moreEvents} width="100%">
+            Load more events
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }

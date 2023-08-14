@@ -8,8 +8,11 @@ import { PrimaryLayout } from "./layouts/primary.tsx";
 import { WelcomeRoute } from "./routes/welcome.tsx";
 import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
+import { MAX_EVENTS } from "./defaults.ts";
 
-await useNClient.getState().init();
+await useNClient.getState().init({
+  maxEvents: MAX_EVENTS,
+});
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

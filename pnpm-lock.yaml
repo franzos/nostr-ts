@@ -62,6 +62,9 @@ importers:
       idb:
         specifier: ^7.1.1
         version: 7.1.1
+      mdi-react:
+        specifier: ^9.2.0
+        version: 9.2.0(react@18.2.0)
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -4653,6 +4656,14 @@ packages:
     dependencies:
       tmpl: 1.0.5
     dev: true
+
+  /mdi-react@9.2.0(react@18.2.0):
+    resolution: {integrity: sha512-NI1sIvu142SQKkOMe4bjA9KuvMXpT8PfNOkCblSEuUeakFpgciMuKV9rEyJbQkvFBppDLx1f1xmbcIc06oRyAQ==}
+    peerDependencies:
+      react: '>=0.14.0'
+    dependencies:
+      react: 18.2.0
+    dev: false
 
   /merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}

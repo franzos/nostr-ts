@@ -119,7 +119,7 @@ interface NClientDB {
 
 export interface NClientStore {
   db: IDBPDatabase<NClientDB> | null;
-  init(): Promise<void>;
+  init(config?: { maxEvents?: number }): Promise<void>;
   client: RelayClient | null;
   connected: boolean;
   connect: (relayUrls?: string[]) => void;
@@ -133,7 +133,14 @@ export interface NClientStore {
   keypair?: { publicKey: string; privateKey: string };
   keypairIsLoaded: boolean;
   eventsPagination: Pagination;
+  newEvent: NEvent | null;
+  setNewEvent: (event: NEvent | null) => void;
+  newEventName: string;
+  setNewEventName: (name: string) => void;
   events: NEventWithUserBase[];
+  maxEvents: number;
+  setMaxEvents: (max: number) => void;
+  skippedEvents: number;
   countUsers: () => Promise<number>;
   addEvent: (payload: {
     data:
@@ -147,6 +154,7 @@ export interface NClientStore {
   }) => void;
   getEventById: (id: string) => void;
   sendEvent: (event: NEvent) => void;
+  signAndSendEvent: (event: NEvent) => void;
   clearEvents: () => void;
   followUser(pubkey: string): void;
   unfollowUser(pubkey: string): void;
@@ -159,7 +167,7 @@ export interface NClientStore {
 
 export const useNClient = create<NClientStore>((set, get) => ({
   db: null,
-  init: async () => {
+  init: async (config?: { maxEvents?: number }) => {
     set({
       db: await openDB("nostr-client", 1, {
         upgrade(db) {
@@ -170,6 +178,9 @@ export const useNClient = create<NClientStore>((set, get) => ({
       }),
     });
     get().loadKeyStore();
+    if (config?.maxEvents) {
+      get().setMaxEvents(config.maxEvents);
+    }
   },
   client: null,
   connected: false,
@@ -177,7 +188,6 @@ export const useNClient = create<NClientStore>((set, get) => ({
     if (get().connected) {
       return;
     }
-
     const client = new RelayClient(relayUrls);
 
     client.listen(async (payload) => {
@@ -271,7 +281,23 @@ export const useNClient = create<NClientStore>((set, get) => ({
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
   eventsPagination: { limit: 10, offset: 0 },
+  newEvent: new NEvent({
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
+  }),
+  setNewEvent: (event: NEvent | null) => {
+    set({ newEvent: event });
+  },
+  newEventName: "NewShortTextNote",
+  setNewEventName: (name: string) => {
+    set({ newEventName: name });
+  },
   events: [],
+  maxEvents: 100,
+  setMaxEvents: (max: number) => {
+    console.log(`Setting max events to ${max}`);
+    set({ maxEvents: max });
+  },
+  skippedEvents: 0,
   countUsers: async () => {
     const db = await get().db;
     if (!db) {
@@ -304,8 +330,11 @@ export const useNClient = create<NClientStore>((set, get) => ({
         const event: EventBase = payload.data[2];
         const currentEvents = get().events;
 
-        if (currentEvents.length >= 100) {
+        if (currentEvents.length >= get().maxEvents) {
           console.log(`Exceeded limit; ignoring new events`);
+          set({
+            skippedEvents: get().skippedEvents + 1,
+          });
           // TODO: Cancel subscription
           return;
         }
@@ -373,15 +402,30 @@ export const useNClient = create<NClientStore>((set, get) => ({
     ) {
       set({
         events: [
-          event.toJson(),
-          ...get().events.map((ev) => ev.event.toJson()),
+          {
+            event: event.toJson(),
+          },
+          ...get().events,
         ],
       });
     }
     return result;
   },
+  signAndSendEvent: async (event: NEvent) => {
+    const client = get().client;
+    if (!client) {
+      throw new Error("Client not initialized");
+    }
+    const keypair = get().keypair;
+    if (!keypair) {
+      throw new Error("Keypair not initialized");
+    }
+    event.signAndGenerateId(keypair);
+    get().sendEvent(event);
+  },
   clearEvents: () => {
     set(() => ({ events: [] }));
+    set(() => ({ skippedEvents: 0 }));
   },
   /**
    * Follow a user

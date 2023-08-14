@@ -1,8 +1,8 @@
 import { Box, Heading, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
-import { UserFollowing } from "../components/user";
 import { NUserBase } from "@nostr-ts/common";
+import { UserFollowing } from "../components/user-following";
 
 export function FollowingRoute() {
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
@@ -22,7 +22,11 @@ export function FollowingRoute() {
     <Box>
       <Heading size="lg">Following</Heading>
       {followingUsers.length > 0 ? (
-        <>{followingUsers.map((user) => UserFollowing({ user: user }))}</>
+        <>
+          {followingUsers.map((user) => (
+            <UserFollowing key={user.pubkey} user={user} />
+          ))}
+        </>
       ) : (
         <>
           <Text>

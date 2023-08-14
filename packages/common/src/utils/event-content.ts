@@ -84,25 +84,46 @@ export function createEventContent(content: NEventContent) {
  */
 export function isValidEventContent(content: string): boolean {
   // No content is valid content
-  if (!content || content === "") {
+  if (!content || content === "") return true;
+
+  if (containsHTML(content)) {
+    console.error(`Event content contains HTML: ${content}`);
+    return false;
+  }
+
+  if (containsLineBreaks(content)) {
+    console.error(`Event content contains line breaks: ${content}`);
+    return false;
+  }
+
+  if (isAcceptedFormat(content)) {
+    console.log(`Event content is accepted format: ${content}`);
     return true;
   }
 
-  // Does not contain HTML
+  if (isPlainUnicode(content)) {
+    console.log(`Event content is plain unicode: ${content}`);
+    return true;
+  }
+
+  console.error(`Event content doesn't match any accepted format: ${content}`);
+  // If none of the conditions are met
+  return false;
+}
+
+function containsHTML(content: string): boolean {
   const htmlRegex = /<[^>]*>/;
-  if (htmlRegex.test(content)) {
-    return false;
-  }
+  return htmlRegex.test(content);
+}
 
-  // Does not contain line breaks
-  if (content.includes("\n")) {
-    return false;
-  }
+function containsLineBreaks(content: string): boolean {
+  return content.includes("\n");
+}
 
-  // Adheres to one of the accepted formats
+function isAcceptedFormat(content: string): boolean {
   const validUrlRegex = /^(.*)(wss:\/\/[a-zA-Z0-9.-]+)/;
   const validNostrRegex = /^(.*)(nostr:[a-fA-F0-9]{64})/;
-  const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/; // matches markdown links like [picture](https://picture.com/pic.jpg)
+  const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/;
 
   if (
     validUrlRegex.test(content) ||
@@ -112,6 +133,14 @@ export function isValidEventContent(content: string): boolean {
     return true;
   }
 
-  // If none of the conditions are met
+  return false;
+}
+
+function isPlainUnicode(content: string): boolean {
+  const plainUnicodeRegex = /^[\p{L}\p{M}\p{N}\p{Z}\p{S}]+$/u;
+  if (plainUnicodeRegex.test(content)) {
+    return true;
+  }
+
   return false;
 }

@@ -154,15 +154,26 @@ export interface NClientStore {
   }) => void;
   getEventById: (id: string) => void;
   sendEvent: (event: NEvent) => void;
-  signAndSendEvent: (event: NEvent) => void;
+  signAndSendEvent: (event: NEvent) => string;
   clearEvents: () => void;
   followUser(pubkey: string): void;
   unfollowUser(pubkey: string): void;
   followingUser(pubkey: string): Promise<boolean>;
+  // For reactive updates
+  followingUserIds: string[];
   getAllUsersFollowing(): Promise<NUserBase[] | undefined>;
   updateUserFollowing(user: NUserBase): Promise<void>;
   checkedUsers: string[];
+  checkedEvents: string[];
   getUserInformation(publicKeys: string[]): void;
+  hasSubscriptionForEventId(eventId: string): boolean;
+  getEventInformation(
+    eventIds: string[],
+    options?: {
+      skipFilter?: boolean;
+      timeout?: number;
+    }
+  ): void;
 }
 
 export const useNClient = create<NClientStore>((set, get) => ({
@@ -201,7 +212,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
         kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
       }),
     });
-    client?.subscribe({
+    client.subscribe({
       filters: new NFilters({
         kinds: [NEVENT_KIND.METADATA],
       }),
@@ -381,6 +392,53 @@ export const useNClient = create<NClientStore>((set, get) => ({
             event.user = newUser;
           }
         }
+      } else if (kind === NEVENT_KIND.REACTION) {
+        console.log(`Reaction event received`);
+        const ev = new NEvent(payload.data[2]);
+
+        const inResponse = ev.hasEventTags();
+        if (!inResponse) {
+          // TODO: Support users
+          return;
+        }
+        const inResponseToEventIds = inResponse.map((tag) => tag.eventId);
+
+        for (const event of get().events) {
+          if (!inResponse) {
+            continue;
+          }
+          if (inResponseToEventIds.find((id) => id === event.event.id)) {
+            if (event.reactions) {
+              event.reactions.push(ev);
+            } else {
+              event.reactions = [ev];
+            }
+          }
+        }
+      } else if (kind === NEVENT_KIND.REPOST) {
+        console.log(`Repost event received`);
+        const ev = new NEvent(payload.data[2]);
+
+        const inResponse = ev.hasEventTags();
+        if (!inResponse) {
+          // TODO: Support users
+          return;
+        }
+
+        const inResponseToEventIds = inResponse.map((tag) => tag.eventId);
+
+        for (const event of get().events) {
+          if (!inResponse) {
+            continue;
+          }
+          if (inResponseToEventIds.find((id) => id === event.event.id)) {
+            if (event.reposts) {
+              event.reposts.push(ev);
+            } else {
+              event.reactions = [ev];
+            }
+          }
+        }
       }
     }
   },
@@ -411,7 +469,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
     }
     return result;
   },
-  signAndSendEvent: async (event: NEvent) => {
+  signAndSendEvent: (event: NEvent) => {
     const client = get().client;
     if (!client) {
       throw new Error("Client not initialized");
@@ -422,6 +480,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
     }
     event.signAndGenerateId(keypair);
     get().sendEvent(event);
+    return event.id;
   },
   clearEvents: () => {
     set(() => ({ events: [] }));
@@ -446,6 +505,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
       db.put("following", newFollowing);
       get().getUserInformation([pubkey]);
     }
+    set({ followingUserIds: [...get().followingUserIds, pubkey] });
   },
   /**
    * Unfollow a user
@@ -456,6 +516,9 @@ export const useNClient = create<NClientStore>((set, get) => ({
       throw new Error("DB not initialized");
     }
     await db.delete("following", pubkey);
+    set({
+      followingUserIds: get().followingUserIds.filter((id) => id !== pubkey),
+    });
   },
   /**
    * Check if following user
@@ -465,12 +528,14 @@ export const useNClient = create<NClientStore>((set, get) => ({
     if (!db) {
       throw new Error("DB not initialized");
     }
+
     const following = await db.get("following", pubkey);
     if (following) {
       return true;
     }
     return false;
   },
+  followingUserIds: [],
   getAllUsersFollowing: async () => {
     const db = get().db;
     if (!db) {
@@ -478,6 +543,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
     }
     const users = await db.getAll("following");
     if (users) {
+      set({ followingUserIds: users.map((user) => user.pubkey) });
       return users.map((user) => new NUserBase(user));
     }
   },
@@ -496,6 +562,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
     }
   },
   checkedUsers: [],
+  checkedEvents: [],
   getUserInformation: (publicKeys: string[]) => {
     if (publicKeys.length === 0) {
       return;
@@ -534,6 +601,81 @@ export const useNClient = create<NClientStore>((set, get) => ({
           get().unsubscribe(subscription.subscriptionId);
         }
       }, 10000);
+    }
+  },
+  hasSubscriptionForEventId: (eventId: string) => {
+    const subscriptions = get().client?.getSubscriptions();
+    if (!subscriptions) {
+      return false;
+    }
+    const subscription = subscriptions.find((sub) =>
+      sub.filters["#e"]?.includes(eventId)
+    );
+
+    if (subscription) {
+      return true;
+    }
+    return false;
+  },
+  getEventInformation: (
+    eventIds: string[],
+    options: {
+      skipFilter?: boolean;
+      timeout?: number;
+    }
+  ) => {
+    if (eventIds.length === 0) {
+      return;
+    }
+
+    let filteredEventIds: string[] = [];
+
+    const skipFilter = options?.skipFilter || false;
+    const timeout = options?.timeout || 120000;
+
+    if (!skipFilter) {
+      const newEventIds = eventIds.filter(
+        (eventId) => !get().checkedEvents.includes(eventId)
+      );
+
+      filteredEventIds =
+        newEventIds.length > 20 ? newEventIds.slice(0, 20) : newEventIds;
+    } else {
+      console.log("=> Skipping filter");
+      // Simple duplicate check
+      if (eventIds.length === 1) {
+        const hasSubscription = get().hasSubscriptionForEventId(eventIds[0]);
+        if (hasSubscription) {
+          console.log(`=> Already subscribed to ${eventIds[0]}`);
+          return;
+        }
+      }
+      filteredEventIds = eventIds;
+    }
+
+    if (filteredEventIds.length === 0) {
+      return;
+    }
+
+    console.log(`=> Getting information for ${filteredEventIds.length} events`);
+    const filters = new NFilters({
+      kinds: [NEVENT_KIND.REACTION],
+      "#e": filteredEventIds,
+    });
+
+    if (!skipFilter) {
+      set({
+        checkedEvents: [...get().checkedEvents, ...filteredEventIds],
+      });
+    }
+
+    const subscriptions = get().subscribe(filters);
+    if (subscriptions) {
+      setTimeout(() => {
+        for (const subscription of subscriptions) {
+          get().unsubscribe(subscription.subscriptionId);
+        }
+      }, timeout);
     }
   },
 }));

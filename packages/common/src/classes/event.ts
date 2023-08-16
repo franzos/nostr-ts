@@ -167,6 +167,28 @@ export class NEvent implements EventBase {
     this.addTag(tag);
   }
 
+  public hasEventTags():
+    | {
+        eventId: string;
+        relayUrl?: string;
+      }[]
+    | undefined {
+    const tags = this.tags.filter((tag) => tag[0] === "e");
+    if (tags.length === 0) {
+      return;
+    }
+
+    return tags.map((tag) => {
+      const parts = tag[1].split(",");
+      const eventId = parts[0].trim();
+      const relayUrl = parts[1] ? parts[1].trim() : undefined;
+      return {
+        eventId,
+        relayUrl,
+      };
+    });
+  }
+
   /**
    * Standard tag
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags

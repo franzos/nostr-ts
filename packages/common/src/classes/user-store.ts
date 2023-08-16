@@ -127,10 +127,9 @@ export class NUserStoreMemory implements UserStoreBase {
 
   public add(user: NUserBase): void {
     if (this.byPubkey(user.pubkey)) {
-      console.log(`already have user ${user.pubkey}`);
       return;
     }
-    console.log("adding user", user);
+
     this.users.push(user);
     this.filterUsersByPubkeyCount();
   }

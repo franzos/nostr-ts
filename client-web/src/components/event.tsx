@@ -6,7 +6,6 @@ import {
   Text,
   Button,
   Box,
-  IconButton,
   Icon,
   useToast,
   HStack,
@@ -17,23 +16,19 @@ import {
   NewShortTextNoteResponse,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
-import { UserKnown, UserUnknown } from "./user";
-import { useEffect, useState } from "react";
+import { User } from "./user";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 import ThumbDownIcon from "mdi-react/ThumbDownIcon";
+import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 
-export function Event({ user, event }: NEventWithUserBase) {
-  const [following, setFollowing] = useState<boolean>(false);
+export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
   const toast = useToast();
 
-  useEffect(() => {
-    const update = async () => {
-      const following = await useNClient.getState().followingUser(event.pubkey);
-      setFollowing(following);
-    };
-    update();
-  }, [event.pubkey]);
+  const downVotesCount =
+    reactions?.filter((r) => r.content === "-").length || 0;
+  const upVotesCount = reactions?.filter((r) => r.content === "+").length || 0;
+  const repostsCount = reposts?.length || 0;
 
   const newReply = () => {
     const ev = NewShortTextNoteResponse({
@@ -57,7 +52,20 @@ export function Event({ user, event }: NEventWithUserBase) {
     });
 
     try {
-      useNClient.getState().signAndSendEvent(ev);
+      const reactionId = useNClient.getState().signAndSendEvent(ev);
+      if (reactionId) {
+        toast({
+          title: "Success",
+          description: "Reaction sent",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        useNClient.getState().getEventInformation([event.id], {
+          skipFilter: true,
+          timeout: 10000,
+        });
+      }
     } catch (e) {
       console.error(e);
       toast({
@@ -75,9 +83,13 @@ export function Event({ user, event }: NEventWithUserBase) {
       <CardHeader p={4}>
         <Box>
           {user ? (
-            <UserKnown user={user} />
+            <User user={user} />
           ) : (
-            <UserUnknown pubkey={event.pubkey} />
+            <User
+              user={{
+                pubkey: event.pubkey,
+              }}
+            />
           )}
         </Box>
       </CardHeader>
@@ -90,33 +102,29 @@ export function Event({ user, event }: NEventWithUserBase) {
           <Button variant="solid" colorScheme="blue" onClick={() => newReply()}>
             Reply
           </Button>
-          {following ? (
-            <Button
-              variant="solid"
-              colorScheme="red"
-              onClick={() => useNClient.getState().unfollowUser(event.pubkey)}
-            >
-              Unfollow
-            </Button>
-          ) : (
-            <Button
-              variant="solid"
-              colorScheme="green"
-              onClick={() => useNClient.getState().followUser(event.pubkey)}
-            >
-              Follow
-            </Button>
-          )}
-          <IconButton
+          <Button
             aria-label="Upvote"
-            icon={<Icon as={ThumbUpIcon} />}
+            leftIcon={<Icon as={ThumbUpIcon} />}
             onClick={() => newReaction("+")}
-          />
-          <IconButton
+          >
+            {upVotesCount}
+          </Button>
+          <Button
             aria-label="Downvote"
-            icon={<Icon as={ThumbDownIcon} />}
+            leftIcon={<Icon as={ThumbDownIcon} />}
             onClick={() => newReaction("-")}
-          />
+          >
+            {downVotesCount}
+          </Button>
+          <Button aria-label="Repost" leftIcon={<Icon as={RepeatIcon} />}>
+            {repostsCount}
+          </Button>
+          {reactions &&
+            reactions.map((r) => (
+              <Text key={r.id} fontWeight="bold">
+                {r.content}
+              </Text>
+            ))}
         </HStack>
       </CardFooter>
     </Card>

@@ -20,7 +20,13 @@ export function Events() {
         .filter((e) => !e.user?.pubkey)
         .map((e) => e.event.pubkey);
 
-      await useNClient.getState().getUserInformation(eventUserPubkeys);
+      useNClient.getState().getUserInformation(eventUserPubkeys);
+
+      const eventIds = events
+        .filter((e) => !e.reactions)
+        .map((e) => e.event.id);
+
+      useNClient.getState().getEventInformation(eventIds);
     }, 10000);
 
     return () => {
@@ -41,7 +47,13 @@ export function Events() {
       {events.map((event) => {
         return (
           <Box padding={2} key={event.event.id}>
-            <Event event={event.event} user={event.user} key={event.event.id} />
+            <Event
+              event={event.event}
+              user={event.user}
+              reactions={event.reactions}
+              reposts={event.reposts}
+              key={event.event.id}
+            />
           </Box>
         );
       })}

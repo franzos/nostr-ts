@@ -1,7 +1,20 @@
-import { Flex, Avatar, Heading, Box, Text } from "@chakra-ui/react";
+import {
+  Flex,
+  Avatar,
+  Heading,
+  Box,
+  Text,
+  Button,
+  Spacer,
+} from "@chakra-ui/react";
 import { UserBase } from "@nostr-ts/common";
+import { useNClient } from "../state/client";
 
-export const UserKnown = ({ user }: { user: UserBase }) => {
+export function User({ user }: { user: UserBase }) {
+  const [following] = useNClient((state) => [
+    state.followingUserIds.find((f) => f === user.pubkey),
+  ]);
+
   const data = user.data ? user.data : null;
   const display_name =
     data && data.display_name ? data.display_name : "Anonymous";
@@ -18,20 +31,24 @@ export const UserKnown = ({ user }: { user: UserBase }) => {
         <Heading size="sm">{display_name}</Heading>
         <Text fontSize="sm">{name}</Text>
       </Box>
+      <Spacer />
+      {following ? (
+        <Button
+          variant="outline"
+          colorScheme="red"
+          onClick={() => useNClient.getState().unfollowUser(user.pubkey)}
+        >
+          Unfollow
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          colorScheme="green"
+          onClick={() => useNClient.getState().followUser(user.pubkey)}
+        >
+          Follow
+        </Button>
+      )}
     </Flex>
   );
-};
-
-export const UserUnknown = ({ pubkey }: { pubkey: string }) => {
-  return (
-    <Flex>
-      <Box mr="3">
-        <Avatar size="sm" src="https://via.placeholder.com/150" />
-      </Box>
-      <Box>
-        <Heading size="sm">Anonymous</Heading>
-        <Text fontSize="sm">{pubkey}</Text>
-      </Box>
-    </Flex>
-  );
-};
+}

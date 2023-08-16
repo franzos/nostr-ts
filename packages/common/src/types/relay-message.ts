@@ -158,26 +158,26 @@ export function logRelayMessage(
   const [type, ...rest] = data;
   switch (type) {
     case RELAY_MESSAGE_TYPE.AUTH:
-      console.log(`RECEIVED AUTH CHALLENGE: ${rest[0]}`, ...rest);
+      console.log(`RECEIVED AUTH CHALLENGE: ${data[1]}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.COUNT:
-      console.log(`RECEIVED COUNT: ${(rest as RelayCount)[2].count}`, ...rest);
+      console.log(`RECEIVED COUNT: ${data[2].count}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.EOSE:
-      console.log(`RECEIVED EOSE: ${rest[0]}`, ...rest);
+      console.log(`RECEIVED EOSE: ${data[1]}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.EVENT:
-      console.log(`RECEIVED EVENT: ${(rest as RelayEvent)[1]}`, ...rest);
+      console.log(`RECEIVED EVENT: ${data[2].id}`, ...rest);
       if (user) {
         console.log(`USER ########`);
         console.log(user);
       }
       break;
     case RELAY_MESSAGE_TYPE.NOTICE:
-      console.log(`RECEIVED NOTICE: ${rest[0]}`, ...rest);
+      console.log(`RECEIVED NOTICE: ${data[1]}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.OK:
-      console.log(`RECEIVED OK: ${rest[0]}`, ...rest);
+      console.log(`RECEIVED OK: ${data[1]}`, ...rest);
       break;
 
     default:

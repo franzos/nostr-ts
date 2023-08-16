@@ -87,26 +87,21 @@ export function isValidEventContent(content: string): boolean {
   if (!content || content === "") return true;
 
   if (containsHTML(content)) {
-    console.error(`Event content contains HTML: ${content}`);
     return false;
   }
 
   if (containsLineBreaks(content)) {
-    console.error(`Event content contains line breaks: ${content}`);
     return false;
   }
 
   if (isAcceptedFormat(content)) {
-    console.log(`Event content is accepted format: ${content}`);
     return true;
   }
 
   if (isPlainUnicode(content)) {
-    console.log(`Event content is plain unicode: ${content}`);
     return true;
   }
 
-  console.error(`Event content doesn't match any accepted format: ${content}`);
   // If none of the conditions are met
   return false;
 }

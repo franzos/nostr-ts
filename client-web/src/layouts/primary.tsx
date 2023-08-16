@@ -226,7 +226,7 @@ export function PrimaryLayout() {
           </Box>
         </Grid>
       </VStack>
-      {BottomBar()}
+      {<BottomBar />}
       {ConnectModal}
     </Container>
   );

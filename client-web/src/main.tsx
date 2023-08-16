@@ -9,6 +9,7 @@ import { WelcomeRoute } from "./routes/welcome.tsx";
 import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
+import "./index.css";
 
 await useNClient.getState().init({
   maxEvents: MAX_EVENTS,

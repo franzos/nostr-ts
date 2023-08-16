@@ -58,9 +58,16 @@ export function Events() {
         );
       })}
       {eventsCount >= maxEvents && (
-        <Box padding={2}>
-          <Button onClick={moreEvents} width="100%">
-            Load more events
+        <Box display="flex" justifyContent="space-between" padding={2}>
+          <Button flex="1" marginRight={2} onClick={moreEvents}>
+            Load 50 more
+          </Button>
+          <Button
+            flex="1"
+            marginLeft={2}
+            onClick={() => useNClient.getState().clearEvents()}
+          >
+            Reset and load new (performance)
           </Button>
         </Box>
       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   FormControl,
@@ -26,6 +26,8 @@ import TextShortIcon from "mdi-react/TextShortIcon";
 import TextLongIcon from "mdi-react/TextLongIcon";
 import ReplyIcon from "mdi-react/ReplyIcon";
 import WifiStarIcon from "mdi-react/WifiStarIcon";
+import { NUser } from "@nostr-ts/web";
+import { User } from "./user";
 
 export const CreateEventForm = () => {
   const [connected] = useNClient((state) => [state.connected]);
@@ -33,8 +35,30 @@ export const CreateEventForm = () => {
   const [keypair] = useNClient((state) => [state.keypair]);
   const [eventKind] = useNClient((state) => [state.newEvent?.kind || 0]);
   const [newEventName] = useNClient((state) => [state.newEventName]);
-  // const [eventContent] = useNClient((state) => [state.newEvent?.content]);
   const toast = useToast();
+
+  const [users, setUsers] = useState<NUser[]>([]);
+  const [publicKeyTags] = useNClient((state) => [
+    state.newEvent?.hasPublicKeyTags(),
+  ]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const foundUsers = [];
+      if (publicKeyTags) {
+        for (const key of publicKeyTags) {
+          const user = await useNClient.getState().getUser(key);
+          if (user) {
+            foundUsers.push(user);
+          } else {
+            foundUsers.push(new NUser({ pubkey: key }));
+          }
+        }
+      }
+      setUsers(foundUsers);
+    };
+    loadUser();
+  }, [publicKeyTags, newEventName]);
 
   const submit = async () => {
     setErrors([]);
@@ -77,6 +101,7 @@ export const CreateEventForm = () => {
 
     try {
       useNClient.getState().signAndSendEvent(ev);
+      setKind(newEventName);
     } catch (e) {
       setErrors([e.message]);
       toast({
@@ -156,6 +181,10 @@ export const CreateEventForm = () => {
         <Text fontSize="xs">
           Selected: {translateNameToLabel(newEventName)}
         </Text>
+
+        {users.map((user) => (
+          <User user={user} key={user.pubkey} />
+        ))}
       </FormControl>
       <FormControl marginBottom={4}>
         <FormLabel>Content</FormLabel>

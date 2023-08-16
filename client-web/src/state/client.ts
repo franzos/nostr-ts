@@ -16,7 +16,7 @@ import {
   NUserBase,
   UserBase,
 } from "@nostr-ts/common";
-import { RelayClient } from "@nostr-ts/web";
+import { NUser, RelayClient } from "@nostr-ts/web";
 import { NEventWithUserBase } from "@nostr-ts/common";
 import { IDBPDatabase, openDB } from "idb";
 import { Pagination } from "../lib/pagination";
@@ -141,6 +141,7 @@ export interface NClientStore {
   maxEvents: number;
   setMaxEvents: (max: number) => void;
   skippedEvents: number;
+  getUser: (pubkey: string) => Promise<NUser | undefined>;
   countUsers: () => Promise<number>;
   addEvent: (payload: {
     data:
@@ -309,6 +310,14 @@ export const useNClient = create<NClientStore>((set, get) => ({
     set({ maxEvents: max });
   },
   skippedEvents: 0,
+  getUser: async (pubkey: string) => {
+    const db = await get().db;
+    if (!db) {
+      throw new Error("DB not initialized");
+    }
+    const user = await db.get("users", pubkey);
+    return new NUser().fromJson(user);
+  },
   countUsers: async () => {
     const db = await get().db;
     if (!db) {

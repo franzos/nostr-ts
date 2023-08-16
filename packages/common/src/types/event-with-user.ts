@@ -5,6 +5,7 @@ import { UserBase } from "./user";
 export interface EventBaseWithUserBase {
   user?: UserBase;
   event: EventBase;
+  eventRelayUrls: string[];
   // 7
   reactions?: NEvent[];
   reactionsCount?: number;

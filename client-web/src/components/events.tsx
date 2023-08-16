@@ -52,6 +52,7 @@ export function Events() {
               user={event.user}
               reactions={event.reactions}
               reposts={event.reposts}
+              eventRelayUrls={event.eventRelayUrls}
               key={event.event.id}
             />
           </Box>

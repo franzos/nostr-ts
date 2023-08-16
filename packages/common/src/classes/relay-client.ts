@@ -228,7 +228,11 @@ export class RelayClientBase {
     };
     const data = JSON.stringify([message.type, message.data]);
 
-    let isSent = false;
+    const send: {
+      event: NEvent;
+      relay: RelayConnection;
+      error: string | null;
+    }[] = [];
 
     for (const relay of this.relays) {
       if (relay.isEnabled) {
@@ -241,22 +245,33 @@ export class RelayClientBase {
             request: message,
           });
 
+          send.push({
+            event,
+            relay,
+            error: null,
+          });
+
           console.log(`Sent event to ${relay.url}`, message);
-          isSent = true;
         } else {
           console.log(
             `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
             message
           );
+
+          send.push({
+            event,
+            relay,
+            error: `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
+          });
         }
       }
     }
 
-    if (!isSent) {
-      new Error(
-        `Event ${event.id} not published because no supported relay is available.`
-      );
+    if (send.length === 0) {
+      return;
     }
+
+    return send;
   }
 
   /**

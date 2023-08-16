@@ -18,6 +18,7 @@ import {
 } from "@chakra-ui/react";
 import {
   NEventWithUserBase,
+  NewQuoteRepost,
   NewReaction,
   NewShortTextNoteResponse,
 } from "@nostr-ts/common";
@@ -72,6 +73,39 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
     useNClient.getState().setNewEventName("NewShortTextNoteResponse");
   };
 
+  const newQuoteRepost = () => {
+    const ev = NewQuoteRepost({
+      inResponseTo: event,
+      relayUrl: "",
+    });
+
+    try {
+      const quoteId = useNClient.getState().signAndSendEvent(ev);
+      if (quoteId) {
+        toast({
+          title: "Success",
+          description: "Quote sent",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        useNClient.getState().getEventInformation([event.id], {
+          skipFilter: true,
+          timeout: 10000,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: e.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
   const newReaction = (reaction: "+" | "-") => {
     const ev = NewReaction({
       text: reaction,
@@ -124,7 +158,7 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
               ))}
             </Box>
           )}
-          <Box p={4}>
+          <Box p={4} paddingBottom={0}>
             {user ? (
               <User user={user} />
             ) : (
@@ -153,7 +187,9 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
       </CardHeader>
       <CardBody p={4}>
         <Text>{event.content}</Text>
-        <Text fontWeight="bold">{unixTimeToRelative(event.created_at)}</Text>
+        <Text fontWeight="bold" fontSize={12} marginTop={2}>
+          {unixTimeToRelative(event.created_at)}
+        </Text>
       </CardBody>
       <CardFooter p={4}>
         <HStack>
@@ -174,7 +210,11 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
           >
             {downVotesCount}
           </Button>
-          <Button aria-label="Repost" leftIcon={<Icon as={RepeatIcon} />}>
+          <Button
+            aria-label="Repost"
+            leftIcon={<Icon as={RepeatIcon} />}
+            onClick={newQuoteRepost}
+          >
             {repostsCount}
           </Button>
           {reactionsWithCount &&

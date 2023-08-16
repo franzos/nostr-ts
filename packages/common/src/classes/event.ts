@@ -138,7 +138,7 @@ export class NEvent implements EventBase {
    * @returns
    */
   public extractContent(): NEventContent | undefined {
-    return extractEventContent(this.content);
+    return extractEventContent(this.content, this.kind);
   }
 
   public addTag(val: string[]) {
@@ -456,7 +456,7 @@ export class NEvent implements EventBase {
         reason: "Event has no pubkey.",
       };
     }
-    if (!isValidEventContent(this.content)) {
+    if (!isValidEventContent(this.content, this.kind)) {
       return {
         isReady: false,
         reason: "Event has invalid content.",

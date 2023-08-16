@@ -15,6 +15,7 @@ import {
 import {
   NEVENT_KIND,
   NewLongFormContent,
+  NewQuoteRepost,
   NewRecommendRelay,
   NewShortTextNote,
 } from "@nostr-ts/common";
@@ -26,6 +27,7 @@ import TextShortIcon from "mdi-react/TextShortIcon";
 import TextLongIcon from "mdi-react/TextLongIcon";
 import ReplyIcon from "mdi-react/ReplyIcon";
 import WifiStarIcon from "mdi-react/WifiStarIcon";
+import RepeatIcon from "mdi-react/RepeatIcon";
 import { NUser } from "@nostr-ts/web";
 import { User } from "./user";
 
@@ -125,6 +127,8 @@ export const CreateEventForm = () => {
         return "Long Form Content";
       case "NewShortTextNoteResponse":
         return "Short Text Note Response";
+      case "NewQuoteRepost":
+        return "Quote Repost";
       default:
         return "";
     }
@@ -154,6 +158,12 @@ export const CreateEventForm = () => {
           text: "",
         });
         name = "NewLongFormContent";
+        break;
+      case "NewQuoteRepost":
+        event = NewQuoteRepost({
+          inResponseTo: new NUser({ pubkey: "" }),
+          relayUrl: DEFAULT_RELAYS[0],
+        });
         break;
       default:
         setErrors(["Invalid event type"]);
@@ -222,6 +232,13 @@ export const CreateEventForm = () => {
           icon={<Icon as={WifiStarIcon} />}
           onClick={() => setKind("NewRecommendRelay")}
           isActive={newEventName === "NewRecommendRelay"}
+        ></IconButton>
+        <IconButton
+          aria-label="NewQuoteRepost"
+          icon={<Icon as={RepeatIcon} />}
+          onClick={() => setKind("NewQuoteRepost")}
+          isActive={newEventName === "NewQuoteRepost"}
+          isDisabled={newEventName !== "NewQuoteRepost"}
         ></IconButton>
       </HStack>
       {errors.map((error, index) => (

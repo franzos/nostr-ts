@@ -372,11 +372,13 @@ export const useNClient = create<NClientStore>((set, get) => ({
               currentEvents.push({
                 event: new NEvent(event),
                 user: user,
+                eventRelayUrls: [payload.meta.url],
               });
             } else {
               console.log(`User not found: ${event.pubkey}`);
               currentEvents.push({
                 event: new NEvent(event),
+                eventRelayUrls: [payload.meta.url],
               });
             }
           }
@@ -430,6 +432,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
 
         const inResponse = ev.hasEventTags();
         if (!inResponse) {
+          console.log(`No response found for repost event`);
           // TODO: Support users
           return;
         }
@@ -437,14 +440,11 @@ export const useNClient = create<NClientStore>((set, get) => ({
         const inResponseToEventIds = inResponse.map((tag) => tag.eventId);
 
         for (const event of get().events) {
-          if (!inResponse) {
-            continue;
-          }
           if (inResponseToEventIds.find((id) => id === event.event.id)) {
             if (event.reposts) {
               event.reposts.push(ev);
             } else {
-              event.reactions = [ev];
+              event.reposts = [ev];
             }
           }
         }
@@ -462,21 +462,26 @@ export const useNClient = create<NClientStore>((set, get) => ({
       throw new Error("Client not initialized");
     }
     const result = client.sendEvent(event);
-    if (
-      event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-      event.kind === NEVENT_KIND.LONG_FORM_CONTENT ||
-      event.kind === NEVENT_KIND.RECOMMEND_RELAY
-    ) {
-      set({
-        events: [
-          {
-            event: event.toJson(),
-          },
-          ...get().events,
-        ],
-      });
+    if (result) {
+      if (
+        event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+        event.kind === NEVENT_KIND.LONG_FORM_CONTENT ||
+        event.kind === NEVENT_KIND.RECOMMEND_RELAY
+      ) {
+        set({
+          events: [
+            {
+              event: event.toJson(),
+              eventRelayUrls: result.map((r) => r.relay.url),
+            },
+            ...get().events,
+          ],
+        });
+      }
+      return result;
+    } else {
+      throw new Error("Failed to send event");
     }
-    return result;
   },
   signAndSendEvent: (event: NEvent) => {
     const client = get().client;
@@ -668,7 +673,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
 
     console.log(`=> Getting information for ${filteredEventIds.length} events`);
     const filters = new NFilters({
-      kinds: [NEVENT_KIND.REACTION],
+      kinds: [NEVENT_KIND.REACTION, NEVENT_KIND.REPOST],
       "#e": filteredEventIds,
     });
 

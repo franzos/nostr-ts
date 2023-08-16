@@ -1,4 +1,4 @@
-import { NEventContent } from "../types";
+import { NEVENT_KIND, NEventContent } from "../types";
 
 /**
  * Extract information from content
@@ -10,9 +10,10 @@ import { NEventContent } from "../types";
  * @param content
  */
 export function extractEventContent(
-  content: string
+  content: string,
+  kind?: NEVENT_KIND
 ): NEventContent | undefined {
-  if (!isValidEventContent(content)) {
+  if (!isValidEventContent(content, kind)) {
     return;
   }
 
@@ -82,9 +83,23 @@ export function createEventContent(content: NEventContent) {
  *
  * @param content
  */
-export function isValidEventContent(content: string): boolean {
+export function isValidEventContent(
+  content: string,
+  kind: NEVENT_KIND
+): boolean {
   // No content is valid content
   if (!content || content === "") return true;
+
+  if (kind === NEVENT_KIND.REPOST) {
+    // Expect empty or json
+    try {
+      JSON.parse(content);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  }
 
   if (containsHTML(content)) {
     return false;

@@ -51,6 +51,14 @@ export class RelayClientBase {
 
     for (const relay of this.relays) {
       if (relay.isEnabled) {
+        if (message.type === CLIENT_MESSAGE_TYPE.COUNT) {
+          const nips = relay.info?.supported_nips;
+          if (nips && !nips.includes(45)) {
+            console.warn(`Relay ${relay.id} does not support count command.`);
+            continue;
+          }
+        }
+
         try {
           relay.ws.sendMessage(data);
           const sub = {

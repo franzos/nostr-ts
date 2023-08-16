@@ -20,9 +20,13 @@ export async function getRelayInformationDocument(
   console.log("###############");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => {
+  setTimeout(() => {
     controller.abort();
   }, 5000);
 
-  return makeRequest(httpsUrl);
+  const headers = {
+    Accept: "application/nostr+json",
+  };
+
+  return makeRequest(httpsUrl, headers);
 }

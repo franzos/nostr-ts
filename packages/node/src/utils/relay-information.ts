@@ -19,6 +19,10 @@ export async function getRelayInformationDocument(
   console.log("Fetching relay information from", httpsUrl);
   console.log("###############");
 
+  const headers = {
+    Accept: "application/nostr+json",
+  };
+
   // Use inline import for 'node-fetch'
-  return makeRequest(httpsUrl);
+  return makeRequest(httpsUrl, headers);
 }

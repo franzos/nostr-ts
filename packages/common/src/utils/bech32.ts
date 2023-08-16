@@ -1,6 +1,23 @@
 import { bech32 } from "bech32";
 import { BECH32_PREFIX } from "../types";
 
+type ParsedTLVItem = {
+  type: number;
+  length: number;
+  value: Uint8Array | number;
+};
+
+type ConvertedTLVItem = {
+  /**
+   * 0: special
+   * 1: relay
+   * 2: author
+   * 3: kind
+   */
+  type: number;
+  value: string | number;
+};
+
 function hexToBytes(hex: string) {
   const bytes = new Uint8Array(Math.ceil(hex.length / 2));
   for (let i = 0; i < bytes.length; i++) {
@@ -9,12 +26,10 @@ function hexToBytes(hex: string) {
   return bytes;
 }
 
-function bytesToHex(bytes: Uint8Array) {
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) {
-    hex += bytes[i].toString(16).padStart(2, "0");
-  }
-  return hex;
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function generateTLV(
@@ -55,28 +70,48 @@ function generateTLV(
 
 function parseTLV(
   data: Uint8Array
-): Array<{ type: number; value: string | number }> {
+): Array<{ type: number; length: number; value: Uint8Array | number }> {
   let position = 0;
   const items = [];
 
   while (position < data.length) {
     const type = data[position++];
     const length = data[position++];
-    let value;
+    let value: Uint8Array | number;
 
-    if (type === 1) {
-      value = new TextDecoder().decode(data.slice(position, position + length));
-    } else if (type === 3) {
-      value = new DataView(data.buffer).getUint32(position);
+    if (type === 3) {
+      // If type is 3, parse the value as a 32-bit unsigned integer in big-endian format.
+      const valueArray = data.slice(position, position + length);
+      value = new DataView(valueArray.buffer).getUint32(0, false); // Big-endian
     } else {
-      value = bytesToHex(data.slice(position, position + length));
+      // Otherwise, keep the value as a Uint8Array.
+      value = data.slice(position, position + length);
     }
 
-    items.push({ type, value });
+    items.push({ type, length, value });
     position += length;
   }
 
   return items;
+}
+
+function convertTLV(tlvItems: ParsedTLVItem[]): ConvertedTLVItem[] {
+  return tlvItems.map((item) => {
+    let value;
+
+    if (item.type === 3) {
+      // The value is already a number for type 3
+      value = item.value;
+    } else if (item.type === 1) {
+      // Convert Uint8Array to Text String for type 1
+      value = new TextDecoder().decode(item.value as Uint8Array);
+    } else {
+      // Convert Uint8Array to Hex String for other types
+      value = bytesToHex(item.value as Uint8Array);
+    }
+
+    return { type: item.type, value };
+  });
 }
 
 export function encodeBech32(
@@ -98,26 +133,41 @@ export function encodeBech32(
 
   const words = bech32.toWords(new Uint8Array(tlvData.buffer));
 
-  const encoded = bech32.encode(prefix, words);
+  const encoded = bech32.encode(prefix, words, 1023);
 
   return encoded;
 }
 
+/**
+ * https://github.com/nostr-protocol/nips/blob/master/19.md
+ * @param bech32Str
+ * @returns
+ */
 export function decodeBech32(bech32Str: string) {
-  const { prefix, words } = bech32.decode(bech32Str);
+  const { prefix, words } = bech32.decode(bech32Str, 1023);
   const tlvData = new Uint8Array(bech32.fromWords(words));
-  let tlvItems;
+  let tlvItems: ConvertedTLVItem[];
 
+  // Check if the prefix matches one of the specified values
   if (
     prefix === BECH32_PREFIX.PublicKeys ||
     prefix === BECH32_PREFIX.PrivateKeys ||
     prefix === BECH32_PREFIX.NoteIDs ||
+    // not sure:
     prefix === BECH32_PREFIX.LNURL
   ) {
     tlvItems = [{ type: 0, value: bytesToHex(tlvData) }];
+  } else if (
+    prefix === BECH32_PREFIX.Profile ||
+    prefix === BECH32_PREFIX.Event ||
+    prefix === BECH32_PREFIX.Relay ||
+    prefix === BECH32_PREFIX.EventCoordinate
+  ) {
+    const parsedTLVItems: ParsedTLVItem[] = parseTLV(tlvData);
+    tlvItems = convertTLV(parsedTLVItems);
   } else {
-    tlvItems = parseTLV(tlvData);
+    throw new Error("Unknown prefix: " + prefix);
   }
 
-  return { prefix, tlvItems };
+  return { prefix, tlvItems: tlvItems };
 }

@@ -20,6 +20,7 @@ export * from "./lnurl-zap";
 export * from "./lnurl";
 export * from "./lud16-to-url";
 export * from "./nip05-to-url";
+export * from "./nostr-url";
 export * from "./provider-names";
 export * from "./serialize-event";
 export * from "./sign-event";

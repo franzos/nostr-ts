@@ -104,10 +104,16 @@ export const CreateEventForm = () => {
       useNClient.getState().signAndSendEvent(ev);
       setKind(newEventName);
     } catch (e) {
-      setErrors([e.message]);
+      let error = "";
+      if (e instanceof Error) {
+        error = e.message;
+      } else {
+        error = e ? e.toString() : "Unknown error";
+      }
+      setErrors([error]);
       toast({
         title: "Error",
-        description: e.message,
+        description: error,
         status: "error",
         duration: 5000,
         isClosable: true,

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -27,7 +28,6 @@ import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
-import { useState } from "react";
 
 export interface EventProps extends NEventWithUserBase {
   userComponent?: JSX.Element;
@@ -103,14 +103,20 @@ export function Event({
         });
       }
     } catch (e) {
-      console.error(e);
+      let error = "";
+      if (e instanceof Error) {
+        error = e.message;
+      } else {
+        error = e ? e.toString() : "Unknown error";
+      }
       toast({
         title: "Error",
-        description: e.message,
+        description: error,
         status: "error",
         duration: 5000,
         isClosable: true,
       });
+      return;
     }
   };
 
@@ -140,13 +146,20 @@ export function Event({
       }
     } catch (e) {
       console.error(e);
+      let error = "";
+      if (e instanceof Error) {
+        error = e.message;
+      } else {
+        error = e ? e.toString() : "Unknown error";
+      }
       toast({
         title: "Error",
-        description: e.message,
+        description: error,
         status: "error",
         duration: 5000,
         isClosable: true,
       });
+      return;
     }
   };
 
@@ -177,7 +190,7 @@ export function Event({
           <ModalContent>
             <ModalBody>
               <Image
-                src={selectedImage}
+                src={selectedImage || ""}
                 fallback={<Image src="/no-image.png" />}
                 fallbackStrategy="onError"
                 alt="Enlarged view"

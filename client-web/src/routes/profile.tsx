@@ -12,11 +12,9 @@ export function UserProfileRoute() {
   const [user, setUser] = useState<NUserBase | null>(null);
   const params = useParams<{ pubkey: string }>();
 
-  //   const [subscriptionIsActive, setSubscriptionIsActive] = useState(false);
-
   useEffect(() => {
     const load = async () => {
-      if (!params.pubkey) {
+      if (params.pubkey == undefined) {
         return;
       }
       if (connected) {
@@ -27,7 +25,7 @@ export function UserProfileRoute() {
             (s) =>
               s.filters &&
               s.filters.authors &&
-              s.filters?.authors.includes(params.pubkey)
+              s.filters?.authors.includes(params.pubkey as string)
           );
           if (sub) {
             return;

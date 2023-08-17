@@ -12,9 +12,13 @@ import { UserProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
 import "./index.css";
 
-await useNClient.getState().init({
-  maxEvents: MAX_EVENTS,
-});
+const init = async () => {
+  useNClient.getState().init({
+    maxEvents: MAX_EVENTS,
+  });
+};
+
+init();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

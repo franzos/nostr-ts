@@ -21,6 +21,26 @@ Run:
 pnpm run dev
 ```
 
+### Production
+
+There's a Dockerfile and docker-compose.yml in the root of the repository. It builds all packages, then client-web, and uses nginx to serve.
+
+```bash
+pnpm run build
+```
+
+Serve the `./dist` directory.
+
+### Docker
+
+```bash
+cd ../
+docker-compose build
+docker-compose up
+```
+
+Open [http://127.0.0.1:4000/](vhttp://127.0.0.1:4000/) in your browser.
+
 ## Preview
 
 Here's an early preview. I'll update it occasionally.

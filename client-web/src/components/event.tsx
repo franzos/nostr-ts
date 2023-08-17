@@ -23,14 +23,22 @@ import {
   NewShortTextNoteResponse,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
-import { User } from "./user";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 import { useState } from "react";
 
-export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
+export interface EventProps extends NEventWithUserBase {
+  userComponent?: JSX.Element;
+}
+
+export function Event({
+  userComponent,
+  event,
+  reactions,
+  reposts,
+}: EventProps) {
   const toast = useToast();
 
   const downVotesCount =
@@ -152,6 +160,8 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
                 <Image
                   key={index}
                   src={i}
+                  fallback={<Image src="/no-image.png" />}
+                  fallbackStrategy="onError"
                   alt=""
                   onClick={() => openImage(i)}
                 />
@@ -159,15 +169,7 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
             </Box>
           )}
           <Box p={4} paddingBottom={0}>
-            {user ? (
-              <User user={user} />
-            ) : (
-              <User
-                user={{
-                  pubkey: event.pubkey,
-                }}
-              />
-            )}
+            {userComponent && userComponent}
           </Box>
         </Box>
         <Modal isOpen={isOpen} onClose={onClose}>
@@ -176,6 +178,8 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
             <ModalBody>
               <Image
                 src={selectedImage}
+                fallback={<Image src="/no-image.png" />}
+                fallbackStrategy="onError"
                 alt="Enlarged view"
                 maxW="100%"
                 maxH="100%"
@@ -193,10 +197,16 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
       </CardBody>
       <CardFooter p={4}>
         <HStack>
-          <Button variant="solid" colorScheme="blue" onClick={() => newReply()}>
+          <Button
+            size="sm"
+            variant="solid"
+            colorScheme="blue"
+            onClick={() => newReply()}
+          >
             Reply
           </Button>
           <Button
+            size="sm"
             aria-label="Upvote"
             leftIcon={<Icon as={ThumbUpIcon} />}
             onClick={() => newReaction("+")}
@@ -204,6 +214,7 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
             {upVotesCount}
           </Button>
           <Button
+            size="sm"
             aria-label="Downvote"
             leftIcon={<Icon as={ThumbDownIcon} />}
             onClick={() => newReaction("-")}
@@ -211,6 +222,7 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
             {downVotesCount}
           </Button>
           <Button
+            size="sm"
             aria-label="Repost"
             leftIcon={<Icon as={RepeatIcon} />}
             onClick={newQuoteRepost}
@@ -219,7 +231,7 @@ export function Event({ user, event, reactions, reposts }: NEventWithUserBase) {
           </Button>
           {reactionsWithCount &&
             Object.keys(reactionsWithCount).map((r) => (
-              <Button key={r} aria-label="Repost" isDisabled={true}>
+              <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
                 {r} {reactionsWithCount[r]}
               </Button>
             ))}

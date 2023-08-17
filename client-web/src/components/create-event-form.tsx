@@ -3,7 +3,6 @@ import {
   Box,
   FormControl,
   FormLabel,
-  Text,
   Input,
   Button,
   useToast,
@@ -186,11 +185,7 @@ export const CreateEventForm = () => {
   return (
     <Box width="100%">
       <FormControl marginBottom={4}>
-        <FormLabel>Type</FormLabel>
-
-        <Text fontSize="xs">
-          Selected: {translateNameToLabel(newEventName)}
-        </Text>
+        <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
         {users.map((user) => (
           <User user={user} key={user.pubkey} />

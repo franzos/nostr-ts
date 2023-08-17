@@ -9,8 +9,15 @@ import {
 } from "@chakra-ui/react";
 import { UserBase } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
+import { Link } from "react-router-dom";
 
-export function User({ user }: { user: UserBase }) {
+export function User({
+  user,
+  hideFollow,
+}: {
+  user: UserBase;
+  hideFollow?: boolean;
+}) {
   const [following] = useNClient((state) => [
     state.followingUserIds.find((f) => f === user.pubkey),
   ]);
@@ -19,8 +26,9 @@ export function User({ user }: { user: UserBase }) {
   const display_name =
     data && data.display_name ? data.display_name : "Anonymous";
   const name = data && data.name ? data.name : "Anonymous";
-  const picture =
-    data && data.picture ? data.picture : "https://via.placeholder.com/150";
+  const picture = data && data.picture ? data.picture : "/no-image.png";
+
+  const profileLink = `/p/${user.pubkey}`;
 
   return (
     <Flex>
@@ -28,11 +36,13 @@ export function User({ user }: { user: UserBase }) {
         <Avatar size="sm" src={picture} />
       </Box>
       <Box>
-        <Heading size="sm">{display_name}</Heading>
-        <Text fontSize="sm">{name}</Text>
+        <Link to={profileLink}>
+          <Heading size="sm">{display_name}</Heading>
+          <Text fontSize="sm">{name}</Text>
+        </Link>
       </Box>
       <Spacer />
-      {following ? (
+      {!hideFollow && following ? (
         <Button
           variant="outline"
           colorScheme="red"

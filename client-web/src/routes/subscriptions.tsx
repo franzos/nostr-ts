@@ -15,10 +15,31 @@ import {
   Thead,
   Tr,
   useDisclosure,
+  Text,
+  Tooltip,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
-import { ClientSubscription } from "@nostr-ts/common";
+import { ClientSubscription, NEVENT_KIND } from "@nostr-ts/common";
+
+const kinds = Object.keys(NEVENT_KIND).map((k) => {
+  return {
+    name: k,
+    value: NEVENT_KIND[k as keyof typeof NEVENT_KIND],
+  };
+});
+
+const kindToName = (kind: NEVENT_KIND) => {
+  const kindObj = kinds.find((k) => k.value === kind);
+  if (kindObj) {
+    return kindObj.name;
+  }
+  return "Unknown";
+};
+
+const kindsToName = (kinds: NEVENT_KIND[]) => {
+  return kinds.map(kindToName).join(", ");
+};
 
 export function SubscriptionsRoute() {
   const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>([]);
@@ -60,19 +81,26 @@ export function SubscriptionsRoute() {
   const Subscription = (sub: ClientSubscription) => {
     return (
       <Tr key={`${sub.connectionId}-${sub.subscriptionId}`}>
-        <Td>{sub.subscriptionId}</Td>
+        <Td>
+          <Tooltip label={sub.subscriptionId}>
+            {`${sub.subscriptionId.substring(0, 3)}..`}
+          </Tooltip>
+        </Td>
+        <Td>{sub.filters.kinds && kindsToName(sub.filters.kinds)}</Td>
         <Td>
           <Button
+            size={"sm"}
             onClick={() => {
               setSelectedFilter(JSON.stringify(sub.filters, null, 2));
               onFilterModalOpen();
             }}
           >
-            Show filters
+            Show
           </Button>
         </Td>
         <Td>
           <Button
+            size={"sm"}
             onClick={() =>
               useNClient.getState().unsubscribe(sub.subscriptionId)
             }
@@ -87,10 +115,11 @@ export function SubscriptionsRoute() {
   return (
     <Box>
       <Heading size="lg">Subscriptions</Heading>
-      <Table variant="simple">
+      <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>
             <Th>ID</Th>
+            <Th>Kind</Th>
             <Th>Filter</Th>
             <Th>Action</Th>
           </Tr>
@@ -101,6 +130,16 @@ export function SubscriptionsRoute() {
           })}
         </Tbody>
       </Table>
+      <Heading size="md" marginBottom={2}>
+        Legend
+      </Heading>
+      {kinds.map((k) => {
+        return (
+          <Text key={k.name}>
+            {k.name} - {k.value}
+          </Text>
+        );
+      })}
       {FilterModal}
     </Box>
   );

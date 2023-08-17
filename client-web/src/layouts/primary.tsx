@@ -204,7 +204,7 @@ export function PrimaryLayout() {
   );
 
   return (
-    <Container maxW="8xl" p={5}>
+    <Container maxW="10xl" p={5}>
       <VStack spacing={5} align="stretch">
         <VStack spacing={1} align="start">
           <Heading as="h1" size="lg">
@@ -212,15 +212,15 @@ export function PrimaryLayout() {
           </Heading>
         </VStack>
 
-        <Grid templateColumns={["1fr", "1fr 2fr 1fr"]} gap={20}>
+        <Grid templateColumns={["1fr", "0.5fr 2fr 1fr"]} gap={20}>
           {Sidebar}
 
           <Box maxHeight="80vh" overflowY="auto">
             <Outlet />
           </Box>
-          <Box display="flex" flexDirection="column" alignItems="flex-end">
-            <Heading as="h2" size="md">
-              Broadcast
+          <Box display="flex" flexDirection="column">
+            <Heading as="h2" size="md" marginBottom={4}>
+              Broadcast to the Network
             </Heading>
             <CreateEventForm />
           </Box>

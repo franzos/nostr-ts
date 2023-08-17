@@ -1,10 +1,11 @@
-import { Box, Button } from "@chakra-ui/react";
+import { Box, Button, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useState } from "react";
 import { MAX_EVENTS } from "../defaults";
+import { User } from "./user";
 
-export function Events() {
+export function Events(props?: { userComponent?: typeof User }) {
   const [events] = useNClient((state) => [state.events]);
   const [eventsCount] = useNClient((state) => [state.events.length]);
   const [maxEvents] = useNClient((state) => [state.maxEvents]);
@@ -54,10 +55,24 @@ export function Events() {
               reposts={event.reposts}
               eventRelayUrls={event.eventRelayUrls}
               key={event.event.id}
+              userComponent={
+                props && props.userComponent ? (
+                  event.user ? (
+                    <props.userComponent user={event.user} />
+                  ) : (
+                    <props.userComponent
+                      user={{
+                        pubkey: event.event.pubkey,
+                      }}
+                    />
+                  )
+                ) : undefined
+              }
             />
           </Box>
         );
       })}
+      {eventsCount === 0 && <Text>Waiting for fresh content ... hold on.</Text>}
       {eventsCount >= maxEvents && (
         <Box display="flex" justifyContent="space-between" padding={2}>
           <Button flex="1" marginRight={2} onClick={moreEvents}>

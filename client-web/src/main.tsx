@@ -8,6 +8,7 @@ import { PrimaryLayout } from "./layouts/primary.tsx";
 import { WelcomeRoute } from "./routes/welcome.tsx";
 import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
+import { UserProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
 import "./index.css";
 
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
+            <Route path="/p/:pubkey" element={<UserProfileRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

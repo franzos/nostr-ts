@@ -18,6 +18,7 @@ export function MenuItem({
       padding={2}
       border="1px solid"
       borderColor={"gray.200"}
+      borderRadius={2}
       backgroundColor={"gray.100"}
       _hover={{
         backgroundColor: "gray.300",

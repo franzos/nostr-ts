@@ -15,7 +15,7 @@ Nostr web client built with React.
 - Relies on IndexedDB and local storage for data and accounts
 - implements `@nostr-ts/common` and `@nostr-ts/web`
 
-- `nos2x` support is planned
+Initial support for `nos2x` and any other extention following NIP-07 is available.
 
 ![Preview](./client-web/preview.png)
 
@@ -92,9 +92,17 @@ const keypair = await loadOrCreateKeypair('./key')
 
 ```js
 let client = new RelayClient([
-    'wss://nostr.rocks',
-    'wss://nostr.lu.ke'
-]);
+    {
+        url: 'wss://nostr.rocks',
+        read: true,
+        write: true,
+    },
+    {
+        url: 'wss://nostr.lu.ke',
+        read: true,
+        write: true,
+    },
+])
 await client.getRelayInformation();
 ```
 
@@ -387,8 +395,16 @@ const recipient = new NUser({
 const filters = recipient.getMetadataFilter()
 
 let client = new RelayClient([
-    'wss://nostr.rocks',
-    'wss://nostr.lu.ke'
+    {
+        url: 'wss://nostr.rocks',
+        read: true,
+        write: true,
+    },
+    {
+        url: 'wss://nostr.lu.ke',
+        read: true,
+        write: true,
+    },
 ]);
 await client.getRelayInformation();
 
@@ -456,12 +472,17 @@ const main = async () => {
   const keypair = await loadOrCreateKeypair();
 
   let client = new RelayClient([
-    "wss://nostr.rocks",
-    "wss://nostr.wine",
-    "wss://nostr.lu.ke",
-    "wss://nos.lol",
-    "wss://nostr.orangepill.dev",
-  ]);
+    {
+        url: 'wss://nostr.rocks',
+        read: true,
+        write: true,
+    },
+    {
+        url: 'wss://nostr.lu.ke',
+        read: true,
+        write: true,
+    },
+]);
 
   const relayDiscovery = new RelayDiscovery();
   const filters = new NFilters();

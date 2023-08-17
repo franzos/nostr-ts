@@ -2,6 +2,7 @@ import {
   RelayClientBase,
   WebSocketClientInfo,
   DiscoveredRelay,
+  Relay,
 } from "@nostr-ts/common";
 import { WebSocketClient } from "../utils/ws";
 import { getRelayInformationDocument } from "../utils/relay-information";
@@ -11,7 +12,7 @@ import { getRelayInformationDocument } from "../utils/relay-information";
  */
 export class RelayClient extends RelayClientBase {
   constructor(
-    urls?: string[],
+    initRelays?: Relay[],
     options?: {
       /**
        * If you want to connect to relays manually, set this to true
@@ -20,8 +21,11 @@ export class RelayClient extends RelayClientBase {
       connectManually?: boolean;
     }
   ) {
-    super(urls);
-    if ((!options && urls) || (urls && options.connectManually !== true)) {
+    super(initRelays);
+    if (
+      (!options && initRelays) ||
+      (initRelays && options.connectManually !== true)
+    ) {
       this.connectRelays();
     }
   }
@@ -63,7 +67,15 @@ export class RelayClient extends RelayClientBase {
    * 2. Run getRelayInformation
    */
   public loadFromDiscovered(relays: DiscoveredRelay[]) {
-    this.addInitialRelays(relays.flatMap((r) => r.url));
+    this.addInitialRelays(
+      relays.flatMap((r) => {
+        return {
+          url: r.url,
+          read: true,
+          write: true,
+        };
+      })
+    );
     this.connectRelays();
   }
 

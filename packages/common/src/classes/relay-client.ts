@@ -8,6 +8,7 @@ import {
   ClientRequest,
   ClientSubscription,
   Count,
+  Relay,
   RelayAuth,
   RelayCount,
   RelayEose,
@@ -22,17 +23,17 @@ import { RelayConnection } from "./relay-connection";
 export class RelayClientBase {
   public relays: RelayConnection[] = [];
 
-  constructor(urls?: string[]) {
-    this.addInitialRelays(urls);
+  constructor(seedRelays?: Relay[]) {
+    this.addInitialRelays(seedRelays);
   }
 
   /**
    * Only to be used if you want to initialize Relay Client manually
    */
-  public addInitialRelays(urls?: string[]) {
-    if (urls && (!this.relays || this.relays.length === 0)) {
-      for (const url of urls) {
-        this.relays.push(new RelayConnection({ url }));
+  public addInitialRelays(seedRelays?: Relay[]) {
+    if (seedRelays && (!this.relays || this.relays.length === 0)) {
+      for (const relay of seedRelays) {
+        this.relays.push(new RelayConnection({ url: relay.url }));
       }
     }
   }

@@ -33,6 +33,7 @@ import { User } from "./user";
 export const CreateEventForm = () => {
   const [connected] = useNClient((state) => [state.connected]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [keystore] = useNClient((state) => [state.keystore]);
   const [keypair] = useNClient((state) => [state.keypair]);
   const [eventKind] = useNClient((state) => [state.newEvent?.kind || 0]);
   const [newEventName] = useNClient((state) => [state.newEventName]);
@@ -77,6 +78,18 @@ export const CreateEventForm = () => {
       return;
     }
 
+    if (keystore && keystore === "none") {
+      setErrors(["Keystore is required"]);
+      toast({
+        title: "Error",
+        description: "Keystore is required",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
     if (!keypair) {
       setErrors(["Keypair is required"]);
       toast({
@@ -88,6 +101,7 @@ export const CreateEventForm = () => {
       });
       return;
     }
+
     if (!ev.content) {
       setErrors(["Event content is required"]);
       toast({
@@ -101,8 +115,9 @@ export const CreateEventForm = () => {
     }
 
     try {
-      useNClient.getState().signAndSendEvent(ev);
-      setKind(newEventName);
+      await useNClient.getState().signAndSendEvent(ev);
+      const overwrite = true;
+      setKind(newEventName, overwrite);
     } catch (e) {
       let error = "";
       if (e instanceof Error) {
@@ -139,9 +154,9 @@ export const CreateEventForm = () => {
     }
   };
 
-  const setKind = (name: string) => {
+  const setKind = (name: string, overwrite = false) => {
     let event;
-    if (name === newEventName) {
+    if (!overwrite && name === newEventName) {
       console.log(`Already set to ${name}`);
       return;
     }
@@ -154,7 +169,7 @@ export const CreateEventForm = () => {
         break;
       case "NewRecommendRelay":
         event = NewRecommendRelay({
-          relayUrl: DEFAULT_RELAYS[0],
+          relayUrl: Object.keys(DEFAULT_RELAYS)[0],
         });
         name = "NewRecommendRelay";
         break;
@@ -167,7 +182,7 @@ export const CreateEventForm = () => {
       case "NewQuoteRepost":
         event = NewQuoteRepost({
           inResponseTo: new NUser({ pubkey: "" }),
-          relayUrl: DEFAULT_RELAYS[0],
+          relayUrl: Object.keys(DEFAULT_RELAYS)[0],
         });
         break;
       default:

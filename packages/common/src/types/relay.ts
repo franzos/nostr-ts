@@ -2,6 +2,8 @@ import { RelayInformationDocument } from "../";
 
 export interface Relay {
   url: string;
+  read: boolean;
+  write: boolean;
 }
 
 export interface DiscoveredRelay extends Relay {

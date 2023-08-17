@@ -3,20 +3,9 @@ import {
   Box,
   Button,
   Container,
-  Flex,
   Grid,
   Heading,
   Icon,
-  Input,
-  Link,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Text,
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -28,7 +17,7 @@ import { CreateEventForm } from "../components/create-event-form";
 import { MenuItem } from "../components/menu-item";
 import LanConnectIcon from "mdi-react/LanConnectIcon";
 import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
-import { DEFAULT_RELAYS } from "../defaults";
+import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
   const [connected] = useNClient((state) => [state.connected]);
@@ -37,9 +26,6 @@ export function PrimaryLayout() {
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
   const [keystore] = useNClient((state) => [state.keystore]);
 
-  const [initialRelayUrls, setInitialRelayUrls] =
-    useState<string[]>(DEFAULT_RELAYS);
-  const [newRelayUrl, setNewRelayUrl] = useState<string>("");
   const {
     isOpen: isConnectModalOpen,
     onOpen: onConnectModalOpen,
@@ -65,99 +51,6 @@ export function PrimaryLayout() {
 
     return () => clearInterval(statsUpdateInterval);
   }, []);
-
-  const ConnectModal = (
-    <Modal isOpen={isConnectModalOpen} onClose={onConnectModalClose}>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Connect to Relay(s)</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <Text>
-            You can find a list of relays in the nostr-ts repository
-            <Link
-              marginLeft={1}
-              href="https://github.com/franzos/nostr-ts/blob/master/discovered-relays.json"
-              isExternal
-              color="blue.500"
-            >
-              github.com/franzos/nostr-ts
-            </Link>
-            ,
-            <Link
-              marginLeft={1}
-              marginRight={1}
-              href="https://nostr.info/relays/"
-              isExternal
-              color="blue.500"
-            >
-              nostr.info
-            </Link>
-            and elsewhere.
-          </Text>
-          {/* List of Relays */}
-          <VStack spacing={3} width="100%">
-            {initialRelayUrls.map((url, index) => (
-              <Flex
-                key={index}
-                width="100%"
-                alignItems="center"
-                borderBottom="1px solid"
-                borderColor="gray.200"
-                py={2}
-              >
-                <Text flex="1" marginLeft="2">
-                  {url}
-                </Text>
-                <Button
-                  ml="auto"
-                  onClick={() => {
-                    const newUrls = initialRelayUrls.filter((u) => u !== url);
-                    setInitialRelayUrls(newUrls);
-                  }}
-                >
-                  Remove
-                </Button>
-              </Flex>
-            ))}
-          </VStack>
-
-          {/* Input for Adding New Relays */}
-          <Flex direction="row" alignItems="center">
-            <Input
-              flex="1"
-              value={newRelayUrl}
-              onChange={(e) => setNewRelayUrl(e.target.value)}
-              placeholder="Enter new relay URL"
-            />
-            <Button
-              ml={2}
-              onClick={() => {
-                if (newRelayUrl.trim() !== "") {
-                  setInitialRelayUrls([...initialRelayUrls, newRelayUrl]);
-                  setNewRelayUrl("");
-                }
-              }}
-            >
-              Add
-            </Button>
-          </Flex>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            colorScheme="green"
-            disabled={initialRelayUrls.length === 0}
-            onClick={() => {
-              useNClient.getState().connect(initialRelayUrls);
-              onConnectModalClose();
-            }}
-          >
-            Connect
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
 
   const Sidebar = (
     <VStack align="start" spacing={5} w="100%">
@@ -227,7 +120,11 @@ export function PrimaryLayout() {
         </Grid>
       </VStack>
       {<BottomBar />}
-      {ConnectModal}
+      {ConnectModal({
+        isOpen: isConnectModalOpen,
+        onOpen: onConnectModalOpen,
+        onClose: onConnectModalClose,
+      })}
     </Container>
   );
 }

@@ -15,6 +15,7 @@ import {
   NEVENT_KIND,
   NUserBase,
   UserBase,
+  Relay,
 } from "@nostr-ts/common";
 import { NUser, RelayClient } from "@nostr-ts/web";
 import { NEventWithUserBase } from "@nostr-ts/common";
@@ -123,7 +124,7 @@ export interface NClientStore {
   init(config?: { maxEvents?: number }): Promise<void>;
   client: RelayClient | null;
   connected: boolean;
-  connect: (relayUrls?: string[]) => void;
+  connect: (relays?: Relay[]) => void;
   disconnect: () => void;
   subscribe: (filters: NFilters) => ClientSubscription[] | undefined;
   subscriptions: () => ClientSubscription[];
@@ -133,7 +134,7 @@ export interface NClientStore {
   loadKeyStore: () => void;
   saveKeyStore: () => void;
   setKeyStore: (config: NClientCKeystore) => void;
-  keypair?: { publicKey: string; privateKey: string };
+  keypair?: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;
   eventsPagination: Pagination;
   newEvent: NEvent | null;
@@ -160,7 +161,7 @@ export interface NClientStore {
   }) => void;
   getEventById: (id: string) => void;
   sendEvent: (event: NEvent) => void;
-  signAndSendEvent: (event: NEvent) => string;
+  signAndSendEvent: (event: NEvent) => Promise<string>;
   clearEvents: () => void;
   followUser(pubkey: string): void;
   unfollowUser(pubkey: string): void;
@@ -201,11 +202,11 @@ export const useNClient = create<NClientStore>((set, get) => ({
   },
   client: null,
   connected: false,
-  connect: (relayUrls?: string[]) => {
+  connect: (relays?: Relay[]) => {
     if (get().connected) {
       return;
     }
-    const client = new RelayClient(relayUrls);
+    const client = new RelayClient(relays);
 
     client.listen(async (payload) => {
       // console.log(`Event ${payload.meta.id} on ${payload.meta.url}.`);
@@ -294,6 +295,15 @@ export const useNClient = create<NClientStore>((set, get) => ({
         });
         get().saveKeyStore();
       }
+    } else if (config.keystore === "nos2x") {
+      set({
+        keystore: config.keystore,
+        keypair: {
+          publicKey: config.publicKey || "",
+        },
+      });
+    } else {
+      console.error(`Unknown keystore ${config.keystore}`);
     }
   },
   keypair: { publicKey: "", privateKey: "" },
@@ -504,7 +514,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
       throw new Error("Failed to send event");
     }
   },
-  signAndSendEvent: (event: NEvent) => {
+  signAndSendEvent: async (event: NEvent) => {
     const client = get().client;
     if (!client) {
       throw new Error("Client not initialized");
@@ -513,8 +523,28 @@ export const useNClient = create<NClientStore>((set, get) => ({
     if (!keypair) {
       throw new Error("Keypair not initialized");
     }
-    event.signAndGenerateId(keypair);
-    get().sendEvent(event);
+
+    let signedEvent: NEvent;
+
+    const keystore = get().keystore;
+    if (keystore === "localstore") {
+      event.signAndGenerateId({
+        privateKey: keypair.privateKey || "",
+        publicKey: keypair.publicKey,
+      });
+      signedEvent = event;
+    } else if (keystore === "nos2x") {
+      if (window.nostr && window.nostr.signEvent) {
+        const ev = await window.nostr.signEvent(event.toJson());
+        console.log("signed event", ev);
+        signedEvent = new NEvent(ev);
+      } else {
+        throw new Error("Nostr not initialized");
+      }
+    } else {
+      throw new Error("Invalid keystore");
+    }
+    get().sendEvent(signedEvent);
     return event.id;
   },
   clearEvents: () => {

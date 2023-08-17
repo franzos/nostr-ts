@@ -5,7 +5,7 @@ Nostr web client built with React.
 - Relies on IndexedDB and local storage for data and accounts
 - implements `@nostr-ts/common` and `@nostr-ts/web`
 
-- `nos2x` support is planned
+Initial support for `nos2x` and any other extention following NIP-07 is available.
 
 ## Setup
 

@@ -1,4 +1,5 @@
 import { NEVENT_KIND, NEventContent } from "../types";
+import { isValidWebSocketUrl } from "./websocket-url";
 
 /**
  * Extract information from content
@@ -85,40 +86,39 @@ export function createEventContent(content: NEventContent) {
  */
 export function isValidEventContent(
   content: string,
-  kind: NEVENT_KIND
-): boolean {
+  kind?: NEVENT_KIND
+): { isValid: boolean; error?: string } {
   // No content is valid content
-  if (!content || content === "") return true;
+  if (!content || content === "") return { isValid: true };
 
   if (kind === NEVENT_KIND.REPOST) {
     // Expect empty or json
     try {
       JSON.parse(content);
-      return true;
+      return { isValid: true };
     } catch (e) {
       console.error(e);
-      return false;
+      return { isValid: false, error: "Invalid JSON format" };
+    }
+  } else if (kind === NEVENT_KIND.RECOMMEND_RELAY) {
+    if (!isValidWebSocketUrl(content)) {
+      return {
+        isValid: false,
+        error: `Expected a valid websocket URL, got ${content}.`,
+      };
     }
   }
 
   if (containsHTML(content)) {
-    return false;
+    return { isValid: false, error: "HTML tags are not allowed" };
   }
 
   if (containsLineBreaks(content)) {
-    return false;
+    return { isValid: false, error: "Line breaks are not allowed" };
   }
 
-  if (isAcceptedFormat(content)) {
-    return true;
-  }
-
-  if (isPlainUnicode(content)) {
-    return true;
-  }
-
-  // If none of the conditions are met
-  return false;
+  // If none of the negative conditions are met
+  return { isValid: true };
 }
 
 function containsHTML(content: string): boolean {
@@ -128,29 +128,4 @@ function containsHTML(content: string): boolean {
 
 function containsLineBreaks(content: string): boolean {
   return content.includes("\n");
-}
-
-function isAcceptedFormat(content: string): boolean {
-  const validUrlRegex = /^(.*)(wss:\/\/[a-zA-Z0-9.-]+)/;
-  const validNostrRegex = /^(.*)(nostr:[a-fA-F0-9]{64})/;
-  const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/;
-
-  if (
-    validUrlRegex.test(content) ||
-    validNostrRegex.test(content) ||
-    markdownLinkRegex.test(content)
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function isPlainUnicode(content: string): boolean {
-  const plainUnicodeRegex = /^[\p{L}\p{M}\p{N}\p{Z}\p{S}]+$/u;
-  if (plainUnicodeRegex.test(content)) {
-    return true;
-  }
-
-  return false;
 }

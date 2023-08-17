@@ -1,4 +1,4 @@
-import { decodeLnurl, encodeLnurl } from "../src";
+import { decodeLnurl, encodeLnurl } from "..";
 
 test("decodeLnurl", () => {
   const lnurl =

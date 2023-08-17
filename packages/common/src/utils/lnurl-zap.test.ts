@@ -1,4 +1,4 @@
-import { isValidLnurlInvoiceResponse } from "../src";
+import { isValidLnurlInvoiceResponse } from "..";
 
 test("isValidLnurlInvoiceResponse", () => {
   const req = {

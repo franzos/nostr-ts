@@ -1,4 +1,4 @@
-import { lud16ToUrl } from "../src";
+import { lud16ToUrl } from "..";
 
 test("lud16ToUrl", () => {
   const lud16 = "satoshi@bitcoin.org";

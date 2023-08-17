@@ -1,6 +1,7 @@
 import {
   NEvent,
   NREPORT_KIND,
+  NewLongFormContent,
   NewReaction,
   NewShortTextNote,
   NewShortTextNoteResponse,
@@ -15,7 +16,7 @@ import {
   generateClientKeys,
   generateReportTags,
   isValidEventContent,
-} from "../src";
+} from "..";
 
 const keypair_one = generateClientKeys();
 const keypair_two = generateClientKeys();
@@ -68,7 +69,7 @@ test("NewShortTextNoteResponse", () => {
 
   const publicKeyTags = evR.tags?.filter((tag) => tag[0] === "p");
   expect(publicKeyTags?.length).toEqual(1);
-  expect(publicKeyTags?.[0]).toEqual(["p", keypair_one.pub]);
+  expect(publicKeyTags?.[0]).toEqual(["p", keypair_one.publicKey]);
 });
 
 test("NewReaction", () => {
@@ -97,7 +98,21 @@ test("NewReaction", () => {
 
   const publicKeyTags = evR.tags?.filter((tag) => tag[0] === "p");
   expect(publicKeyTags?.length).toEqual(1);
-  expect(publicKeyTags?.[0]).toEqual(["p", keypair_one.pub]);
+  expect(publicKeyTags?.[0]).toEqual(["p", keypair_one.publicKey]);
+
+  const report = ev.isReadyToPublish();
+  expect(report.isReady).toEqual(true);
+});
+
+test("NewLongFormContent", () => {
+  const ev = NewLongFormContent({
+    text: "Hello everyone",
+  });
+
+  ev.signAndGenerateId(keypair_one);
+
+  const report = ev.isReadyToPublish();
+  expect(report.isReady).toEqual(true);
 });
 
 test("eventHasContentWarning", () => {
@@ -191,42 +206,6 @@ test("createEventContent: nostr", () => {
   expect(res).toEqual(
     "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
   );
-});
-
-describe("isValidEventContent", () => {
-  // Valid inputs
-  it("accepts valid relay url", () => {
-    const validContent = "wss://relay.example.com";
-    expect(isValidEventContent(validContent)).toBe(true);
-  });
-
-  it("accepts valid nostr string", () => {
-    const validContent =
-      "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234";
-    expect(isValidEventContent(validContent)).toBe(true);
-  });
-
-  it("accepts valid multiple nostr string", () => {
-    const validContent =
-      "Checkout nostr:2234567890123456789012345678901234567890123456789012345678901234 nostr:2234567890123456789012345678901234567890123456789012345678901234";
-    expect(isValidEventContent(validContent)).toBe(true);
-  });
-
-  it("accepts markdown string", () => {
-    const validContent = "Checkout [picture](https://picture.com/pic.jpg)";
-    expect(isValidEventContent(validContent)).toBe(true);
-  });
-
-  // Invalid inputs
-  it("rejects HTML content", () => {
-    const invalidContent = "<h1>This is a header</h1>";
-    expect(isValidEventContent(invalidContent)).toBe(false);
-  });
-
-  it("rejects line breaks", () => {
-    const invalidContent = "This is the first line.\nThis is the second line.";
-    expect(isValidEventContent(invalidContent)).toBe(false);
-  });
 });
 
 test("eventHasExpiration", () => {

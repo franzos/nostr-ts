@@ -1,4 +1,4 @@
-import { encodeBech32, decodeBech32, BECH32_PREFIX } from "../src";
+import { encodeBech32, decodeBech32, BECH32_PREFIX } from "..";
 
 test("encode and decode nostr entity", () => {
   // Decode npub

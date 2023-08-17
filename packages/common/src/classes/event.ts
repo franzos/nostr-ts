@@ -456,28 +456,18 @@ export class NEvent implements EventBase {
         reason: "Event has no pubkey.",
       };
     }
-    if (!isValidEventContent(this.content, this.kind)) {
-      return {
-        isReady: false,
-        reason: "Event has invalid content.",
-      };
-    }
     if (this.sig === "") {
       return {
         isReady: false,
         reason: "Event has no signature.",
       };
     }
-
-    switch (this.kind) {
-      case NEVENT_KIND.RECOMMEND_RELAY:
-        if (!isValidWebSocketUrl(this.content)) {
-          return {
-            isReady: false,
-            reason: `Event has invalid content. Expected a valid websocket url. Got ${this.content}`,
-          };
-        }
-        break;
+    const contentReport = isValidEventContent(this.content, this.kind);
+    if (!contentReport.isValid) {
+      return {
+        isReady: false,
+        reason: contentReport.error,
+      };
     }
 
     return {

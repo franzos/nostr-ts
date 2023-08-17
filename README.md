@@ -10,7 +10,12 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 
 ### Preview of the web client
 
-At the moment I use the client implementations mostly for testing, so not all library features have been implemened.
+Nostr web client built with React.
+
+- Relies on IndexedDB and local storage for data and accounts
+- implements `@nostr-ts/common` and `@nostr-ts/web`
+
+- `nos2x` support is planned
 
 ![Preview](./client-web/preview.png)
 

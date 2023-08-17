@@ -1,17 +1,13 @@
-# Nostr React client playground
+# Nostr Client
 
-## Features
+Nostr web client built with React.
 
-- Events
-- Users
-  - IndexedDB storage (thousands of users)
-  - Request information for unknown users in intervals
-  - Follow users
-- Filters
+- Relies on IndexedDB and local storage for data and accounts
+- implements `@nostr-ts/common` and `@nostr-ts/web`
+
+- `nos2x` support is planned
 
 ## Setup
-
-Open up `./src/App.tsx` and explore ...
 
 Install:
 

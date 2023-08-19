@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import {
   NEvent,
-  RELAY_MESSAGE_TYPE,
   RelayAuth,
   RelayCount,
   RelayEose,
@@ -9,19 +8,17 @@ import {
   RelayNotice,
   RelayOK,
   WebSocketClientConfig,
-  EventBase,
   NFilters,
-  ClientSubscription,
   NEVENT_KIND,
   NUserBase,
-  UserBase,
   Relay,
+  NEventWithUserBase,
+  ClientSubscription,
+  Subscribe,
 } from "@nostr-ts/common";
-import { NUser, RelayClient } from "@nostr-ts/web";
-import { NEventWithUserBase } from "@nostr-ts/common";
-import { IDBPDatabase, openDB } from "idb";
-import { Pagination } from "../lib/pagination";
 import { MAX_EVENTS } from "../defaults";
+import { Remote, wrap } from "comlink";
+import { NClientStoreBase, NClientStoreBaseWorker } from "../worker";
 
 interface NClientCKeystore {
   keystore: "none" | "localstore" | "nos2x" | "download";
@@ -86,70 +83,26 @@ function saveKeyStoreConfig(config: NClientCKeystore) {
   }
 }
 
-function shuffle(array: string[]) {
-  let currentIndex = array.length,
-    randomIndex;
-
-  // While there remain elements to shuffle...
-  while (currentIndex !== 0) {
-    // Pick a remaining element...
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-
-    // And swap it with the current element.
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
-  }
-
-  return array;
-}
-
-interface NClientDB {
-  users: {
-    key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
-  };
-  following: {
-    key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
-  };
-}
-
-export interface NClientStore {
-  db: IDBPDatabase<NClientDB> | null;
-  init(config?: { maxEvents?: number }): Promise<void>;
-  client: RelayClient | null;
-  connected: boolean;
-  connect: (relays?: Relay[]) => void;
-  disconnect: () => void;
-  subscribe: (filters: NFilters) => ClientSubscription[] | undefined;
-  subscriptions: () => ClientSubscription[];
-  unsubscribe: (id: string) => void;
-  unsubscribeAll: () => void;
-  keystore: "none" | "localstore" | "nos2x" | "download";
+export interface NClientStore extends NClientStoreBase {
+  store: Remote<NClientStoreBaseWorker>;
+  keystore?: "none" | "localstore" | "nos2x" | "download";
   loadKeyStore: () => void;
   saveKeyStore: () => void;
   setKeyStore: (config: NClientCKeystore) => void;
-  keypair?: { publicKey: string; privateKey?: string };
+  keypair: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;
-  eventsPagination: Pagination;
-  newEvent: NEvent | null;
-  setNewEvent: (event: NEvent | null) => void;
+  newEvent: NEvent;
+  signAndSendEvent: (event: NEvent) => Promise<string>;
+  setNewEvent: (event: NEvent) => void;
+  setMaxEvents: (max: number) => Promise<void>;
+  clearEvents: () => Promise<void>;
+  /**
+   * Track kind name like NewShortTextNote
+   */
   newEventName: string;
   setNewEventName: (name: string) => void;
-  events: NEventWithUserBase[];
-  maxEvents: number;
-  setMaxEvents: (max: number) => void;
-  skippedEvents: number;
-  getUser: (pubkey: string) => Promise<NUser | undefined>;
-  addUser: (user: NUserBase) => Promise<void>;
-  updateUser: (user: NUserBase) => Promise<void>;
-  countUsers: () => Promise<number>;
-  addEvent: (payload: {
+  setNewEventContent: (content: string) => void;
+  addEvent?: (payload: {
     data:
       | RelayAuth
       | RelayCount
@@ -159,90 +112,79 @@ export interface NClientStore {
       | RelayOK;
     meta: WebSocketClientConfig;
   }) => void;
-  getEventById: (id: string) => void;
+
   sendEvent: (event: NEvent) => void;
-  signAndSendEvent: (event: NEvent) => Promise<string>;
-  clearEvents: () => void;
-  followUser(pubkey: string): void;
-  unfollowUser(pubkey: string): void;
-  followingUser(pubkey: string): Promise<boolean>;
-  // For reactive updates
-  followingUserIds: string[];
-  getAllUsersFollowing(): Promise<NUserBase[] | undefined>;
-  updateUserFollowing(user: NUserBase): Promise<void>;
-  checkedUsers: string[];
-  checkedEvents: string[];
-  getUserInformation(publicKeys: string[]): void;
-  hasSubscriptionForEventId(eventId: string): boolean;
-  getEventInformation(
-    eventIds: string[],
-    options?: {
-      skipFilter?: boolean;
-      timeout?: number;
-    }
-  ): void;
+
+  viewerSubscription?: {
+    page: string;
+    subscription?: ClientSubscription;
+  };
+  setViewSubscription: (
+    view: string,
+    filters: NFilters,
+    overwrite?: boolean
+  ) => Promise<void>;
+  removeViewSubscription: (view: string) => void;
 }
 
+const worker = new Worker(new URL("../worker.ts", import.meta.url), {
+  type: "module",
+});
+
 export const useNClient = create<NClientStore>((set, get) => ({
-  db: null,
+  store: wrap<NClientStoreBaseWorker>(worker),
   init: async (config?: { maxEvents?: number }) => {
-    set({
-      db: await openDB("nostr-client", 1, {
-        upgrade(db) {
-          db.createObjectStore("users", { keyPath: "pubkey" });
-          // db.createObjectStore("subscriptions", { keyPath: "subscriptionId" });
-          db.createObjectStore("following", { keyPath: "pubkey" });
-        },
-      }),
+    await get().store.init(config);
+
+    worker.addEventListener("message", (event) => {
+      const payload = event.data as {
+        type: "new-event" | "update-event";
+        data: NEventWithUserBase;
+      };
+      if (payload.type === "new-event") {
+        set({
+          events: [...get().events, payload.data],
+        });
+      } else if (payload.type === "update-event") {
+        const eventIndex = get().events.findIndex(
+          (event) => event.event.id === payload.data.event.id
+        );
+
+        if (eventIndex !== -1) {
+          const updatedEvents = [...get().events];
+          updatedEvents[eventIndex] = payload.data;
+          set({ events: updatedEvents });
+        }
+      }
     });
-    get().loadKeyStore();
-    if (config?.maxEvents) {
-      get().setMaxEvents(config.maxEvents);
-    }
   },
-  client: null,
   connected: false,
   connect: (relays?: Relay[]) => {
     if (get().connected) {
       return;
     }
-    const client = new RelayClient(relays);
-
-    client.listen(async (payload) => {
-      // console.log(`Event ${payload.meta.id} on ${payload.meta.url}.`);
-      get().addEvent(payload);
-    });
-
-    client.subscribe({
-      filters: new NFilters({
-        limit: MAX_EVENTS,
-        kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-      }),
-    });
-    set({ client });
+    get().store.connect(relays);
     set({
       connected: true,
     });
   },
-  disconnect: () => {
-    get().client?.disconnect();
-    get().clearEvents();
+  disconnect: async () => {
+    await get().store.disconnect();
     set({
       connected: false,
     });
   },
-  subscriptions: () => {
-    return get().client?.getSubscriptions() || [];
+  subscriptions: async () => {
+    return get().store.subscriptions();
   },
-  subscribe: (filters: NFilters) => {
-    return get().client?.subscribe({ filters });
+  subscribe: (payload: Subscribe) => {
+    return get().store.subscribe(payload);
   },
   unsubscribe: (id: string) => {
-    console.log(`Unsubscribing ${id}`);
-    get().client?.unsubscribe(id);
+    return get().store.unsubscribe(id);
   },
   unsubscribeAll: () => {
-    get().client?.unsubscribeAll();
+    return get().store.unsubscribeAll();
   },
   keystore: "none",
   loadKeyStore: () => {
@@ -308,217 +250,46 @@ export const useNClient = create<NClientStore>((set, get) => ({
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
-  eventsPagination: { limit: 10, offset: 0 },
   newEvent: new NEvent({
     kind: NEVENT_KIND.SHORT_TEXT_NOTE,
   }),
-  setNewEvent: (event: NEvent | null) => {
+  setNewEvent: (event: NEvent) => {
     set({ newEvent: event });
   },
   newEventName: "NewShortTextNote",
   setNewEventName: (name: string) => {
     set({ newEventName: name });
   },
+  setNewEventContent: (content: string) => {
+    set({ newEvent: get().newEvent.setContentWithoutChecks(content) });
+  },
   events: [],
-  maxEvents: 100,
-  setMaxEvents: (max: number) => {
+  maxEvents: MAX_EVENTS,
+  setMaxEvents: async (max: number) => {
     console.log(`Setting max events to ${max}`);
+    await get().store.setMaxEvents(max);
     set({ maxEvents: max });
   },
   skippedEvents: 0,
   getUser: async (pubkey: string) => {
-    const db = await get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    const user = await db.get("users", pubkey);
-    return user ? new NUser().fromJson(user) : undefined;
+    return get().store.getUser(pubkey);
   },
   addUser: async (user: NUserBase) => {
-    const db = await get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    await db.add("users", user.toJson());
+    return get().store.addUser(user);
   },
   updateUser: async (user: NUserBase) => {
-    const db = await get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    await db.put("users", user.toJson());
+    return get().store.updateUser(user);
   },
   countUsers: async () => {
-    const db = await get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    return db.count("users");
-  },
-  addEvent: async (payload: {
-    data:
-      | RelayAuth
-      | RelayCount
-      | RelayEose
-      | RelayEvent
-      | RelayNotice
-      | RelayOK;
-    meta: WebSocketClientConfig;
-  }) => {
-    if (!payload.data) {
-      return;
-    }
-    // Handle incoming messages of type EVENT
-    if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
-      const kind = payload.data[2].kind;
-      if (
-        kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-        kind === NEVENT_KIND.LONG_FORM_CONTENT
-      ) {
-        const event: EventBase = payload.data[2];
-
-        if (get().events.length >= get().maxEvents) {
-          // console.log(`Exceeded limit; ignoring new events`);
-          set({
-            skippedEvents: get().skippedEvents + 1,
-          });
-          // TODO: Cancel subscription
-          return;
-        }
-
-        // Check if event already exists
-        const eventExists = get().events.some((ev) => ev.event.id === event.id);
-
-        if (!eventExists) {
-          if (event.pubkey) {
-            const user = await get().getUser(event.pubkey);
-            if (user) {
-              // console.log(`Adding user to event: ${user.pubkey}`);
-              set(() => ({
-                events: [
-                  ...get().events,
-                  {
-                    event: new NEvent(event),
-                    user: user,
-                    eventRelayUrls: [payload.meta.url],
-                  },
-                ],
-              }));
-            } else {
-              // console.log(`User not found: ${event.pubkey}`);
-              set(() => ({
-                events: [
-                  ...get().events,
-                  {
-                    event: new NEvent(event),
-                    eventRelayUrls: [payload.meta.url],
-                  },
-                ],
-              }));
-            }
-          }
-        }
-      } else if (kind === NEVENT_KIND.METADATA) {
-        const newUser = new NUserBase();
-        newUser.fromEvent(payload.data[2]);
-
-        const user = await get().getUser(newUser.pubkey);
-        if (user) {
-          await get().updateUser(newUser);
-          await get().updateUserFollowing(user);
-        } else {
-          await get().addUser(newUser);
-          await get().updateUserFollowing(newUser);
-        }
-
-        for (const event of get().events) {
-          if (event.user?.pubkey === newUser.pubkey) {
-            event.user = newUser;
-          }
-        }
-      } else if (kind === NEVENT_KIND.REACTION) {
-        // console.log(`Reaction event received`);
-        const ev = new NEvent(payload.data[2]);
-
-        const inResponse = ev.hasEventTags();
-        if (!inResponse) {
-          // TODO: Support users
-          return;
-        }
-
-        for (const event of get().events) {
-          if (inResponse.find((tag) => tag.eventId === event.event.id)) {
-            if (event.reactions) {
-              event.reactions.push(ev);
-            } else {
-              event.reactions = [ev];
-            }
-            // it's safe to assume that there's only one matching event
-            return;
-          }
-        }
-      } else if (kind === NEVENT_KIND.REPOST) {
-        // console.log(`Repost event received`);
-        const ev = new NEvent(payload.data[2]);
-
-        const inResponse = ev.hasEventTags();
-        if (!inResponse) {
-          console.log(`No response found for repost event`);
-          // TODO: Support users
-          return;
-        }
-
-        for (const event of get().events) {
-          if (inResponse.find((tag) => tag.eventId === event.event.id)) {
-            if (event.reposts) {
-              event.reposts.push(ev);
-            } else {
-              event.reposts = [ev];
-            }
-            // it's safe to assume that there's only one matching event
-            return;
-          }
-        }
-      }
-    }
+    return get().store.countUsers();
   },
   getEventById: (id: string) => {
-    const allEvents = get().events;
-    const event = allEvents.find((ev) => ev.event.id === id);
-    return event;
+    return get().store.getEventById(id);
   },
   sendEvent: async (event: NEvent) => {
-    const client = get().client;
-    if (!client) {
-      throw new Error("Client not initialized");
-    }
-    const result = client.sendEvent(event);
-    if (result) {
-      if (
-        event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-        event.kind === NEVENT_KIND.LONG_FORM_CONTENT ||
-        event.kind === NEVENT_KIND.RECOMMEND_RELAY
-      ) {
-        set({
-          events: [
-            {
-              event: event.toJson(),
-              eventRelayUrls: result.map((r) => r.relay.url),
-            },
-            ...get().events,
-          ],
-        });
-      }
-      return result;
-    } else {
-      throw new Error("Failed to send event");
-    }
+    return get().store.sendEvent(event);
   },
   signAndSendEvent: async (event: NEvent) => {
-    const client = get().client;
-    if (!client) {
-      throw new Error("Client not initialized");
-    }
     const keypair = get().keypair;
     if (!keypair) {
       throw new Error("Keypair not initialized");
@@ -544,203 +315,127 @@ export const useNClient = create<NClientStore>((set, get) => ({
     } else {
       throw new Error("Invalid keystore");
     }
-    get().sendEvent(signedEvent);
+
+    event.isReadyToPublishOrThrow();
+
+    await get().store.sendEvent(signedEvent);
     return event.id;
   },
-  clearEvents: () => {
-    set(() => ({ events: [] }));
-    set(() => ({ skippedEvents: 0 }));
+  clearEvents: async () => {
+    await get().store.clearEvents();
+    set({ events: [] });
+    set({ skippedEvents: 0 });
   },
   /**
    * Follow a user
    */
   followUser: async (pubkey: string) => {
-    const db = get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
+    await get().store.followUser(pubkey);
+    const folowing = await get().store.getAllUsersFollowing();
+    if (folowing) {
+      set({ followingUserIds: folowing.map((u) => u.pubkey) });
     }
-    const user = await db.get("users", pubkey);
-    const following = await db.get("following", pubkey);
-    if (user && !following) {
-      await db.add("following", user);
-    } else if (!user && !following) {
-      const newFollowing = new NUserBase({
-        pubkey,
-      });
-      db.put("following", newFollowing);
-      get().getUserInformation([pubkey]);
-    }
-    set({ followingUserIds: [...get().followingUserIds, pubkey] });
   },
   /**
    * Unfollow a user
    */
   unfollowUser: async (pubkey: string) => {
-    const db = get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
+    await get().store.unfollowUser(pubkey);
+    const folowing = await get().store.getAllUsersFollowing();
+    if (folowing) {
+      set({ followingUserIds: folowing.map((u) => u.pubkey) });
     }
-    await db.delete("following", pubkey);
-    set({
-      followingUserIds: get().followingUserIds.filter((id) => id !== pubkey),
-    });
   },
   /**
    * Check if following user
    */
   followingUser: async (pubkey: string) => {
-    const db = get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-
-    const following = await db.get("following", pubkey);
-    if (following) {
-      return true;
-    }
-    return false;
+    return get().store.followingUser(pubkey);
   },
   followingUserIds: [],
   getAllUsersFollowing: async () => {
-    const db = get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    const users = await db.getAll("following");
-    if (users) {
-      set({ followingUserIds: users.map((user) => user.pubkey) });
-      return users.map((user) => new NUserBase(user));
-    }
+    return get().store.getAllUsersFollowing();
   },
   /**
    * Update information of user we are following
    * @param user
    */
   updateUserFollowing: async (user: NUserBase) => {
-    const db = get().db;
-    if (!db) {
-      throw new Error("DB not initialized");
-    }
-    const following = await db.get("following", user.pubkey);
-    if (following) {
-      await db.put("following", user);
-    }
+    return get().store.updateUserFollowing(user);
   },
   checkedUsers: [],
   checkedEvents: [],
   getUserInformation: (publicKeys: string[]) => {
-    if (publicKeys.length === 0) {
-      return;
-    }
-
-    const filteredPublicKeys = publicKeys.filter(
-      (pubkey) => !get().checkedUsers.includes(pubkey)
-    );
-
-    if (filteredPublicKeys.length === 0) {
-      return;
-    }
-
-    // if more than 20 publicKeys, randomize and select 20; otherwise use all
-    const keys =
-      filteredPublicKeys.length > 20
-        ? shuffle(filteredPublicKeys).slice(0, 20)
-        : filteredPublicKeys;
-
-    if (keys.length === 0) {
-      return;
-    }
-
-    console.log(`=> Getting information for ${keys.length} users`);
-    const filters = new NFilters({
-      kinds: [NEVENT_KIND.METADATA],
-      authors: keys,
-    });
-    set({
-      checkedUsers: [...get().checkedUsers, ...keys],
-    });
-    const subscriptions = get().subscribe(filters);
-    if (subscriptions) {
-      setTimeout(() => {
-        for (const subscription of subscriptions) {
-          get().unsubscribe(subscription.subscriptionId);
-        }
-      }, 10000);
-    }
+    return get().store.getUserInformation(publicKeys);
   },
-  hasSubscriptionForEventId: (eventId: string) => {
-    const subscriptions = get().client?.getSubscriptions();
-    if (!subscriptions) {
-      return false;
-    }
-    const subscription = subscriptions.find((sub) =>
-      sub.filters["#e"]?.includes(eventId)
-    );
-
-    if (subscription) {
-      return true;
-    }
-    return false;
+  hasSubscriptionForEventIds: (eventIds: string[], kinds: NEVENT_KIND[]) => {
+    return get().store.hasSubscriptionForEventIds(eventIds, kinds);
   },
-  getEventInformation: (
+  getEventInformation: async (
     eventIds: string[],
     options: {
       skipFilter?: boolean;
       timeout?: number;
     }
   ) => {
-    if (eventIds.length === 0) {
+    get().store.getEventInformation(eventIds, options);
+  },
+
+  setViewSubscription: async (view: string, filters: NFilters) => {
+    const subs = await get().store.subscriptions();
+
+    const sameView = subs.find((s) => s.options && s.options.view === view);
+    if (sameView) {
       return;
     }
 
-    let filteredEventIds: string[] = [];
-
-    const skipFilter = options?.skipFilter || false;
-    const timeout = options?.timeout || 120000;
-
-    if (!skipFilter) {
-      const newEventIds = eventIds.filter(
-        (eventId) => !get().checkedEvents.includes(eventId)
-      );
-
-      filteredEventIds =
-        newEventIds.length > 20 ? newEventIds.slice(0, 20) : newEventIds;
-    } else {
-      console.log("=> Skipping filter");
-      // Simple duplicate check
-      if (eventIds.length === 1) {
-        const hasSubscription = get().hasSubscriptionForEventId(eventIds[0]);
-        if (hasSubscription) {
-          console.log(`=> Already subscribed to ${eventIds[0]}`);
-          return;
-        }
+    for (const sub of subs) {
+      if (sub.options && sub.options.view) {
+        await get().store.unsubscribe(sub.subscriptionId);
       }
-      filteredEventIds = eventIds;
     }
 
-    if (filteredEventIds.length === 0) {
-      return;
-    }
-
-    console.log(`=> Getting information for ${filteredEventIds.length} events`);
-    const filters = new NFilters({
-      kinds: [NEVENT_KIND.REACTION, NEVENT_KIND.REPOST],
-      "#e": filteredEventIds,
+    await get().store.subscribe({
+      filters,
+      options: {
+        view,
+        timeout: 0,
+        timeoutAt: 0,
+      },
     });
 
-    if (!skipFilter) {
-      set({
-        checkedEvents: [...get().checkedEvents, ...filteredEventIds],
-      });
+    setTimeout(async () => {
+      const eventUserPubkeys = get()
+        .events.filter((e) => !e.user?.pubkey)
+        .map((e) => e.event.pubkey);
+      if (eventUserPubkeys.length > 0) {
+        await get().store.getUserInformation(eventUserPubkeys);
+        const eventIds = get()
+          .events.filter((e) => !e.reactions)
+          .map((e) => e.event.id);
+        await useNClient.getState().getEventInformation(eventIds);
+      }
+    }, 2000);
+  },
+  removeViewSubscription: async (view?: string) => {
+    const subs = await get().store.subscriptions();
+
+    if (!view) {
+      const unsubPromises = subs.map((sub) =>
+        get().store.unsubscribe(sub.subscriptionId)
+      );
+      await Promise.all(unsubPromises);
+      return;
     }
 
-    const subscriptions = get().subscribe(filters);
-    if (subscriptions) {
-      setTimeout(() => {
-        for (const subscription of subscriptions) {
-          get().unsubscribe(subscription.subscriptionId);
-        }
-      }, timeout);
-    }
+    const subsToUnsubscribe = subs.filter(
+      (sub) => sub.options && sub.options.view === view
+    );
+
+    const unsubPromises = subsToUnsubscribe.map((sub) =>
+      get().store.unsubscribe(sub.subscriptionId)
+    );
+
+    await Promise.all(unsubPromises);
   },
 }));

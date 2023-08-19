@@ -5,7 +5,7 @@ import { Route, BrowserRouter, Routes } from "react-router-dom";
 import { useNClient } from "./state/client.ts";
 import { AccountRoute } from "./routes/account.tsx";
 import { PrimaryLayout } from "./layouts/primary.tsx";
-import { WelcomeRoute } from "./routes/welcome.tsx";
+import { WelcomeRoute } from "./routes/welcome.js";
 import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
 import { UserProfileRoute } from "./routes/profile.tsx";
@@ -13,7 +13,7 @@ import { MAX_EVENTS } from "./defaults.ts";
 import "./index.css";
 
 const init = async () => {
-  useNClient.getState().init({
+  await useNClient.getState().init({
     maxEvents: MAX_EVENTS,
   });
 };

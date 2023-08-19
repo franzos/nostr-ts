@@ -51,15 +51,21 @@ export function SubscriptionsRoute() {
     onClose: onFilterModalClose,
   } = useDisclosure();
 
-  useEffect(() => {
-    const load = async () => {
-      const subs = useNClient.getState().client?.getSubscriptions();
-      if (subs) {
-        setSubscriptions(subs);
-      }
-    };
+  const update = async () => {
+    const subs = await useNClient.getState().subscriptions();
+    if (subs) {
+      setSubscriptions(subs);
+    }
+  };
 
-    load();
+  useEffect(() => {
+    const init = async () => {
+      await update();
+    };
+    init();
+    const updateInterval = setInterval(update, 2000);
+
+    return () => clearInterval(updateInterval);
   }, []);
 
   const FilterModal = (

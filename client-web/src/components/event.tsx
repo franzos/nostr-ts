@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardHeader,
@@ -18,6 +18,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import {
+  NEvent,
   NEventWithUserBase,
   NewQuoteRepost,
   NewReaction,
@@ -39,22 +40,36 @@ export function Event({
   reactions,
   reposts,
 }: EventProps) {
+  const [isReady] = useNClient((state) => [
+    state.connected && state.keystore !== "none",
+  ]);
+
   const toast = useToast();
 
-  const downVotesCount =
-    reactions?.filter((r) => r.content === "-").length || 0;
-  const upVotesCount = reactions?.filter((r) => r.content === "+").length || 0;
-  const repostsCount = reposts?.length || 0;
-  const reactionsWithCount = reactions
-    ?.filter((r) => r.content !== "+" && r.content !== "-")
-    .reduce((acc, r) => {
-      if (acc[r.content]) {
-        acc[r.content] += 1;
-      } else {
-        acc[r.content] = 1;
-      }
-      return acc;
-    }, {} as { [key: string]: number });
+  const [upVotesCount, setUpVotesCount] = useState(0);
+  const [downVotesCount, setDownVotesCount] = useState(0);
+  const [repostsCount, setRepostsCount] = useState(0);
+  const [reactionsWithCount, setReactionsWithCount] = useState<{
+    [key: string]: number;
+  }>({});
+
+  useEffect(() => {
+    setDownVotesCount(reactions?.filter((r) => r.content === "-").length || 0);
+    setUpVotesCount(reactions?.filter((r) => r.content === "+").length || 0);
+    setRepostsCount(reposts?.length || 0);
+    setReactionsWithCount(
+      reactions
+        ?.filter((r) => r.content !== "+" && r.content !== "-")
+        .reduce((acc, r) => {
+          if (acc[r.content]) {
+            acc[r.content] += 1;
+          } else {
+            acc[r.content] = 1;
+          }
+          return acc;
+        }, {} as { [key: string]: number }) || {}
+    );
+  }, [reactions]);
 
   const images = event?.content?.match(
     /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif)\b/gi
@@ -81,60 +96,36 @@ export function Event({
     useNClient.getState().setNewEventName("NewShortTextNoteResponse");
   };
 
-  const newQuoteRepost = () => {
-    const ev = NewQuoteRepost({
-      inResponseTo: event,
-      relayUrl: "",
-    });
+  const newAction = async (type: "quote" | "reaction", reaction?: string) => {
+    let ev: NEvent;
 
-    try {
-      const quoteId = useNClient.getState().signAndSendEvent(ev);
-      if (quoteId) {
-        toast({
-          title: "Success",
-          description: "Quote sent",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
+    switch (type) {
+      case "quote":
+        ev = NewQuoteRepost({
+          inResponseTo: event,
+          relayUrl: "",
         });
-        useNClient.getState().getEventInformation([event.id], {
-          skipFilter: true,
-          timeout: 10000,
+        break;
+      case "reaction":
+        if (!reaction) throw new Error("Reaction is required");
+        ev = NewReaction({
+          text: reaction,
+          inResponseTo: {
+            id: event.id,
+            pubkey: event.pubkey,
+          },
         });
-      }
-    } catch (e) {
-      let error = "";
-      if (e instanceof Error) {
-        error = e.message;
-      } else {
-        error = e ? e.toString() : "Unknown error";
-      }
-      toast({
-        title: "Error",
-        description: error,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
+        break;
+      default:
+        return;
     }
-  };
-
-  const newReaction = (reaction: "+" | "-") => {
-    const ev = NewReaction({
-      text: reaction,
-      inResponseTo: {
-        id: event.id,
-        pubkey: event.pubkey,
-      },
-    });
 
     try {
-      const reactionId = useNClient.getState().signAndSendEvent(ev);
-      if (reactionId) {
+      const evId = await useNClient.getState().signAndSendEvent(ev);
+      if (evId) {
         toast({
           title: "Success",
-          description: "Reaction sent",
+          description: "Event sent",
           status: "success",
           duration: 5000,
           isClosable: true,
@@ -145,7 +136,6 @@ export function Event({
         });
       }
     } catch (e) {
-      console.error(e);
       let error = "";
       if (e instanceof Error) {
         error = e.message;
@@ -215,6 +205,7 @@ export function Event({
             variant="solid"
             colorScheme="blue"
             onClick={() => newReply()}
+            isDisabled={!isReady}
           >
             Reply
           </Button>
@@ -222,7 +213,8 @@ export function Event({
             size="sm"
             aria-label="Upvote"
             leftIcon={<Icon as={ThumbUpIcon} />}
-            onClick={() => newReaction("+")}
+            onClick={() => newAction("reaction", "+")}
+            isDisabled={!isReady}
           >
             {upVotesCount}
           </Button>
@@ -230,7 +222,8 @@ export function Event({
             size="sm"
             aria-label="Downvote"
             leftIcon={<Icon as={ThumbDownIcon} />}
-            onClick={() => newReaction("-")}
+            onClick={() => newAction("reaction", "-")}
+            isDisabled={!isReady}
           >
             {downVotesCount}
           </Button>
@@ -238,7 +231,8 @@ export function Event({
             size="sm"
             aria-label="Repost"
             leftIcon={<Icon as={RepeatIcon} />}
-            onClick={newQuoteRepost}
+            onClick={() => newAction("quote")}
+            isDisabled={!isReady}
           >
             {repostsCount}
           </Button>

@@ -16,7 +16,9 @@ import {
   RelayNotice,
   RelayOK,
   Subscribe,
+  SubscriptionOptions,
   WebSocketClientConfig,
+  WebSocketClientInfo,
 } from "../types/index";
 import { RelayConnection } from "./relay-connection";
 
@@ -40,7 +42,8 @@ export class RelayClientBase {
 
   private sendSubscribe(
     message: ClientRequest | ClientCount,
-    subscriptionId: string
+    subscriptionId: string,
+    options?: SubscriptionOptions
   ) {
     const data = JSON.stringify([
       message.type,
@@ -68,6 +71,11 @@ export class RelayClientBase {
             subscriptionId,
             type: message.type,
             filters: message.filters,
+            options: {
+              timeoutAt: options?.timeoutAt,
+              timeout: options?.timeout,
+              view: options?.view,
+            },
           };
           relay.addSubscription(sub);
           newSubscriptions.push(sub);
@@ -86,9 +94,10 @@ export class RelayClientBase {
    * @returns
    */
   subscribe(payload?: Subscribe): ClientSubscription[] {
-    console.log("=> Subscribing to events", payload);
     const subscriptionId = payload?.subscriptionId || uuidv4();
     const filters = payload?.filters ? payload.filters.toJson() : {};
+
+    console.log("=> Subscribing to events", payload, subscriptionId);
 
     const message: ClientRequest = {
       type: CLIENT_MESSAGE_TYPE.REQ,
@@ -96,7 +105,7 @@ export class RelayClientBase {
       filters,
     };
 
-    return this.sendSubscribe(message, subscriptionId);
+    return this.sendSubscribe(message, subscriptionId, payload?.options);
   }
 
   count(payload?: Count) {
@@ -109,7 +118,11 @@ export class RelayClientBase {
       filters,
     };
 
-    const subscriptions = this.sendSubscribe(message, subscriptionId);
+    const subscriptions = this.sendSubscribe(
+      message,
+      subscriptionId,
+      payload?.options
+    );
 
     for (const sub of subscriptions) {
       const relay = this.relays.find((r) => r.id === sub.connectionId);
@@ -145,8 +158,11 @@ export class RelayClientBase {
       if ((relayId && relay.id === relayId) || !relayId) {
         // Relay ID given and matches
         // No relay ID given, remove from all relays
-        const hasSubscription = relay.hasSubscription(subscriptionId);
-        if (hasSubscription) {
+        const subscription = relay.getSubscription(subscriptionId);
+        if (subscription) {
+          if (subscription.options && subscription.options.timeout) {
+            clearTimeout(subscription.options.timeout);
+          }
           try {
             relay.ws.sendMessage(data);
             relay.removeSubscription(subscriptionId);
@@ -221,8 +237,6 @@ export class RelayClientBase {
    * @param event
    */
   sendEvent(event: NEvent) {
-    event.isReadyToPublishOrThrow();
-
     const message: ClientEvent = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: event,
@@ -230,8 +244,8 @@ export class RelayClientBase {
     const data = JSON.stringify([message.type, message.data]);
 
     const send: {
-      event: NEvent;
-      relay: RelayConnection;
+      eventId: string;
+      relay: WebSocketClientInfo;
       error: string | null;
     }[] = [];
 
@@ -247,8 +261,11 @@ export class RelayClientBase {
           });
 
           send.push({
-            event,
-            relay,
+            eventId: event.id,
+            relay: {
+              id: relay.id,
+              url: relay.url,
+            },
             error: null,
           });
 
@@ -260,7 +277,7 @@ export class RelayClientBase {
           );
 
           send.push({
-            event,
+            eventId: event.id,
             relay,
             error: `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
           });

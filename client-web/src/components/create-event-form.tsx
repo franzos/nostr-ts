@@ -31,12 +31,15 @@ import { NUser } from "@nostr-ts/web";
 import { User } from "./user";
 
 export const CreateEventForm = () => {
-  const [connected] = useNClient((state) => [state.connected]);
+  const [isReady] = useNClient((state) => [
+    state.connected && state.keystore !== "none",
+  ]);
   const [errors, setErrors] = useState<string[]>([]);
   const [keystore] = useNClient((state) => [state.keystore]);
   const [keypair] = useNClient((state) => [state.keypair]);
   const [eventKind] = useNClient((state) => [state.newEvent?.kind || 0]);
   const [newEventName] = useNClient((state) => [state.newEventName]);
+  const [newEvent] = useNClient((state) => [state.newEvent]);
   const toast = useToast();
 
   const [users, setUsers] = useState<NUser[]>([]);
@@ -64,9 +67,7 @@ export const CreateEventForm = () => {
 
   const submit = async () => {
     setErrors([]);
-    const ev = useNClient.getState().newEvent;
-
-    if (!ev) {
+    if (!newEvent) {
       setErrors(["Event is required"]);
       toast({
         title: "Error",
@@ -102,7 +103,7 @@ export const CreateEventForm = () => {
       return;
     }
 
-    if (!ev.content) {
+    if (!newEvent.content) {
       setErrors(["Event content is required"]);
       toast({
         title: "Error",
@@ -115,7 +116,7 @@ export const CreateEventForm = () => {
     }
 
     try {
-      await useNClient.getState().signAndSendEvent(ev);
+      await useNClient.getState().signAndSendEvent(newEvent);
       const overwrite = true;
       setKind(newEventName, overwrite);
     } catch (e) {
@@ -195,14 +196,6 @@ export const CreateEventForm = () => {
     setErrors([]);
   };
 
-  const setContent = (content: string) => {
-    const ev = useNClient.getState().newEvent;
-    if (ev) {
-      ev.content = content;
-      useNClient.getState().setNewEvent(ev);
-    }
-  };
-
   return (
     <Box width="100%">
       <FormControl marginBottom={4}>
@@ -218,7 +211,9 @@ export const CreateEventForm = () => {
           type="text"
           as={eventKind === NEVENT_KIND.LONG_FORM_CONTENT ? Textarea : Input}
           value={useNClient.getState().newEvent?.content || ""}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) =>
+            useNClient.getState().setNewEventContent(e.target.value)
+          }
           placeholder="Enter event content"
         />
       </FormControl>
@@ -267,7 +262,7 @@ export const CreateEventForm = () => {
         colorScheme="blue"
         onClick={submit}
         leftIcon={<Icon as={SendIcon} />}
-        isDisabled={!connected}
+        isDisabled={!isReady}
       >
         Send
       </Button>

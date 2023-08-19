@@ -134,6 +134,16 @@ export class NEvent implements EventBase {
   }
 
   /**
+   * Use this for form elements, otherwise it's too laggy
+   * @param content
+   * @returns
+   */
+  public setContentWithoutChecks(content: string) {
+    this.content = content;
+    return this;
+  }
+
+  /**
    * Extract all (if any) information from the event content
    * @returns
    */

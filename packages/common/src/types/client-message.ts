@@ -55,9 +55,25 @@ export interface ClientRequest extends ClientMessageBase {
   filters: FiltersBase;
 }
 
-export interface Subscribe {
+export interface SubscriptionOptions {
+  /**
+   * Set when the subscription is supposed to timeout
+   */
+  timeoutAt: number;
+  /**
+   * Set an associated timeout
+   */
+  timeout: number;
+  view?: string;
+}
+
+export interface SubscriptionRequest {
+  filters: NFilters;
+  options?: SubscriptionOptions;
+}
+
+export interface Subscribe extends SubscriptionRequest {
   subscriptionId?: string;
-  filters?: NFilters;
 }
 
 export interface Count extends Subscribe {}

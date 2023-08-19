@@ -6,62 +6,69 @@ import { NUser } from "@nostr-ts/web";
 import { useParams } from "react-router-dom";
 import { User } from "../components/user";
 import { Events } from "../components/events";
+import { MAX_EVENTS } from "../defaults";
 
 export function UserProfileRoute() {
   const [connected] = useNClient((state) => [state.connected]);
   const [user, setUser] = useState<NUserBase | null>(null);
+  const [eventsEqualOrMoreThanMax] = useNClient((state) => [
+    state.maxEvents === state.events.length,
+  ]);
+
   const params = useParams<{ pubkey: string }>();
 
-  useEffect(() => {
-    const load = async () => {
-      if (params.pubkey == undefined) {
-        return;
-      }
-      if (connected) {
-        // setSubscriptionIsActive(true);
-        const subscriptions = useNClient.getState().subscriptions();
-        if (subscriptions) {
-          const sub = subscriptions.find(
-            (s) =>
-              s.filters &&
-              s.filters.authors &&
-              s.filters?.authors.includes(params.pubkey as string)
-          );
-          if (sub) {
-            return;
-          }
-        }
+  const pubkey = params.pubkey || "";
 
-        useNClient.getState().unsubscribeAll();
-        useNClient.getState().clearEvents();
-        useNClient.getState().subscribe(
-          new NFilters({
-            limit: 25,
-            authors: [params.pubkey],
-            kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-          })
-        );
-      }
+  const view = `profile-${pubkey}`;
+  const defaultFilters = new NFilters({
+    limit: MAX_EVENTS,
+    authors: [pubkey],
+    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+  });
+
+  /**
+   * Handle initial load
+   */
+  useEffect(() => {
+    const init = async () => {
+      if (!connected) return;
+      await useNClient.getState().clearEvents();
+      await useNClient.getState().setViewSubscription(view, defaultFilters);
+
+      // USER
+
       if (!user) {
-        const dbUser = await useNClient.getState().getUser(params.pubkey);
+        const dbUser = await useNClient.getState().getUser(pubkey);
         if (dbUser) {
           setUser(dbUser);
         } else {
           setUser(
             new NUser({
-              pubkey: params.pubkey,
+              pubkey,
             })
           );
         }
       }
     };
-    load();
-    return () => {
-      useNClient.getState().unsubscribeAll();
-      useNClient.getState().clearEvents();
-      //   setSubscriptionIsActive(false);
+    init();
+  }, []);
+
+  /**
+   * Remove subscription when we hit the limit
+   */
+  useEffect(() => {
+    const remove = async () => {
+      if (!connected) return;
+      await useNClient.getState().removeViewSubscription("welcome");
     };
-  }, [params.pubkey, connected, user]);
+
+    if (eventsEqualOrMoreThanMax) {
+      console.log(
+        "removing subscription < =================================================="
+      );
+      remove();
+    }
+  }, [eventsEqualOrMoreThanMax]);
 
   return (
     <>
@@ -69,7 +76,13 @@ export function UserProfileRoute() {
         <Heading size="lg">Profile</Heading>
         {user && <User user={user} />}
       </Box>
-      <Box>{connected ? <Events /> : <Text>Not connected.</Text>}</Box>
+      <Box>
+        {connected ? (
+          <Events view={view} filters={defaultFilters} connected={connected} />
+        ) : (
+          <Text>Not connected.</Text>
+        )}
+      </Box>
     </>
   );
 }

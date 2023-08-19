@@ -3,6 +3,7 @@ import {
   ClientCount,
   ClientEvent,
   ClientRequest,
+  SubscriptionOptions,
 } from "./client-message";
 import { FiltersBase } from "./filter";
 
@@ -12,6 +13,7 @@ export interface ClientSubscription {
   subscriptionId: string;
   type: CLIENT_MESSAGE_TYPE;
   filters: FiltersBase;
+  options: SubscriptionOptions;
 }
 
 export interface ClientCommands {

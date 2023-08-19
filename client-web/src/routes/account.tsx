@@ -72,14 +72,17 @@ export function AccountRoute() {
     <Box>
       <Heading size="lg">Account</Heading>
       {keypairIsLoaded ? (
-        <Text>Keypair loaded from {keystore}.</Text>
+        <Text fontWeight="bold">Keypair loaded from {keystore}.</Text>
       ) : (
         <>
+          <Text fontWeight="bold" marginBottom={2}>
+            Keypair is not loaded.
+          </Text>
           <Text marginBottom={2}>
-            Keypair is not loaded. If you generate a new keypair, it will be
-            stored in the browser localstore (insecure). Alternatively get nos2x
-            for Chrome, or nos2x-fox for Firefox, and store your keys in the
-            extention (a little more secure; definitely more flexible).
+            If you generate a new keypair, it will be stored in the browser
+            local store (insecure). Alternatively get nos2x for Chrome, or
+            nos2x-fox for Firefox, and store your keys in the extention (less
+            insecure).
           </Text>
           <HStack>
             <Button onClick={generateKeypair}>Generate new keypair</Button>

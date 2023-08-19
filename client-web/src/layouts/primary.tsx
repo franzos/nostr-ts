@@ -21,7 +21,6 @@ import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
   const [connected] = useNClient((state) => [state.connected]);
-  const [lastUpdate, setLastUpdate] = useState(0);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
   const [keystore] = useNClient((state) => [state.keystore]);
@@ -32,22 +31,23 @@ export function PrimaryLayout() {
     onClose: onConnectModalClose,
   } = useDisclosure();
 
-  useEffect(() => {
-    const statsUpdateInterval = setInterval(async () => {
-      const now = Date.now();
+  const update = async () => {
+    const following = await useNClient.getState().getAllUsersFollowing();
+    if (following) {
+      setFollowingUsers(following);
+    }
+    const subs = await useNClient.getState().subscriptions();
+    if (subs) {
+      setSubscriptionsCount(subs.length);
+    }
+  };
 
-      if (now - lastUpdate > 5000) {
-        setLastUpdate(now);
-        const following = await useNClient.getState().getAllUsersFollowing();
-        if (following) {
-          setFollowingUsers(following);
-        }
-        const subs = useNClient.getState().client?.getSubscriptions();
-        if (subs) {
-          setSubscriptionsCount(subs.length);
-        }
-      }
-    }, 1000);
+  useEffect(() => {
+    const init = async () => {
+      await update();
+    };
+    init();
+    const statsUpdateInterval = setInterval(update, 2000);
 
     return () => clearInterval(statsUpdateInterval);
   }, []);
@@ -97,7 +97,7 @@ export function PrimaryLayout() {
   );
 
   return (
-    <Container maxW="10xl" p={5}>
+    <Container maxW="8xl" p={5}>
       <VStack spacing={5} align="stretch">
         <VStack spacing={1} align="start">
           <Heading as="h1" size="lg">

@@ -7,26 +7,67 @@ import { User } from "../components/user";
 
 export function WelcomeRoute() {
   const [connected] = useNClient((state) => [state.connected]);
+  const [eventsEqualOrMoreThanMax] = useNClient((state) => [
+    state.maxEvents === state.events.length,
+  ]);
 
+  const defaultFilters = new NFilters({
+    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+  });
+
+  /**
+   * Handle the connection status change
+   */
   useEffect(() => {
-    if (connected) {
-      const subscriptions = useNClient.getState().subscriptions();
-      if (subscriptions.length === 0) {
-        // If there are no subscriptions, setup a default one.
-        useNClient.getState().subscribe(
-          new NFilters({
-            limit: 10,
-            kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-          })
-        );
-      }
-    }
+    const init = async () => {
+      if (!connected) return;
+      await useNClient
+        .getState()
+        .setViewSubscription("welcome", defaultFilters);
+    };
+    init();
   }, [connected]);
+
+  /**
+   * Handle initial load
+   */
+  useEffect(() => {
+    const init = async () => {
+      if (!connected) return;
+      await useNClient.getState().clearEvents();
+      await useNClient
+        .getState()
+        .setViewSubscription("welcome", defaultFilters);
+    };
+    init();
+  }, []);
+
+  /**
+   * Remove subscription when we hit the limit
+   */
+  useEffect(() => {
+    const remove = async () => {
+      if (!connected) return;
+      await useNClient.getState().removeViewSubscription("welcome");
+    };
+
+    if (eventsEqualOrMoreThanMax) {
+      console.log(
+        "removing subscription < =================================================="
+      );
+      remove();
+    }
+  }, [eventsEqualOrMoreThanMax]);
 
   return (
     <Box>
       {connected ? (
-        <Events userComponent={User} />
+        <Events
+          userComponent={User}
+          view="welcome"
+          filters={defaultFilters}
+          connected={connected}
+        />
       ) : (
         <Box maxWidth={600}>
           <Heading size="lg">About Nostr</Heading>
@@ -40,12 +81,13 @@ export function WelcomeRoute() {
             your identity - so you get to access it all, without giving up
             yourself.
           </Text>
-          <Heading size="lg">Connect to get started</Heading>
+          <Heading size="md">Connect to get started</Heading>
           <Text marginBottom={2}>
             You don't need an account to browse or follow users. All data is
             saved in your browser. To interact with events, generate or supply a
             keypair.
           </Text>
+          <Text>nos2x and nos2x-fox should be working too.</Text>
         </Box>
       )}
     </Box>

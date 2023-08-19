@@ -1,14 +1,17 @@
 import { LinkBox, HStack, Text } from "@chakra-ui/react";
+import { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 
 export function MenuItem({
   label,
   value,
   to,
+  leftIcon,
 }: {
   label: string;
   value?: string | number;
   to: string;
+  leftIcon?: ReactNode;
 }) {
   return (
     <LinkBox
@@ -28,6 +31,7 @@ export function MenuItem({
       }}
     >
       <HStack>
+        {leftIcon}
         <Text fontSize="md" fontWeight="bold">
           {label}
         </Text>

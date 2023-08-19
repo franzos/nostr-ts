@@ -85,6 +85,7 @@ export function SubscriptionsRoute() {
   );
 
   const Subscription = (sub: ClientSubscription) => {
+    const view = sub.options && sub.options.view ? sub.options.view : "";
     return (
       <Tr key={`${sub.connectionId}-${sub.subscriptionId}`}>
         <Td>
@@ -103,6 +104,9 @@ export function SubscriptionsRoute() {
           >
             Show
           </Button>
+        </Td>
+        <Td>
+          <Tooltip label={view}>{`${view.substring(0, 4)}..`}</Tooltip>
         </Td>
         <Td>
           <Button
@@ -127,6 +131,7 @@ export function SubscriptionsRoute() {
             <Th>ID</Th>
             <Th>Kind</Th>
             <Th>Filter</Th>
+            <Th>View</Th>
             <Th>Action</Th>
           </Tr>
         </Thead>

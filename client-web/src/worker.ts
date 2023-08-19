@@ -16,6 +16,7 @@ import {
   Relay,
   ClientSubscription,
   Subscribe,
+  WebSocketClientInfo,
 } from "@nostr-ts/common";
 import { NUser, RelayClient } from "@nostr-ts/web";
 import { NEventWithUserBase } from "@nostr-ts/common";
@@ -32,10 +33,8 @@ export interface NClientStoreBase {
   subscriptions: () => Promise<ClientSubscription[]>;
   unsubscribe: (id: string) => void;
   unsubscribeAll: () => void;
-  events: NEventWithUserBase[];
   eventsMap?: Map<string, NEventWithUserBase>;
   maxEvents: number;
-  skippedEvents: number;
   getUser: (pubkey: string) => Promise<NUser | undefined>;
   addUser: (user: NUserBase) => Promise<void>;
   updateUser: (user: NUserBase) => Promise<void>;
@@ -58,8 +57,6 @@ export interface NClientStoreBase {
   followingUserIds: string[];
   getAllUsersFollowing(): Promise<NUserBase[] | undefined>;
   updateUserFollowing(user: NUserBase): Promise<void>;
-  checkedUsers: string[];
-  checkedEvents: string[];
   getUserInformation(publicKeys: string[]): Promise<void>;
   hasSubscriptionForEventIds(
     eventIds: string[],
@@ -68,7 +65,6 @@ export interface NClientStoreBase {
   getEventInformation(
     eventIds: string[],
     options?: {
-      skipFilter?: boolean;
       timeout?: number;
     }
   ): Promise<void>;
@@ -163,37 +159,24 @@ class EventsProcessingQueue {
 const queue = new EventsProcessingQueue();
 
 export interface NClientStoreBaseWorker extends NClientStoreBase {
-  sendEvent: (event: EventBase) => void;
+  checkedUsers: string[];
+  checkedEvents: string[];
 
+  sendEvent: (event: EventBase) => void;
   setMaxEvents: (max: number) => void;
   clearEvents: () => void;
-  // subscribeToEvents: (cb: (data: any) => void) => Promise<void>;
+  relays: () => WebSocketClientConfig[];
 }
-
-// export default useNClient;
 
 class WorkerClass implements NClientStoreBaseWorker {
   connected: boolean;
   db: IDBPDatabase<NClientDB> | null;
   client: RelayClient | null;
-  events: NEventWithUserBase[] = [];
   eventsMap: Map<string, NEventWithUserBase> = new Map();
-  skippedEvents: number = 0;
   maxEvents: number;
   checkedUsers: string[] = [];
   checkedEvents: string[] = [];
   followingUserIds: string[] = [];
-
-  // private eventCallback: ((events: any) => void) | null = null;
-
-  // async subscribeToEvents(callback: (events: any) => void) {
-  //   console.log("subscribeToEvents called in worker");
-  //   this.eventCallback = proxy(callback);
-
-  //   console.log("Callback set in worker: ", this.eventCallback);
-
-  //   self.postMessage()
-  // }
 
   constructor(config?: { maxEvents?: number }) {
     this.connected = false;
@@ -228,6 +211,17 @@ class WorkerClass implements NClientStoreBaseWorker {
     this.client?.disconnect();
     this.eventsMap.clear();
     this.connected = false;
+  }
+
+  relays() {
+    return this.client?.relays
+      ? this.client.relays.map((r) => {
+          return {
+            url: r.url,
+            id: r.id,
+          } as WebSocketClientInfo;
+        })
+      : [];
   }
 
   async subscriptions() {
@@ -298,6 +292,7 @@ class WorkerClass implements NClientStoreBaseWorker {
       return;
     }
     // logRelayMessage(payload.data);
+
     // Handle incoming messages of type EVENT
     if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
       const kind = payload.data[2].kind;
@@ -459,6 +454,8 @@ class WorkerClass implements NClientStoreBaseWorker {
     console.log(`WORKER: CLEAR EVENTS`);
     queue.clearPriority();
     this.eventsMap.clear();
+    this.checkedEvents = [];
+    this.checkedUsers = [];
   }
 
   async followUser(pubkey: string) {
@@ -594,7 +591,6 @@ class WorkerClass implements NClientStoreBaseWorker {
   async getEventInformation(
     eventIds: string[],
     options: {
-      skipFilter?: boolean;
       timeout?: number;
     }
   ) {
@@ -602,26 +598,17 @@ class WorkerClass implements NClientStoreBaseWorker {
       return;
     }
 
-    let filteredEventIds: string[] = [];
-
-    const skipFilter = options?.skipFilter || false;
     const timeout = options?.timeout || 120000;
 
-    if (!skipFilter) {
-      const newEventIds = eventIds.filter(
-        (eventId) => !this.checkedEvents.includes(eventId)
-      );
-
-      filteredEventIds = newEventIds;
-    }
+    const filteredEventIds = eventIds.filter(
+      (eventId) => !this.checkedEvents.includes(eventId)
+    );
 
     if (filteredEventIds.length === 0) {
       return;
     }
 
-    if (!skipFilter) {
-      this.checkedEvents = [...this.checkedEvents, ...filteredEventIds];
-    }
+    this.checkedEvents = [...this.checkedEvents, ...filteredEventIds];
 
     console.log(`=> Getting information for ${filteredEventIds.length} events`);
 

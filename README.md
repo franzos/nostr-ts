@@ -1,4 +1,4 @@
-# Nostr Typescript Starterpack
+# Nostr Library and Clients
 
 I wanted to learn more about Nostr, so I decided to implement libraries and clients.
 

@@ -20,9 +20,9 @@ export function BottomBar() {
         if (count) {
           setUserCount(count);
         }
-        const relays = useNClient.getState().client?.relays.length;
+        const relays = await useNClient.getState().relays();
         if (relays) {
-          setRelayCount(relays);
+          setRelayCount(relays.length);
         }
       }
     }, 1000);

@@ -17,6 +17,10 @@ import { CreateEventForm } from "../components/create-event-form";
 import { MenuItem } from "../components/menu-item";
 import LanConnectIcon from "mdi-react/LanConnectIcon";
 import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
+import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
+import AccountKeyIcon from "mdi-react/AccountKeyIcon";
+import PlaylistCheckIcon from "mdi-react/PlaylistCheckIcon";
+import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
@@ -47,14 +51,18 @@ export function PrimaryLayout() {
       await update();
     };
     init();
-    const statsUpdateInterval = setInterval(update, 2000);
+    const statsUpdateInterval = setInterval(update, 1000);
 
     return () => clearInterval(statsUpdateInterval);
   }, []);
 
   const Sidebar = (
     <VStack align="start" spacing={5} w="100%">
-      <MenuItem label="Home" to="/" />
+      <MenuItem
+        label="Home"
+        to="/"
+        leftIcon={<Icon as={FormatListBulletedIcon} marginRight={1} />}
+      />
 
       {connected && (
         <>
@@ -62,17 +70,24 @@ export function PrimaryLayout() {
             label="Following"
             value={followingUsers.length}
             to="/following"
+            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
           />
 
           <MenuItem
             label="Subscriptions"
             value={subscriptionsCount}
             to="/subscriptions"
+            leftIcon={<Icon as={PlaylistCheckIcon} marginRight={1} />}
           />
         </>
       )}
 
-      <MenuItem label="Account" value={keystore} to="/account" />
+      <MenuItem
+        label="Account"
+        value={keystore}
+        to="/account"
+        leftIcon={<Icon as={AccountKeyIcon} marginRight={1} />}
+      />
 
       {connected ? (
         <Button

@@ -1,7 +1,7 @@
 import { Heading, Box, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Events } from "../components/events";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NFilters, NEVENT_KIND } from "@nostr-ts/common";
 import { User } from "../components/user";
 
@@ -15,12 +15,15 @@ export function WelcomeRoute() {
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
   });
 
+  const [initDone, setInitDone] = useState(false);
+
   /**
    * Handle the connection status change
    */
   useEffect(() => {
     const init = async () => {
-      if (!connected) return;
+      if (!connected || initDone) return;
+      setInitDone(true);
       await useNClient
         .getState()
         .setViewSubscription("welcome", defaultFilters);
@@ -33,7 +36,8 @@ export function WelcomeRoute() {
    */
   useEffect(() => {
     const init = async () => {
-      if (!connected) return;
+      if (!connected || initDone) return;
+      setInitDone(true);
       await useNClient.getState().clearEvents();
       await useNClient
         .getState()

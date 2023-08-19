@@ -96,6 +96,8 @@ export interface NClientStore extends NClientStoreBase {
   setNewEvent: (event: NEvent) => void;
   setMaxEvents: (max: number) => Promise<void>;
   clearEvents: () => Promise<void>;
+  events: NEventWithUserBase[];
+  relays: () => Promise<WebSocketClientConfig[]>;
   /**
    * Track kind name like NewShortTextNote
    */
@@ -173,6 +175,9 @@ export const useNClient = create<NClientStore>((set, get) => ({
     set({
       connected: false,
     });
+  },
+  relays: async () => {
+    return get().store.relays();
   },
   subscriptions: async () => {
     return get().store.subscriptions();
@@ -324,7 +329,6 @@ export const useNClient = create<NClientStore>((set, get) => ({
   clearEvents: async () => {
     await get().store.clearEvents();
     set({ events: [] });
-    set({ skippedEvents: 0 });
   },
   /**
    * Follow a user
@@ -363,8 +367,6 @@ export const useNClient = create<NClientStore>((set, get) => ({
   updateUserFollowing: async (user: NUserBase) => {
     return get().store.updateUserFollowing(user);
   },
-  checkedUsers: [],
-  checkedEvents: [],
   getUserInformation: (publicKeys: string[]) => {
     return get().store.getUserInformation(publicKeys);
   },
@@ -374,7 +376,6 @@ export const useNClient = create<NClientStore>((set, get) => ({
   getEventInformation: async (
     eventIds: string[],
     options: {
-      skipFilter?: boolean;
       timeout?: number;
     }
   ) => {

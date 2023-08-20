@@ -1,5 +1,6 @@
 export * from "./bech32";
 export * from "./bolt11";
+export * from "./count-leading-zeroes";
 export * from "./event-amount";
 export * from "./event-content-warning";
 export * from "./event-content";
@@ -21,6 +22,7 @@ export * from "./lnurl";
 export * from "./lud16-to-url";
 export * from "./nip05-to-url";
 export * from "./nostr-url";
+export * from "./proof-of-work";
 export * from "./provider-names";
 export * from "./serialize-event";
 export * from "./sign-event";

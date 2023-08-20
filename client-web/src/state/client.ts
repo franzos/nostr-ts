@@ -1,171 +1,115 @@
-import { create } from "zustand";
 import {
+  NEventWithUserBase,
+  WebSocketEvent,
+  Relay,
   NEvent,
-  RelayAuth,
-  RelayCount,
-  RelayEose,
-  RelayEvent,
-  RelayNotice,
-  RelayOK,
-  WebSocketClientConfig,
-  NFilters,
   NEVENT_KIND,
   NUserBase,
-  Relay,
-  NEventWithUserBase,
-  ClientSubscription,
+  NFilters,
   Subscribe,
 } from "@nostr-ts/common";
+import { wrap } from "comlink";
+import { create } from "zustand";
 import { MAX_EVENTS } from "../defaults";
-import { Remote, wrap } from "comlink";
-import { NClientStoreBase, NClientStoreBaseWorker } from "../worker";
+import { NClient } from "./client-types";
+import {
+  NClientKeystore,
+  loadKeyStoreConfig,
+  saveKeyStoreConfig,
+} from "./keystore";
+import { NClientWorker } from "./worker-types";
+import { PublishingEventsQueueItem } from "./publishing-qeue";
 
-interface NClientCKeystore {
-  keystore: "none" | "localstore" | "nos2x" | "download";
-  publicKey?: string;
-  privateKey?: string;
-}
-
-function loadKeyStoreConfig(): NClientCKeystore {
-  const keystore = localStorage.getItem("nostr-client:keystore:keystore");
-  if (keystore) {
-    if (keystore === "localstore") {
-      const publicKey = localStorage.getItem(
-        "nostr-client:keystore:public-key"
-      );
-      const privateKey = localStorage.getItem(
-        "nostr-client:keystore:private-key"
-      );
-      if (publicKey && privateKey) {
-        return {
-          keystore: "localstore",
-          publicKey,
-          privateKey,
-        };
-      }
-    } else if (keystore === "nos2x") {
-      return {
-        keystore: "nos2x",
-        publicKey: undefined,
-        privateKey: undefined,
-      };
-    } else if (keystore === "download") {
-      return {
-        keystore: "download",
-        publicKey: undefined,
-        privateKey: undefined,
-      };
-    }
-  }
-  return {
-    keystore: "none",
-    publicKey: undefined,
-    privateKey: undefined,
+interface Event {
+  data: {
+    type:
+      | "event:new"
+      | "event:update"
+      | "relay:message"
+      | "event:queue:new"
+      | "event:queue:update";
+    data: NEventWithUserBase | WebSocketEvent | PublishingEventsQueueItem;
   };
 }
 
-function saveKeyStoreConfig(config: NClientCKeystore) {
-  localStorage.setItem("nostr-client:keystore:keystore", config.keystore);
-  if (
-    config.keystore === "localstore" &&
-    config.publicKey &&
-    config.privateKey
-  ) {
-    localStorage.setItem("nostr-client:keystore:public-key", config.publicKey);
-    localStorage.setItem(
-      "nostr-client:keystore:private-key",
-      config.privateKey
-    );
-  } else if (config.keystore === "nos2x") {
-    // TODO: Implement
-  } else if (config.keystore === "download") {
-    // TODO: Implement
-  }
-}
-
-export interface NClientStore extends NClientStoreBase {
-  store: Remote<NClientStoreBaseWorker>;
-  keystore?: "none" | "localstore" | "nos2x" | "download";
-  loadKeyStore: () => void;
-  saveKeyStore: () => void;
-  setKeyStore: (config: NClientCKeystore) => void;
-  keypair: { publicKey: string; privateKey?: string };
-  keypairIsLoaded: boolean;
-  newEvent: NEvent;
-  signAndSendEvent: (event: NEvent) => Promise<string>;
-  setNewEvent: (event: NEvent) => void;
-  setMaxEvents: (max: number) => Promise<void>;
-  clearEvents: () => Promise<void>;
-  events: NEventWithUserBase[];
-  relays: () => Promise<WebSocketClientConfig[]>;
-  /**
-   * Track kind name like NewShortTextNote
-   */
-  newEventName: string;
-  setNewEventName: (name: string) => void;
-  setNewEventContent: (content: string) => void;
-  addEvent?: (payload: {
-    data:
-      | RelayAuth
-      | RelayCount
-      | RelayEose
-      | RelayEvent
-      | RelayNotice
-      | RelayOK;
-    meta: WebSocketClientConfig;
-  }) => void;
-
-  sendEvent: (event: NEvent) => void;
-
-  viewerSubscription?: {
-    page: string;
-    subscription?: ClientSubscription;
-  };
-  setViewSubscription: (
-    view: string,
-    filters: NFilters,
-    overwrite?: boolean
-  ) => Promise<void>;
-  removeViewSubscription: (view: string) => void;
-}
-
-const worker = new Worker(new URL("../worker.ts", import.meta.url), {
+const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
 
-export const useNClient = create<NClientStore>((set, get) => ({
-  store: wrap<NClientStoreBaseWorker>(worker),
+function throttle(fn: (events: Event[]) => void, delay: number) {
+  let timeout: number | null = null;
+  let eventsBatch: Event[] = [];
+
+  return function (event: Event) {
+    eventsBatch.push(event);
+
+    if (!timeout) {
+      timeout = setTimeout(() => {
+        fn(eventsBatch);
+        eventsBatch = [];
+        timeout = null;
+      }, delay);
+    }
+  };
+}
+
+export const useNClient = create<NClient>((set, get) => ({
+  store: wrap<NClientWorker>(worker),
   init: async (config?: { maxEvents?: number }) => {
+    await get().loadKeyStore();
     await get().store.init(config);
 
-    worker.addEventListener("message", (event) => {
-      const payload = event.data as {
-        type: "new-event" | "update-event";
-        data: NEventWithUserBase;
-      };
-      if (payload.type === "new-event") {
-        set({
-          events: [...get().events, payload.data],
-        });
-      } else if (payload.type === "update-event") {
-        const eventIndex = get().events.findIndex(
-          (event) => event.event.id === payload.data.event.id
-        );
+    const processEvents = (events: Event[]) => {
+      events.forEach((event) => {
+        const payload = event.data;
 
-        if (eventIndex !== -1) {
-          const updatedEvents = [...get().events];
-          updatedEvents[eventIndex] = payload.data;
-          set({ events: updatedEvents });
+        if (payload.type === "event:new" || payload.type === "event:update") {
+          const data = payload.data as NEventWithUserBase;
+          if (payload.type === "event:new") {
+            set({
+              events: [...get().events, data],
+            });
+          } else if (payload.type === "event:update") {
+            const eventIndex = get().events.findIndex(
+              (event) => event.event.id === data.event.id
+            );
+
+            if (eventIndex !== -1) {
+              const updatedEvents = [...get().events];
+              updatedEvents[eventIndex] = data;
+              set({ events: updatedEvents });
+            }
+          }
+        } else if (payload.type === "relay:message") {
+          console.log("relay:message", payload.data);
+          const data = payload.data as WebSocketEvent;
+          set({
+            relayEvents: [...get().relayEvents, data],
+          });
+        } else if (payload.type === "event:queue:update") {
+          const data = payload.data as PublishingEventsQueueItem;
+          const index = get().eventsPublishingQueue.findIndex(
+            (item) => item.event.id === data.event.id
+          );
+          if (index !== -1) {
+            const updatedQueue = [...get().eventsPublishingQueue];
+            updatedQueue[index] = Object.assign(updatedQueue[index], data);
+            set({ eventsPublishingQueue: updatedQueue });
+          }
         }
-      }
-    });
+      });
+    };
+
+    const throttledEvents = throttle(processEvents, 100);
+
+    worker.addEventListener("message", throttledEvents);
   },
   connected: false,
-  connect: (relays?: Relay[]) => {
+  connect: async (relays?: Relay[]) => {
     if (get().connected) {
       return;
     }
-    get().store.connect(relays);
+    await get().store.connect(relays);
     set({
       connected: true,
     });
@@ -176,19 +120,20 @@ export const useNClient = create<NClientStore>((set, get) => ({
       connected: false,
     });
   },
-  relays: async () => {
-    return get().store.relays();
+  getRelays: async () => {
+    return get().store.getRelays();
   },
-  subscriptions: async () => {
-    return get().store.subscriptions();
+  relayEvents: [],
+  getSubscriptions: async () => {
+    return get().store.getSubscriptions();
   },
-  subscribe: (payload: Subscribe) => {
+  subscribe: async (payload: Subscribe) => {
     return get().store.subscribe(payload);
   },
-  unsubscribe: (id: string) => {
+  unsubscribe: async (id: string) => {
     return get().store.unsubscribe(id);
   },
-  unsubscribeAll: () => {
+  unsubscribeAll: async () => {
     return get().store.unsubscribeAll();
   },
   keystore: "none",
@@ -228,7 +173,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
       }
     }
   },
-  setKeyStore: (config: NClientCKeystore) => {
+  setKeyStore: (config: NClientKeystore) => {
     if (config.keystore === "localstore") {
       console.log(`Setting keystore for ${config.keystore}`, config);
       if (config.publicKey && config.privateKey) {
@@ -291,20 +236,94 @@ export const useNClient = create<NClientStore>((set, get) => ({
   getEventById: (id: string) => {
     return get().store.getEventById(id);
   },
+  eventProofOfWork: async (event: NEvent, bits: number) => {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {
+        type: "module",
+      });
+
+      // Setup an event listener to receive results from the worker
+      worker.onmessage = function (e) {
+        resolve(e.data.result);
+        // Terminate the worker after receiving the result
+        worker.terminate();
+      };
+
+      // Send a message to the worker to start the calculation
+      worker.postMessage({
+        event: event,
+        bits: bits,
+      });
+    });
+  },
   sendEvent: async (event: NEvent) => {
     return get().store.sendEvent(event);
   },
-  signAndSendEvent: async (event: NEvent) => {
+  signAndSendEvent: async (event: NEvent, proofOfWorkBits?: number) => {
     const keypair = get().keypair;
     if (!keypair) {
       throw new Error("Keypair not initialized");
     }
 
+    const keystore = get().keystore;
+    const relays = await get().getRelays();
+    const available = relays.filter((r) => r.write);
+
     let signedEvent: NEvent;
 
-    const keystore = get().keystore;
+    // Ready event
+    event.pubkey = keypair.publicKey;
+    event.generateId();
+    const origId = event.id;
+
+    set({
+      eventsPublishingQueue: [
+        ...get().eventsPublishingQueue,
+        {
+          event,
+          send: false,
+          powRequired: proofOfWorkBits,
+          powStartTime: proofOfWorkBits && proofOfWorkBits > 0 ? Date.now() : 0,
+          powEndTime: 0,
+          powDone: false,
+          accepted: false,
+          relays: available.map((r) => {
+            return {
+              id: r.id,
+              send: false,
+            };
+          }),
+        },
+      ],
+    });
+
+    // TODO: Check if relay requires POW
+    if (proofOfWorkBits && proofOfWorkBits > 0) {
+      console.log(`Generating proof of work for event ${event.id}`);
+      const result = await get().eventProofOfWork(event, proofOfWorkBits);
+      console.log(`Proof of work for event ${event.id} is ${result}`);
+      event = new NEvent(result);
+
+      const index = get().eventsPublishingQueue.findIndex(
+        (e) => e.event.id === origId
+      );
+      if (index >= 0) {
+        const queue = get().eventsPublishingQueue;
+        queue[index].event = event;
+        queue[index].powDone = true;
+        queue[index].powEndTime = Date.now();
+        console.log(
+          `Proof of work took ${
+            (queue[index].powEndTime as number) -
+            (queue[index].powStartTime as number)
+          }ms`
+        );
+        set({ eventsPublishingQueue: queue });
+      }
+    }
+
     if (keystore === "localstore") {
-      event.signAndGenerateId({
+      event.sign({
         privateKey: keypair.privateKey || "",
         publicKey: keypair.publicKey,
       });
@@ -322,10 +341,10 @@ export const useNClient = create<NClientStore>((set, get) => ({
     }
 
     event.isReadyToPublishOrThrow();
-
-    await get().store.sendEvent(signedEvent);
+    await get().sendEvent(signedEvent);
     return event.id;
   },
+  eventsPublishingQueue: [],
   clearEvents: async () => {
     await get().store.clearEvents();
     set({ events: [] });
@@ -367,23 +386,30 @@ export const useNClient = create<NClientStore>((set, get) => ({
   updateUserFollowing: async (user: NUserBase) => {
     return get().store.updateUserFollowing(user);
   },
-  getUserInformation: (publicKeys: string[]) => {
-    return get().store.getUserInformation(publicKeys);
-  },
-  hasSubscriptionForEventIds: (eventIds: string[], kinds: NEVENT_KIND[]) => {
-    return get().store.hasSubscriptionForEventIds(eventIds, kinds);
-  },
-  getEventInformation: async (
-    eventIds: string[],
-    options: {
+  requestInformation: (
+    source: "events" | "users",
+    idsOrKeys: string[],
+    options?: {
       timeout?: number;
     }
   ) => {
-    get().store.getEventInformation(eventIds, options);
+    return get().store.requestInformation(source, idsOrKeys, options);
+  },
+  hasSubscriptionForEventIds: async (
+    eventIds: string[],
+    kinds: NEVENT_KIND[]
+  ) => {
+    return get().store.hasSubscriptionForEventIds(eventIds, kinds);
   },
 
+  /**
+   * Setup a subscription related to a view
+   * @param view
+   * @param filters
+   * @returns
+   */
   setViewSubscription: async (view: string, filters: NFilters) => {
-    const subs = await get().store.subscriptions();
+    const subs = await get().getSubscriptions();
 
     const sameView = subs.find((s) => s.options && s.options.view === view);
     if (sameView) {
@@ -392,11 +418,11 @@ export const useNClient = create<NClientStore>((set, get) => ({
 
     for (const sub of subs) {
       if (sub.options && sub.options.view) {
-        await get().store.unsubscribe(sub.subscriptionId);
+        await get().unsubscribe(sub.subscriptionId);
       }
     }
 
-    await get().store.subscribe({
+    await get().subscribe({
       filters,
       options: {
         view,
@@ -405,25 +431,40 @@ export const useNClient = create<NClientStore>((set, get) => ({
       },
     });
 
-    setTimeout(async () => {
-      const eventUserPubkeys = get()
-        .events.filter((e) => !e.user?.pubkey)
-        .map((e) => e.event.pubkey);
-      if (eventUserPubkeys.length > 0) {
-        await get().store.getUserInformation(eventUserPubkeys);
-        const eventIds = get()
-          .events.filter((e) => !e.reactions)
-          .map((e) => e.event.id);
-        await useNClient.getState().getEventInformation(eventIds);
-      }
-    }, 2000);
+    const infoRequestPromises = [];
+
+    const eventUserPubkeys = get()
+      .events.filter((e) => !e.user?.pubkey)
+      .map((e) => e.event.pubkey);
+
+    const eventIds = get()
+      .events.filter((e) => !e.reactions)
+      .map((e) => e.event.id);
+
+    if (eventUserPubkeys.length > 0) {
+      infoRequestPromises.push(
+        get().requestInformation("users", eventUserPubkeys)
+      );
+    }
+
+    if (eventIds.length > 0) {
+      infoRequestPromises.push(get().requestInformation("events", eventIds));
+    }
+
+    await Promise.all(infoRequestPromises);
   },
+
+  /**
+   * Remove a subscription related to a view
+   * @param view
+   * @returns
+   */
   removeViewSubscription: async (view?: string) => {
-    const subs = await get().store.subscriptions();
+    const subs = await get().getSubscriptions();
 
     if (!view) {
       const unsubPromises = subs.map((sub) =>
-        get().store.unsubscribe(sub.subscriptionId)
+        get().unsubscribe(sub.subscriptionId)
       );
       await Promise.all(unsubPromises);
       return;
@@ -434,7 +475,7 @@ export const useNClient = create<NClientStore>((set, get) => ({
     );
 
     const unsubPromises = subsToUnsubscribe.map((sub) =>
-      get().store.unsubscribe(sub.subscriptionId)
+      get().unsubscribe(sub.subscriptionId)
     );
 
     await Promise.all(unsubPromises);

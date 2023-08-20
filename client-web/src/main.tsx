@@ -10,6 +10,8 @@ import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
 import { UserProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
+import { RelaysRoute } from "./routes/relays.tsx";
+import { PublishingQueueRoute } from "./routes/queue.tsx";
 import "./index.css";
 
 const init = async () => {
@@ -23,7 +25,6 @@ init();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ChakraProvider>
-      {/* <App /> */}
       <BrowserRouter>
         <Routes>
           <Route element={<PrimaryLayout />}>
@@ -31,6 +32,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
+            <Route path="/relays" element={<RelaysRoute />} />
+            <Route path="/queue" element={<PublishingQueueRoute />} />
             <Route path="/p/:pubkey" element={<UserProfileRoute />} />
           </Route>
         </Routes>

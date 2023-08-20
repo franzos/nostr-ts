@@ -52,7 +52,7 @@ export function SubscriptionsRoute() {
   } = useDisclosure();
 
   const update = async () => {
-    const subs = await useNClient.getState().subscriptions();
+    const subs = await useNClient.getState().getSubscriptions();
     if (subs) {
       setSubscriptions(subs);
     }
@@ -84,7 +84,7 @@ export function SubscriptionsRoute() {
     </Modal>
   );
 
-  const Subscription = (sub: ClientSubscription) => {
+  const TableRow = (sub: ClientSubscription) => {
     const view = sub.options && sub.options.view ? sub.options.view : "";
     return (
       <Tr key={`${sub.connectionId}-${sub.subscriptionId}`}>
@@ -137,7 +137,7 @@ export function SubscriptionsRoute() {
         </Thead>
         <Tbody>
           {subscriptions.map((sub) => {
-            return Subscription(sub);
+            return TableRow(sub);
           })}
         </Tbody>
       </Table>

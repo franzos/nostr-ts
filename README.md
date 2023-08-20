@@ -21,7 +21,7 @@ Initial support for `nos2x` and any other extention following NIP-07 is availabl
 
 ## Highlights
 
-- Supported NIP: 1, 10, 11, 14, 18, 23, 25, 36, 39, 40, 45, 56
+- Supported NIP: 1, 10, 11, 13, 14, 18, 23, 25, 36, 39, 40, 45, 56
 - Partial NIP: 19, 32, 57
 - `RelayClient` to handle websocket connection and message sending (node, web)
 - `RelayDiscovery` to make it easy to pickup new relays (node)

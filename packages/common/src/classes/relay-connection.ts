@@ -13,12 +13,22 @@ import {
   WebSocketClientBase,
   WebSocketClientConfig,
   WebSocketClientConnection,
+  WebSocketClientInfo,
 } from "../types";
 import { NEvent } from "./event";
 
 export class RelayConnection implements WebSocketClientConnection {
   id: string;
   url: string;
+  read: boolean;
+  write: boolean;
+
+  /**
+   * Set to true if relay requires POW
+   * This is sometimes not included in the server info but only available upon request
+   */
+  requiresPOW: number;
+
   info?: RelayInformationDocument;
   ws?: WebSocketClientBase;
   /**
@@ -36,6 +46,9 @@ export class RelayConnection implements WebSocketClientConnection {
   constructor(conf: WebSocketClientConfig) {
     this.id = conf.id ? conf.id : uuidv4();
     this.url = conf.url;
+    this.read = conf.read;
+    this.write = conf.write;
+    this.requiresPOW = 0;
     this.info = conf.info;
     // TODO: Implement limits
     this.isEnabled = true;
@@ -145,5 +158,26 @@ export class RelayConnection implements WebSocketClientConnection {
       (sub) => sub.subscriptionId === subscriptionId
     );
     return sub ? sub : null;
+  }
+
+  public getInfo(fields: "default" | "withInfo"): WebSocketClientInfo {
+    if (fields === "default") {
+      return {
+        id: this.id,
+        url: this.url,
+        read: this.read,
+        write: this.write,
+        powRequired: this.requiresPOW,
+      };
+    } else {
+      return {
+        id: this.id,
+        url: this.url,
+        read: this.read,
+        write: this.write,
+        powRequired: this.requiresPOW,
+        info: this.info,
+      };
+    }
   }
 }

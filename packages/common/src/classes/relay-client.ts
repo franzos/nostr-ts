@@ -9,16 +9,10 @@ import {
   ClientSubscription,
   Count,
   Relay,
-  RelayAuth,
-  RelayCount,
-  RelayEose,
-  RelayEvent,
-  RelayNotice,
-  RelayOK,
   Subscribe,
   SubscriptionOptions,
   WebSocketClientConfig,
-  WebSocketClientInfo,
+  WebSocketEvent,
 } from "../types/index";
 import { RelayConnection } from "./relay-connection";
 
@@ -35,7 +29,7 @@ export class RelayClientBase {
   public addInitialRelays(seedRelays?: Relay[]) {
     if (seedRelays && (!this.relays || this.relays.length === 0)) {
       for (const relay of seedRelays) {
-        this.relays.push(new RelayConnection({ url: relay.url }));
+        this.relays.push(new RelayConnection(relay));
       }
     }
   }
@@ -233,10 +227,10 @@ export class RelayClientBase {
   }
 
   /**
-   * Send an event to the relay
+   * Send an event to the relay network
    * @param event
    */
-  sendEvent(event: NEvent) {
+  sendEvent(event: NEvent, relayIds?: string[]) {
     const message: ClientEvent = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: event,
@@ -245,11 +239,26 @@ export class RelayClientBase {
 
     const send: {
       eventId: string;
-      relay: WebSocketClientInfo;
+      relay: WebSocketClientConfig;
       error: string | null;
     }[] = [];
 
-    for (const relay of this.relays) {
+    const selectedRelays = relayIds
+      ? this.relays.filter((r) => relayIds.includes(r.id))
+      : this.relays;
+    const enabledRelays = selectedRelays.filter((r) => r.isEnabled && r.write);
+
+    if (enabledRelays.length === 0) {
+      console.log("No relays enabled, not sending event", event);
+      return;
+    }
+
+    console.log(
+      `Sending event ${event.id} to ${enabledRelays.length} relays`,
+      event
+    );
+
+    for (const relay of enabledRelays) {
       if (relay.isEnabled) {
         if (relay.supportsEvent(event)) {
           relay.ws.sendMessage(data);
@@ -262,10 +271,7 @@ export class RelayClientBase {
 
           send.push({
             eventId: event.id,
-            relay: {
-              id: relay.id,
-              url: relay.url,
-            },
+            relay: relay.getInfo("default"),
             error: null,
           });
 
@@ -278,7 +284,7 @@ export class RelayClientBase {
 
           send.push({
             eventId: event.id,
-            relay,
+            relay: relay.getInfo("withInfo"),
             error: `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
           });
         }
@@ -297,31 +303,17 @@ export class RelayClientBase {
    * Important: You need to subscribe to receive events
    * @param onMessage
    */
-  listen(
-    onMessage: (payload: {
-      data:
-        | RelayAuth
-        | RelayCount
-        | RelayEose
-        | RelayEvent
-        | RelayNotice
-        | RelayOK;
-      meta: WebSocketClientConfig;
-    }) => void
-  ) {
+  listen(onMessage: (payload: WebSocketEvent) => void) {
     for (const relay of this.relays) {
       if (relay.isEnabled) {
         relay.ws.listen((data) => {
+          // TODO: Kinda duplicates event queue
           relay.updateCommandFromRelayMessage({
             data,
           });
           onMessage({
             data: data,
-            meta: {
-              id: relay.id,
-              url: relay.url,
-              info: relay.info,
-            },
+            meta: relay.getInfo("default"),
           });
         });
       }

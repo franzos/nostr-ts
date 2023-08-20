@@ -1,3 +1,4 @@
+import { Relay } from "./relay";
 import { RelayInformationDocument } from "./relay-information";
 import {
   RelayAuth,
@@ -7,6 +8,11 @@ import {
   RelayNotice,
   RelayOK,
 } from "./relay-message";
+
+export interface WebSocketEvent {
+  data: RelayAuth | RelayCount | RelayEose | RelayEvent | RelayNotice | RelayOK;
+  meta: WebSocketClientConfig;
+}
 
 export interface WebSocketClientBase {
   /**
@@ -55,15 +61,22 @@ export interface WebSocketClientBase {
   disconnect: () => void;
 }
 
-export interface WebSocketClientConfig {
+export interface WebSocketClientConfig extends Relay {
   id?: string;
   url: string;
+  read: boolean;
+  write: boolean;
   info?: RelayInformationDocument;
 }
 
 export interface WebSocketClientInfo extends WebSocketClientConfig {
   id: string;
   url: string;
+  /**
+   * Undefined or 0 means no PoW required
+   * This is a manual overwrite if the relay has a POW requirement but doesn't publish it
+   */
+  powRequired?: number;
 }
 
 export interface WebSocketClientConnection extends WebSocketClientConfig {

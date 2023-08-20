@@ -130,8 +130,7 @@ export function Event({
           duration: 5000,
           isClosable: true,
         });
-        useNClient.getState().getEventInformation([event.id], {
-          skipFilter: true,
+        useNClient.getState().requestInformation("events", [event.id], {
           timeout: 10000,
         });
       }

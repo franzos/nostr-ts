@@ -48,6 +48,7 @@ import {
   makeEventAmountTag,
   eventHasAmountTags,
   makeEventCoordinatesTag,
+  countLeadingZeroes,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -81,24 +82,62 @@ export class NEvent implements EventBase {
     this.sig = data.sig ? data.sig : "";
   }
 
+  public generateId() {
+    if (this.pubkey === "") {
+      throw new Error("Cannot generate event ID without a public key");
+    }
+    const serial = serializeEvent(this.toJson());
+    this.id = hash(serial);
+  }
+
+  public sign(keyPair: { privateKey: string; publicKey: string }) {
+    this.pubkey = keyPair.publicKey;
+    this.sig = sign(this.id, keyPair.privateKey);
+  }
+
   /**
    * 1. Sign the event (event.sig)
    * 2. Generate the event ID (event.id)
    * @param privateKey
    */
   public signAndGenerateId(keyPair: { privateKey: string; publicKey: string }) {
-    this.pubkey = keyPair.publicKey;
-    const serial = serializeEvent(this.toJson());
-    this.id = hash(serial);
-    this.sig = sign(this.id, keyPair.privateKey);
+    this.sign(keyPair);
+    this.generateId();
   }
 
-  public toJson() {
-    return JSON.parse(JSON.stringify(this));
+  public toJson(): any {
+    const cleanObject = {};
+    for (const [key, value] of Object.entries(this)) {
+      if (value !== undefined) {
+        cleanObject[key] = value;
+      }
+    }
+    return cleanObject;
   }
 
   public toURI() {
     return encodeURI(JSON.stringify(this.toJson()));
+  }
+
+  /**
+   *
+   * @param difficulty bits required for proof of work
+   */
+  public proofOfWork(targetDifficulty: number) {
+    let adjustmentValue = 0;
+
+    while (true) {
+      this.replaceNonceTag([targetDifficulty, adjustmentValue]);
+      this.generateId();
+      const leadingZeroes = countLeadingZeroes(this.id);
+
+      if (leadingZeroes >= targetDifficulty) {
+        console.log("Proof of work complete");
+        break;
+      }
+
+      adjustmentValue++;
+    }
   }
 
   /**
@@ -347,7 +386,15 @@ export class NEvent implements EventBase {
     if (this.hasNonceTag()) {
       throw new Error("Event already has a nonce.");
     }
-    this.addTag(["nonce", nonce.toString()]);
+    if (nonce.length !== 2) {
+      throw new Error(
+        "Nonce must be an array of 2 numbers: [miningResult, difficulty]"
+      );
+    }
+    const miningResult = nonce[0].toString();
+    const difficulty = nonce[1].toString();
+
+    this.addTag(["nonce", miningResult, difficulty]);
   }
 
   /**
@@ -355,6 +402,18 @@ export class NEvent implements EventBase {
    */
   public hasNonceTag() {
     return eventHasNonce(this);
+  }
+
+  /**
+   * For easy replacement during proof of work
+   * @param nonce
+   */
+  public replaceNonceTag(nonce: number[]) {
+    const hasTag = this.hasNonceTag();
+    if (hasTag) {
+      this.tags = this.tags.filter((tag) => tag[0] !== "nonce");
+    }
+    this.addNonceTag(nonce);
   }
 
   /**
@@ -430,9 +489,12 @@ export class NEvent implements EventBase {
 
   public determineRequiredNIP(): NNIP[] {
     const nips = [];
-    if (this.hasNonceTag()) {
-      nips.push(NNIP.NIP_13);
-    }
+
+    // TODO: Seems this is not usually published
+    // if (this.hasNonceTag()) {
+    //   nips.push(NNIP.NIP_13);
+    // }
+
     if (this.hasExternalIdentityClaimTag()) {
       nips.push(NNIP.NIP_39);
     }

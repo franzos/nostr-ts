@@ -95,11 +95,7 @@ export class RelayClient extends RelayClientBase {
         try {
           relay.info = await getRelayInformationDocument(relay.url);
           console.log(`Relay ${relay.url} information`, relay.info);
-          info.push({
-            id: relay.id,
-            url: relay.url,
-            info: relay.info,
-          });
+          info.push(relay.getInfo("withInfo"));
         } catch (e) {
           console.error("Error getting relay information", e);
         }

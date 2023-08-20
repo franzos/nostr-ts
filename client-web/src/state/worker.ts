@@ -1,174 +1,27 @@
 import {
   NEvent,
   RELAY_MESSAGE_TYPE,
-  RelayAuth,
-  RelayCount,
-  RelayEose,
-  RelayEvent,
-  RelayNotice,
-  RelayOK,
-  WebSocketClientConfig,
+  NEventWithUserBase,
   EventBase,
   NFilters,
   NEVENT_KIND,
   NUserBase,
-  UserBase,
   Relay,
   ClientSubscription,
   Subscribe,
-  WebSocketClientInfo,
+  WebSocketEvent,
 } from "@nostr-ts/common";
 import { NUser, RelayClient } from "@nostr-ts/web";
-import { NEventWithUserBase } from "@nostr-ts/common";
 import { IDBPDatabase, openDB } from "idb";
-import { MAX_EVENTS } from "./defaults";
+import { MAX_EVENTS } from "../defaults";
 import { expose } from "comlink";
+import { IncomingEventsQueue } from "./incoming-queue";
+import { NClientDB, NClientWorker } from "./worker-types";
+import { PublishingEventsQueueItem } from "./publishing-qeue";
 
-export interface NClientStoreBase {
-  init(config?: { maxEvents?: number }): Promise<void>;
-  connected: boolean;
-  connect: (relays?: Relay[]) => void;
-  disconnect: () => void;
-  subscribe: (payload: Subscribe) => Promise<ClientSubscription[] | undefined>;
-  subscriptions: () => Promise<ClientSubscription[]>;
-  unsubscribe: (id: string) => void;
-  unsubscribeAll: () => void;
-  eventsMap?: Map<string, NEventWithUserBase>;
-  maxEvents: number;
-  getUser: (pubkey: string) => Promise<NUser | undefined>;
-  addUser: (user: NUserBase) => Promise<void>;
-  updateUser: (user: NUserBase) => Promise<void>;
-  countUsers: () => Promise<number>;
-  addEvent?: (payload: {
-    data:
-      | RelayAuth
-      | RelayCount
-      | RelayEose
-      | RelayEvent
-      | RelayNotice
-      | RelayOK;
-    meta: WebSocketClientConfig;
-  }) => void;
-  getEventById: (id: string) => void;
-  followUser(pubkey: string): void;
-  unfollowUser(pubkey: string): void;
-  followingUser(pubkey: string): Promise<boolean>;
-  // For reactive updates
-  followingUserIds: string[];
-  getAllUsersFollowing(): Promise<NUserBase[] | undefined>;
-  updateUserFollowing(user: NUserBase): Promise<void>;
-  getUserInformation(publicKeys: string[]): Promise<void>;
-  hasSubscriptionForEventIds(
-    eventIds: string[],
-    kinds: NEVENT_KIND[]
-  ): Promise<string[] | undefined>;
-  getEventInformation(
-    eventIds: string[],
-    options?: {
-      timeout?: number;
-    }
-  ): Promise<void>;
-}
+const incomingQueue = new IncomingEventsQueue();
 
-interface NClientDB {
-  users: {
-    key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
-  };
-  following: {
-    key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
-  };
-}
-
-function shuffle(array: string[]) {
-  let currentIndex = array.length,
-    randomIndex;
-
-  // While there remain elements to shuffle...
-  while (currentIndex !== 0) {
-    // Pick a remaining element...
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-
-    // And swap it with the current element.
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
-  }
-
-  return array;
-}
-
-/**
- *
- */
-class EventsProcessingQueue {
-  _priority: Promise<void>[];
-  _background: Promise<void>[];
-  _current: Promise<void>;
-
-  constructor() {
-    this._priority = [];
-    this._background = [];
-    this._current = Promise.resolve();
-  }
-
-  enqueuePriority(task: () => Promise<void>) {
-    const taskPromise = this._current.then(() => task());
-    this._priority.push(taskPromise);
-    this._current = taskPromise.catch(() => {});
-    return taskPromise;
-  }
-
-  enqueueBackground(task: () => Promise<void>) {
-    const taskPromise = this._current.then(() => task());
-    this._background.push(taskPromise);
-    this._current = taskPromise.catch(() => {});
-    return taskPromise;
-  }
-
-  clearPriority() {
-    this._priority = [];
-  }
-
-  clearBackground() {
-    this._background = [];
-  }
-
-  async process() {
-    while (this._priority.length > 0 || this._background.length > 0) {
-      const taskToRun = this._priority.shift() || this._background.shift();
-      if (taskToRun) {
-        await taskToRun;
-      }
-    }
-    this._current = Promise.resolve();
-  }
-
-  clear() {
-    this._priority = [];
-    this._background = [];
-    this._current = Promise.resolve();
-  }
-}
-
-const queue = new EventsProcessingQueue();
-
-export interface NClientStoreBaseWorker extends NClientStoreBase {
-  checkedUsers: string[];
-  checkedEvents: string[];
-
-  sendEvent: (event: EventBase) => void;
-  setMaxEvents: (max: number) => void;
-  clearEvents: () => void;
-  relays: () => WebSocketClientConfig[];
-}
-
-class WorkerClass implements NClientStoreBaseWorker {
+class WorkerClass implements NClientWorker {
   connected: boolean;
   db: IDBPDatabase<NClientDB> | null;
   client: RelayClient | null;
@@ -176,6 +29,9 @@ class WorkerClass implements NClientStoreBaseWorker {
   maxEvents: number;
   checkedUsers: string[] = [];
   checkedEvents: string[] = [];
+
+  eventsPublishingQueue: PublishingEventsQueueItem[] = [];
+
   followingUserIds: string[] = [];
 
   constructor(config?: { maxEvents?: number }) {
@@ -186,7 +42,6 @@ class WorkerClass implements NClientStoreBaseWorker {
   }
 
   async init() {
-    console.log(`WORKER: INIT DB`);
     this.db = await openDB<NClientDB>("nostr-client", 1, {
       upgrade(db) {
         db.createObjectStore("users", { keyPath: "pubkey" });
@@ -194,16 +49,21 @@ class WorkerClass implements NClientStoreBaseWorker {
         db.createObjectStore("following", { keyPath: "pubkey" });
       },
     });
-    console.log(`WORKER: INIT DB DONE`);
   }
 
-  connect(relays?: Relay[]) {
+  async connect(
+    relays?: Relay[],
+    options?: {
+      autoLoadInfo?: boolean;
+    }
+  ) {
     this.client = new RelayClient(relays);
-    console.log(this.client.getSubscriptions());
+    if (options?.autoLoadInfo !== false) {
+      await this.client.getRelayInformation();
+    }
     this.client.listen(async (payload) => {
       await this.addEvent?.(payload);
     });
-    ////
   }
 
   disconnect() {
@@ -213,18 +73,15 @@ class WorkerClass implements NClientStoreBaseWorker {
     this.connected = false;
   }
 
-  relays() {
+  getRelays() {
     return this.client?.relays
       ? this.client.relays.map((r) => {
-          return {
-            url: r.url,
-            id: r.id,
-          } as WebSocketClientInfo;
+          return r.getInfo("withInfo");
         })
       : [];
   }
 
-  async subscriptions() {
+  async getSubscriptions() {
     return this.client?.getSubscriptions() || [];
   }
 
@@ -278,29 +135,59 @@ class WorkerClass implements NClientStoreBaseWorker {
     return await this.db.count("users");
   }
 
-  async addEvent(payload: {
-    data:
-      | RelayAuth
-      | RelayCount
-      | RelayEose
-      | RelayEvent
-      | RelayNotice
-      | RelayOK;
-    meta: WebSocketClientConfig;
-  }) {
+  async addEvent(payload: WebSocketEvent) {
     if (!payload.data) {
       return;
     }
     // logRelayMessage(payload.data);
 
+    const payLoadKind = payload.data[0];
+
+    if (
+      payLoadKind === RELAY_MESSAGE_TYPE.AUTH ||
+      payLoadKind === RELAY_MESSAGE_TYPE.OK ||
+      payLoadKind === RELAY_MESSAGE_TYPE.NOTICE ||
+      payLoadKind === RELAY_MESSAGE_TYPE.COUNT ||
+      payLoadKind === RELAY_MESSAGE_TYPE.EOSE
+    ) {
+      postMessage({
+        type: "relay:message",
+        data: payload,
+      });
+
+      if (payLoadKind === RELAY_MESSAGE_TYPE.OK) {
+        const eventId = payload.data[1];
+        const status = payload.data[2];
+        const message = payload.data[3];
+        const queueItem = this.eventsPublishingQueue.find(
+          (item) => item.event.id === eventId
+        );
+        if (queueItem) {
+          const relayId = payload.meta.id;
+          for (const r of queueItem.relays) {
+            if (r.id === relayId) {
+              r.accepted = status;
+              r.error = status === false ? message : undefined;
+            }
+          }
+          postMessage({
+            type: "event:queue:update",
+            data: queueItem,
+          });
+        }
+      }
+
+      return;
+    }
+
     // Handle incoming messages of type EVENT
-    if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
+    if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
       const kind = payload.data[2].kind;
       if (
         kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
         kind === NEVENT_KIND.LONG_FORM_CONTENT
       ) {
-        queue.enqueuePriority(async () => {
+        incomingQueue.enqueuePriority(async () => {
           const event = payload.data[2] as EventBase;
 
           if (this.eventsMap.size >= this.maxEvents) {
@@ -332,7 +219,7 @@ class WorkerClass implements NClientStoreBaseWorker {
 
               this.eventsMap.set(newEvent.event.id, newEvent);
               postMessage({
-                type: "new-event",
+                type: "event:new",
                 data: newEvent,
               });
             }
@@ -355,14 +242,14 @@ class WorkerClass implements NClientStoreBaseWorker {
           if (event.user?.pubkey === newUser.pubkey) {
             event.user = newUser;
             postMessage({
-              type: "update-event",
+              type: "event:update",
               data: event,
             });
           }
         }
       } else if (kind === NEVENT_KIND.REACTION) {
         // console.log(`Reaction event received`);
-        queue.enqueueBackground(async () => {
+        incomingQueue.enqueueBackground(async () => {
           const ev = new NEvent(payload.data[2] as EventBase);
 
           const inResponse = ev.hasEventTags();
@@ -381,7 +268,7 @@ class WorkerClass implements NClientStoreBaseWorker {
 
               console.log(`Reaction event added to event ${event.event.id}`);
               postMessage({
-                type: "update-event",
+                type: "event:update",
                 data: event,
               });
               // it's safe to assume that there's only one matching event
@@ -391,7 +278,7 @@ class WorkerClass implements NClientStoreBaseWorker {
         });
       } else if (kind === NEVENT_KIND.REPOST) {
         // console.log(`Repost event received`);
-        queue.enqueueBackground(async () => {
+        incomingQueue.enqueueBackground(async () => {
           const ev = new NEvent(payload.data[2] as EventBase);
 
           const inResponse = ev.hasEventTags();
@@ -411,7 +298,7 @@ class WorkerClass implements NClientStoreBaseWorker {
 
               console.log(`Repost event found for ${event.event.id}`);
               postMessage({
-                type: "update-event",
+                type: "event:update",
                 data: event,
               });
               // it's safe to assume that there's only one matching event
@@ -427,12 +314,18 @@ class WorkerClass implements NClientStoreBaseWorker {
     return this.eventsMap.get(id);
   }
 
-  async sendEvent(event: EventBase) {
+  /**
+   *
+   * - Adds event to queue after sending
+   * @param event
+   * @returns
+   */
+  async sendEvent(event: EventBase, relayIds?: string[]) {
     if (!this.client) {
       throw new Error("Client not initialized");
     }
     const ev = new NEvent(event);
-    const result = this.client.sendEvent(ev);
+    const result = this.client.sendEvent(ev, relayIds);
     if (result) {
       if (
         event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
@@ -443,7 +336,30 @@ class WorkerClass implements NClientStoreBaseWorker {
           event: ev,
           eventRelayUrls: result.map((r) => r.relay.url),
         });
+        postMessage({
+          type: "event:new",
+          data: {
+            event: ev,
+            eventRelayUrls: result.map((r) => r.relay.url),
+          },
+        });
       }
+
+      const queueItem = {
+        event: ev,
+        send: true,
+        relays: result.map((r) => {
+          return {
+            id: r.relay.id as string,
+            send: true,
+          };
+        }),
+      };
+      this.eventsPublishingQueue.push(queueItem);
+      postMessage({
+        type: "event:queue:update",
+        data: queueItem,
+      });
       return result;
     } else {
       throw new Error("Failed to send event");
@@ -452,7 +368,7 @@ class WorkerClass implements NClientStoreBaseWorker {
 
   clearEvents() {
     console.log(`WORKER: CLEAR EVENTS`);
-    queue.clearPriority();
+    incomingQueue.clearPriority();
     this.eventsMap.clear();
     this.checkedEvents = [];
     this.checkedUsers = [];
@@ -471,7 +387,7 @@ class WorkerClass implements NClientStoreBaseWorker {
         pubkey: pubkey,
       });
       await this.db.put("following", newFollowing);
-      await this.getUserInformation([pubkey]);
+      await this.requestInformation("users", [pubkey]);
     }
     this.followingUserIds.push(pubkey);
   }
@@ -511,44 +427,69 @@ class WorkerClass implements NClientStoreBaseWorker {
     }
   }
 
-  async getUserInformation(publicKeys: string[]) {
-    if (publicKeys.length === 0) {
+  async requestInformation(
+    source: "events" | "users",
+    idsOrKeys: string[],
+    options?: {
+      timeout?: number;
+    }
+  ) {
+    if (idsOrKeys.length === 0) {
       return;
     }
 
-    const filteredPublicKeys = publicKeys.filter(
-      (pubkey) => !this.checkedUsers.includes(pubkey)
-    );
+    const timeout = options?.timeout || 10000;
+    let filtered: string[] = [];
 
-    if (filteredPublicKeys.length === 0) {
-      return;
+    if (source === "events") {
+      filtered = idsOrKeys.filter((id) => !this.checkedEvents.includes(id));
+      if (filtered.length === 0) {
+        return;
+      }
+      this.checkedEvents = [...this.checkedEvents, ...filtered];
+    } else if (source === "users") {
+      filtered = idsOrKeys.filter(
+        (pubkey) => !this.checkedUsers.includes(pubkey)
+      );
+      if (filtered.length === 0) {
+        return;
+      }
+      this.checkedUsers = [...this.checkedUsers, ...filtered];
     }
 
-    // if more than 20 publicKeys, randomize and select 20; otherwise use all
-    const keys =
-      filteredPublicKeys.length > 20
-        ? shuffle(filteredPublicKeys).slice(0, 20)
-        : filteredPublicKeys;
+    console.log(`=> Getting information for ${filtered.length} ${source}`);
 
-    if (keys.length === 0) {
-      return;
+    const subscriptions: ClientSubscription[] = [];
+
+    // for 25 each
+    for (let i = 0; i < filtered.length; i += 25) {
+      const keys = filtered.slice(i, i + 25);
+      let filters: NFilters;
+      if (source === "events") {
+        filters = new NFilters({
+          kinds: [NEVENT_KIND.REACTION, NEVENT_KIND.REPOST],
+          "#e": filtered,
+        });
+      } else if (source === "users") {
+        filters = new NFilters({
+          kinds: [NEVENT_KIND.METADATA],
+          authors: keys,
+        });
+      } else {
+        throw new Error("Invalid source");
+      }
+      const subs = await this.subscribe({ filters });
+      if (subs) {
+        subscriptions.push(...subs);
+      }
     }
 
-    console.log(`=> Getting information for ${keys.length} users`);
-    const filters = new NFilters({
-      kinds: [NEVENT_KIND.METADATA],
-      authors: keys,
-    });
-    this.checkedUsers = [...this.checkedUsers, ...keys];
-    const subscriptions = await this.subscribe({
-      filters,
-    });
-    if (subscriptions) {
+    if (subscriptions.length === 0) {
       setTimeout(() => {
         for (const subscription of subscriptions) {
           this.unsubscribe(subscription.subscriptionId);
         }
-      }, 10000);
+      }, timeout);
     }
   }
 
@@ -586,57 +527,6 @@ class WorkerClass implements NClientStoreBaseWorker {
     }
 
     return subIds.length > 0 ? subIds : undefined;
-  }
-
-  async getEventInformation(
-    eventIds: string[],
-    options: {
-      timeout?: number;
-    }
-  ) {
-    if (eventIds.length === 0) {
-      return;
-    }
-
-    const timeout = options?.timeout || 120000;
-
-    const filteredEventIds = eventIds.filter(
-      (eventId) => !this.checkedEvents.includes(eventId)
-    );
-
-    if (filteredEventIds.length === 0) {
-      return;
-    }
-
-    this.checkedEvents = [...this.checkedEvents, ...filteredEventIds];
-
-    console.log(`=> Getting information for ${filteredEventIds.length} events`);
-
-    const subscriptions: ClientSubscription[] = [];
-
-    // for 25 each
-    for (let i = 0; i < filteredEventIds.length; i += 25) {
-      const ids = filteredEventIds.slice(i, i + 25);
-      const filters = new NFilters({
-        kinds: [NEVENT_KIND.REACTION, NEVENT_KIND.REPOST],
-        "#e": ids,
-      });
-
-      const subs = await this.subscribe({
-        filters,
-      });
-      if (subs) {
-        subscriptions.push(...subs);
-      }
-    }
-
-    if (subscriptions) {
-      setTimeout(() => {
-        for (const subscription of subscriptions) {
-          this.unsubscribe(subscription.subscriptionId);
-        }
-      }, timeout);
-    }
   }
 }
 

@@ -13,7 +13,6 @@ import { useEffect, useState } from "react";
 import { useNClient } from "../state/client";
 import { BottomBar } from "../components/bottom-bar";
 import { NUserBase } from "@nostr-ts/common";
-import { CreateEventForm } from "../components/create-event-form";
 import { MenuItem } from "../components/menu-item";
 import LanConnectIcon from "mdi-react/LanConnectIcon";
 import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
@@ -21,13 +20,19 @@ import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import PlaylistCheckIcon from "mdi-react/PlaylistCheckIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
+import ConnectionIcon from "mdi-react/ConnectionIcon";
+import TrayFullIcon from "mdi-react/TrayFullIcon";
 import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
   const [connected] = useNClient((state) => [state.connected]);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
+  const [relaysCount, setRelaysCount] = useState<number>(0);
   const [keystore] = useNClient((state) => [state.keystore]);
+  const [eventsQueueCount] = useNClient((state) => [
+    state.eventsPublishingQueue.length,
+  ]);
 
   const {
     isOpen: isConnectModalOpen,
@@ -40,9 +45,13 @@ export function PrimaryLayout() {
     if (following) {
       setFollowingUsers(following);
     }
-    const subs = await useNClient.getState().subscriptions();
+    const subs = await useNClient.getState().getSubscriptions();
     if (subs) {
       setSubscriptionsCount(subs.length);
+    }
+    const relays = await useNClient.getState().getRelays();
+    if (relays) {
+      setRelaysCount(relays.length);
     }
   };
 
@@ -78,6 +87,20 @@ export function PrimaryLayout() {
             value={subscriptionsCount}
             to="/subscriptions"
             leftIcon={<Icon as={PlaylistCheckIcon} marginRight={1} />}
+          />
+
+          <MenuItem
+            label="Relays"
+            value={relaysCount}
+            to="/relays"
+            leftIcon={<Icon as={ConnectionIcon} marginRight={1} />}
+          />
+
+          <MenuItem
+            label="Queue"
+            value={eventsQueueCount}
+            to="/queue"
+            leftIcon={<Icon as={TrayFullIcon} marginRight={1} />}
           />
         </>
       )}
@@ -120,17 +143,11 @@ export function PrimaryLayout() {
           </Heading>
         </VStack>
 
-        <Grid templateColumns={["1fr", "0.5fr 2fr 1fr"]} gap={20}>
+        <Grid templateColumns={["1fr", "1fr 4fr"]} gap={20}>
           {Sidebar}
 
           <Box maxHeight="80vh" overflowY="auto">
             <Outlet />
-          </Box>
-          <Box display="flex" flexDirection="column">
-            <Heading as="h2" size="md" marginBottom={4}>
-              Broadcast to the Network
-            </Heading>
-            <CreateEventForm />
           </Box>
         </Grid>
       </VStack>

@@ -190,8 +190,8 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           <Button
             colorScheme="green"
             disabled={initialRelayUrls.length === 0}
-            onClick={() => {
-              useNClient.getState().connect(initialRelayUrls);
+            onClick={async () => {
+              await useNClient.getState().connect(initialRelayUrls);
               onClose();
             }}
           >

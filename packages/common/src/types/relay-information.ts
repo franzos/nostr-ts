@@ -49,6 +49,15 @@ export interface ServerLimitations {
   payment_required: boolean;
 }
 
+export interface Fee {
+  amount: number;
+  unit: string;
+}
+
+export interface Fees {
+  admission: Fee[];
+}
+
 /**
  * Relay information document
  * https://github.com/nostr-protocol/nips/blob/master/11.md
@@ -56,12 +65,14 @@ export interface ServerLimitations {
 export interface RelayInformationDocument {
   name?: string;
   description?: string;
+  fees?: Fees;
   pubkey?: string;
   contact?: string;
   supported_nips?: number[];
   software?: string;
   version?: string;
   limitations?: ServerLimitations;
+  payments_url?: string;
 }
 
 // TODO: Implement extra fields

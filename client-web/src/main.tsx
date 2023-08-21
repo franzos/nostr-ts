@@ -25,7 +25,7 @@ init();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ChakraProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.VITE_CLIENT_WEB_BASE_URL}>
         <Routes>
           <Route element={<PrimaryLayout />}>
             <Route path="/" element={<WelcomeRoute />} />

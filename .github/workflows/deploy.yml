@@ -9,7 +9,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      GH_PAGES_BUILD: true
+      VITE_CLIENT_WEB_BASE_URL: "/nostr-ts/"
 
     steps:
     - name: Checkout Repository

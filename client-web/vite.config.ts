@@ -1,7 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 
+const BASE_URL = process.env.CLIENT_WEB_BASE_URL || "/";
+
 export default defineConfig({
-  base: process.env.GH_PAGES_BUILD ? "/nostr-ts/" : "/", // for github pages
+  base: BASE_URL,
   plugins: [react()],
 });

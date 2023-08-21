@@ -17,6 +17,8 @@ Nostr web client built with React.
 
 Initial support for `nos2x` and any other extention following NIP-07 is available.
 
+A new, live version builds from master on every commit: [https://franzos.github.io/nostr-ts/](https://franzos.github.io/nostr-ts/).
+
 ![Preview](./client-web/preview.png)
 
 ## Highlights
@@ -232,6 +234,49 @@ supportedNips [
   28, 33
 ]
 Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not published to wss://nostr.wine because not all needed NIPS are supported.
+```
+
+- [ ] NIP-13 [Proof of work](https://github.com/nostr-protocol/nips/blob/master/13.md)
+
+```js
+const difficulty = 28
+const ev = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
+ev.pubkey = keypair.pub
+ev.proofOfWork(difficulty);
+ev.sign()
+```
+
+If you need anything above ~20 bits and work in the browser, there's a helper function for web worker (`proofOfWork(event, bits)`):
+
+```js
+// pow-worker.ts
+import { proofOfWork } from "@nostr-ts/common";
+
+self.onmessage = function (e) {
+  const data = e.data;
+  const result = proofOfWork(data.event, data.bits);
+  self.postMessage({ result });
+};
+
+// client.ts
+return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {
+        type: "module",
+    });
+
+    // Setup an event listener to receive results from the worker
+    worker.onmessage = function (e) {
+        resolve(e.data.result);
+        // Terminate the worker after receiving the result
+        worker.terminate();
+    };
+
+    // Send a message to the worker to start the calculation
+    worker.postMessage({
+        event: event,
+        bits: bits,
+    });
+});
 ```
 
 - [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)

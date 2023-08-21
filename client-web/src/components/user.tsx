@@ -42,21 +42,17 @@ export function User({
         </Link>
       </Box>
       <Spacer />
-      {!hideFollow && following ? (
+      {!hideFollow && (
         <Button
           variant="outline"
-          colorScheme="red"
-          onClick={() => useNClient.getState().unfollowUser(user.pubkey)}
+          colorScheme={following ? "red" : "green"}
+          onClick={() =>
+            following
+              ? useNClient.getState().unfollowUser(user.pubkey)
+              : useNClient.getState().followUser(user.pubkey)
+          }
         >
-          Unfollow
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          colorScheme="green"
-          onClick={() => useNClient.getState().followUser(user.pubkey)}
-        >
-          Follow
+          {following ? "Unfollow" : "Follow"}
         </Button>
       )}
     </Flex>

@@ -10,6 +10,7 @@ import {
   ClientSubscription,
   Subscribe,
   WebSocketEvent,
+  Count,
 } from "@nostr-ts/common";
 import { NUser, RelayClient } from "@nostr-ts/web";
 import { IDBPDatabase, openDB } from "idb";
@@ -81,6 +82,30 @@ class WorkerClass implements NClientWorker {
       : [];
   }
 
+  updateRelay(
+    id: string,
+    options: {
+      isEnabled?: boolean;
+      read?: boolean;
+      write?: boolean;
+    }
+  ) {
+    for (const relay of this.client?.relays || []) {
+      if (relay.id === id) {
+        if (typeof options.isEnabled !== "undefined") {
+          relay.isEnabled = options.isEnabled;
+        }
+        if (typeof options.read !== "undefined") {
+          relay.read = options.read;
+        }
+        if (typeof options.write !== "undefined") {
+          relay.write = options.write;
+        }
+        break;
+      }
+    }
+  }
+
   async getSubscriptions() {
     return this.client?.getSubscriptions() || [];
   }
@@ -135,6 +160,13 @@ class WorkerClass implements NClientWorker {
     return await this.db.count("users");
   }
 
+  count(payload: Count) {
+    return this.client?.count({
+      ...payload,
+      filters: new NFilters(payload.filters),
+    });
+  }
+
   async addEvent(payload: WebSocketEvent) {
     if (!payload.data) {
       return;
@@ -164,11 +196,20 @@ class WorkerClass implements NClientWorker {
         );
         if (queueItem) {
           const relayId = payload.meta.id;
+          let count = 0;
+          let accepted = 0;
           for (const r of queueItem.relays) {
             if (r.id === relayId) {
               r.accepted = status;
               r.error = status === false ? message : undefined;
+              count++;
+              if (status) {
+                accepted++;
+              }
             }
+          }
+          if (count === accepted) {
+            queueItem.accepted = true;
           }
           postMessage({
             type: "event:queue:update",

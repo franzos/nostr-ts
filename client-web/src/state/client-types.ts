@@ -11,6 +11,7 @@ import {
   RelayOK,
   ClientSubscription,
   NFilters,
+  Count,
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
 import { NClientWorker } from "./worker-types";
@@ -21,6 +22,14 @@ import { PublishingEventsQueueItem } from "./publishing-qeue";
 export interface NClient extends NClientBase {
   store: Remote<NClientWorker>;
   getRelays: () => Promise<WebSocketClientInfo[]>;
+  updateRelay: (
+    id: string,
+    options: {
+      isEnabled?: boolean;
+      read?: boolean;
+      write?: boolean;
+    }
+  ) => Promise<void>;
   /**
    * Events set by worker listener
    */
@@ -41,6 +50,7 @@ export interface NClient extends NClientBase {
    */
   newEvent: NEvent;
   eventProofOfWork: (event: NEvent, bits: number) => Promise<NEvent>;
+  count: (payload: Count) => Promise<ClientSubscription[] | undefined>;
   sendEvent: (event: NEvent) => Promise<void>;
   signAndSendEvent: (event: NEvent) => Promise<string>;
   eventsPublishingQueue: PublishingEventsQueueItem[];
@@ -70,10 +80,11 @@ export interface NClient extends NClientBase {
     page: string;
     subscription?: ClientSubscription;
   };
+  hasViewSubscription: (view: string) => Promise<boolean>;
   setViewSubscription: (
     view: string,
     filters: NFilters,
     overwrite?: boolean
   ) => Promise<void>;
-  removeViewSubscription: (view: string) => void;
+  removeViewSubscription: (view: string) => Promise<void>;
 }

@@ -63,7 +63,7 @@ export function SubscriptionsRoute() {
       await update();
     };
     init();
-    const updateInterval = setInterval(update, 2000);
+    const updateInterval = setInterval(update, 1000);
 
     return () => clearInterval(updateInterval);
   }, []);

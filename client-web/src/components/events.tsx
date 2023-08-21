@@ -12,9 +12,10 @@ export function Events(props: {
   filters: NFilters;
   connected: boolean;
 }) {
-  const [events] = useNClient((state) => [state.events]);
-  const [eventsCount] = useNClient((state) => [state.events.length]);
-  const [maxEvents] = useNClient((state) => [state.maxEvents]);
+  const [events, maxEvents] = useNClient((state) => [
+    state.events,
+    state.maxEvents,
+  ]);
 
   const [moreEventsCount, setMoreEventsCount] = useState(0);
 
@@ -59,8 +60,10 @@ export function Events(props: {
           </Box>
         );
       })}
-      {eventsCount === 0 && <Text>Waiting for fresh content ... hold on.</Text>}
-      {eventsCount >= maxEvents && (
+      {events.length === 0 && (
+        <Text>Waiting for fresh content ... hold on.</Text>
+      )}
+      {events.length >= maxEvents && (
         <Box display="flex" justifyContent="space-between" padding={2}>
           <Button flex="1" marginRight={2} onClick={moreEvents}>
             Load {MAX_EVENTS} more

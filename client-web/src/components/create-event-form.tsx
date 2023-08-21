@@ -35,11 +35,15 @@ export const CreateEventForm = () => {
     state.connected && state.keystore !== "none",
   ]);
   const [errors, setErrors] = useState<string[]>([]);
-  const [keystore] = useNClient((state) => [state.keystore]);
-  const [keypair] = useNClient((state) => [state.keypair]);
-  const [eventKind] = useNClient((state) => [state.newEvent?.kind || 0]);
-  const [newEventName] = useNClient((state) => [state.newEventName]);
-  const [newEvent] = useNClient((state) => [state.newEvent]);
+  const [keystore, keypair, eventKind, newEventName, newEvent] = useNClient(
+    (state) => [
+      state.keystore,
+      state.keypair,
+      state.newEvent?.kind || 0,
+      state.newEventName,
+      state.newEvent,
+    ]
+  );
   const toast = useToast();
 
   const [users, setUsers] = useState<NUser[]>([]);
@@ -116,9 +120,19 @@ export const CreateEventForm = () => {
     }
 
     try {
-      await useNClient.getState().signAndSendEvent(newEvent);
-      const overwrite = true;
-      setKind(newEventName, overwrite);
+      const evId = await useNClient.getState().signAndSendEvent(newEvent);
+      if (evId) {
+        toast({
+          title: "Success",
+          description: `Event ${evId} submitted`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+
+        const overwrite = true;
+        setKind(newEventName, overwrite);
+      }
     } catch (e) {
       let error = "";
       if (e instanceof Error) {

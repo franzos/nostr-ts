@@ -20,7 +20,11 @@ import {
   Tbody,
   Text,
   Box,
+  Icon,
+  HStack,
 } from "@chakra-ui/react";
+import CheckCircleOutlineIcon from "mdi-react/CheckCircleOutlineIcon";
+import CircleOutlineIcon from "mdi-react/CircleOutlineIcon";
 
 export function PublishingQueueRoute() {
   const [queue] = useNClient((s) => [s.eventsPublishingQueue]);
@@ -105,8 +109,19 @@ export function PublishingQueueRoute() {
         <Td>
           <Tooltip label={eventId}>{`${eventId.substring(0, 3)}..`}</Tooltip>
         </Td>
-        <Td>{item.powRequired}</Td>
-        <Td>{item.powDone ? <Text>TRUE</Text> : <Text>FALSE</Text>}</Td>
+        <Td>
+          <HStack>
+            {item.powRequired ? (
+              <Text>{item.powRequired}</Text>
+            ) : (
+              <Text>0</Text>
+            )}
+            <Text>/</Text>
+            <Icon
+              as={item.powDone ? CheckCircleOutlineIcon : CircleOutlineIcon}
+            />
+          </HStack>
+        </Td>
         <Td>
           <Button
             size={"sm"}
@@ -118,9 +133,16 @@ export function PublishingQueueRoute() {
             Show
           </Button>
         </Td>
-        <Td>{item.send ? <Text>TRUE</Text> : <Text>FALSE</Text>}</Td>
         <Td>
-          {item.accepted ? <Text>TRUE</Text> : <Text>FALSE</Text>}
+          <Icon
+            as={item.send ? CheckCircleOutlineIcon : CircleOutlineIcon}
+            marginRight={1}
+          />
+        </Td>
+        <Td>
+          <Icon
+            as={item.accepted ? CheckCircleOutlineIcon : CircleOutlineIcon}
+          />
           {hasError(item) && <Text color="red.500">{error(item)}</Text>}
         </Td>
       </Tr>
@@ -134,8 +156,7 @@ export function PublishingQueueRoute() {
         <Thead>
           <Tr>
             <Th>Event ID</Th>
-            <Th>POW</Th>
-            <Th>POW Done</Th>
+            <Th>POW / Done</Th>
             <Th>Info</Th>
             <Th>Send</Th>
             <Th>Accepted</Th>

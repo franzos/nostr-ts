@@ -1,44 +1,31 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Events } from "../components/events";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { NFilters, NEVENT_KIND } from "@nostr-ts/common";
 import { User } from "../components/user";
 import { CreateEventForm } from "../components/create-event-form";
 
 export function WelcomeRoute() {
-  const [connected] = useNClient((state) => [state.connected]);
-  const [eventsEqualOrMoreThanMax] = useNClient((state) => [
-    state.maxEvents === state.events.length,
+  const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
+    state.connected,
+    state.events.length >= state.maxEvents,
   ]);
 
   const defaultFilters = new NFilters({
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
   });
 
-  const [initDone, setInitDone] = useState(false);
-
-  /**
-   * Handle the connection status change
-   */
-  useEffect(() => {
-    const init = async () => {
-      if (!connected || initDone) return;
-      setInitDone(true);
-      await useNClient
-        .getState()
-        .setViewSubscription("welcome", defaultFilters);
-    };
-    init();
-  }, [connected]);
+  const initDone = useRef<boolean>(false);
 
   /**
    * Handle initial load
    */
   useEffect(() => {
+    console.log(initDone.current, connected);
     const init = async () => {
-      if (!connected || initDone) return;
-      setInitDone(true);
+      if (!connected || initDone.current) return;
+      initDone.current = true;
       await useNClient.getState().clearEvents();
       await useNClient
         .getState()
@@ -46,6 +33,21 @@ export function WelcomeRoute() {
     };
     init();
   }, []);
+
+  /**
+   * Handle the connection status change
+   */
+  useEffect(() => {
+    const init = async () => {
+      console.log(initDone.current, connected, "..");
+      if (!connected || initDone.current) return;
+      initDone.current = true;
+      await useNClient
+        .getState()
+        .setViewSubscription("welcome", defaultFilters);
+    };
+    init();
+  }, [connected]);
 
   /**
    * Remove subscription when we hit the limit

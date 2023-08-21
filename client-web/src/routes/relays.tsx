@@ -15,28 +15,21 @@ import {
   Thead,
   Tr,
   useDisclosure,
-  Text,
   Tooltip,
+  Switch,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import {
-  NEVENT_KIND,
   RelayInformationDocument,
   WebSocketClientInfo,
 } from "@nostr-ts/common";
-
-const kinds = Object.keys(NEVENT_KIND).map((k) => {
-  return {
-    name: k,
-    value: NEVENT_KIND[k as keyof typeof NEVENT_KIND],
-  };
-});
 
 export function RelaysRoute() {
   const [relays, setRelays] = useState<WebSocketClientInfo[]>([]);
   const [selectedRelay, setSelectedRelay] =
     useState<null | WebSocketClientInfo>(null);
+  const [isBusy, setIsBusy] = useState(false);
 
   const {
     isOpen: isRelayModalOpen,
@@ -60,6 +53,26 @@ export function RelaysRoute() {
 
     return () => clearInterval(updateInterval);
   }, []);
+
+  const toggleRelayRead = async (rl: WebSocketClientInfo) => {
+    setIsBusy(true);
+    const newState = !rl.read;
+    await useNClient.getState().updateRelay(rl.id, {
+      read: newState,
+    });
+    await update();
+    setIsBusy(false);
+  };
+
+  const toggleRelayWrite = async (rl: WebSocketClientInfo) => {
+    setIsBusy(true);
+    const newState = !rl.write;
+    await useNClient.getState().updateRelay(rl.id, {
+      write: newState,
+    });
+    await update();
+    setIsBusy(false);
+  };
 
   function RenderInfoObject({ obj }: { obj: RelayInformationDocument }) {
     if (!obj) return null;
@@ -145,8 +158,21 @@ export function RelaysRoute() {
             Show
           </Button>
         </Td>
-        <Td>{rl.read && <Text>TRUE</Text>}</Td>
-        <Td>{rl.write && <Text>TRUE</Text>}</Td>
+        <Td>
+          <Switch
+            isChecked={rl.read}
+            onChange={() => toggleRelayRead(rl)}
+            isDisabled={isBusy}
+          />
+        </Td>
+
+        <Td>
+          <Switch
+            isChecked={rl.write}
+            onChange={() => toggleRelayWrite(rl)}
+            isDisabled={isBusy}
+          />
+        </Td>
       </Tr>
     );
   };
@@ -170,16 +196,6 @@ export function RelaysRoute() {
           })}
         </Tbody>
       </Table>
-      <Heading size="md" marginBottom={2}>
-        Legend
-      </Heading>
-      {kinds.map((k) => {
-        return (
-          <Text key={k.name}>
-            {k.name} - {k.value}
-          </Text>
-        );
-      })}
       {RelayModal}
     </Box>
   );

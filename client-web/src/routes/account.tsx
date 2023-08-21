@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Heading,
   Button,
@@ -11,7 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { generateClientKeys } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
-import { useState } from "react";
 
 export function AccountRoute() {
   const [keystore] = useNClient((state) => [state.keystore]);

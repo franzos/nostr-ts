@@ -48,7 +48,7 @@ export class RelayClientBase {
     const newSubscriptions: ClientSubscription[] = [];
 
     for (const relay of this.relays) {
-      if (relay.isEnabled) {
+      if (relay.isEnabled && relay.read) {
         if (message.type === CLIENT_MESSAGE_TYPE.COUNT) {
           const nips = relay.info?.supported_nips;
           if (nips && !nips.includes(45)) {

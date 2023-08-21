@@ -16,6 +16,8 @@ import {
   ModalContent,
   ModalOverlay,
   useDisclosure,
+  ModalFooter,
+  ModalHeader,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -96,6 +98,9 @@ export function Event({
     useNClient.getState().setNewEventName("NewShortTextNoteResponse");
   };
 
+  /**
+   * Quote or react to an event
+   */
   const newAction = async (type: "quote" | "reaction", reaction?: string) => {
     let ev: NEvent;
 
@@ -125,7 +130,7 @@ export function Event({
       if (evId) {
         toast({
           title: "Success",
-          description: "Event sent",
+          description: `Event ${evId} submitted`,
           status: "success",
           duration: 5000,
           isClosable: true,
@@ -152,97 +157,120 @@ export function Event({
     }
   };
 
+  const ActionButtons = () => {
+    return (
+      <HStack>
+        <Button
+          size="sm"
+          variant="solid"
+          colorScheme="blue"
+          onClick={() => newReply()}
+          isDisabled={!isReady}
+        >
+          Reply
+        </Button>
+        <Button
+          size="sm"
+          aria-label="Upvote"
+          leftIcon={<Icon as={ThumbUpIcon} />}
+          onClick={() => newAction("reaction", "+")}
+          isDisabled={!isReady}
+        >
+          {upVotesCount}
+        </Button>
+        <Button
+          size="sm"
+          aria-label="Downvote"
+          leftIcon={<Icon as={ThumbDownIcon} />}
+          onClick={() => newAction("reaction", "-")}
+          isDisabled={!isReady}
+        >
+          {downVotesCount}
+        </Button>
+        <Button
+          size="sm"
+          aria-label="Repost"
+          leftIcon={<Icon as={RepeatIcon} />}
+          onClick={() => newAction("quote")}
+          isDisabled={!isReady}
+        >
+          {repostsCount}
+        </Button>
+        {reactionsWithCount &&
+          Object.keys(reactionsWithCount).map((r) => (
+            <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
+              {r} {reactionsWithCount[r]}
+            </Button>
+          ))}
+      </HStack>
+    );
+  };
+
   return (
-    <Card border="1px solid #e1e1e1" overflow="hidden">
-      <CardHeader p={0}>
-        <Box>
-          {images && images?.length > 0 && (
-            <Box className="image-container" marginBottom={4}>
-              {images.map((i, index) => (
-                <Image
-                  key={index}
-                  src={i}
-                  fallback={<Image src="/no-image.png" />}
-                  fallbackStrategy="onError"
-                  alt=""
-                  onClick={() => openImage(i)}
-                />
-              ))}
+    <>
+      <Card border="1px solid #e1e1e1" overflow="hidden">
+        <CardHeader p={0}>
+          <Box>
+            {images && images?.length > 0 && (
+              <Box className="image-container" marginBottom={4}>
+                {images.map((i, index) => (
+                  <Image
+                    key={index}
+                    src={i}
+                    fallback={<Image src="/no-image.png" />}
+                    fallbackStrategy="onError"
+                    alt=""
+                    onClick={() => openImage(i)}
+                  />
+                ))}
+              </Box>
+            )}
+            <Box p={4} paddingBottom={0}>
+              {userComponent && userComponent}
             </Box>
-          )}
-          <Box p={4} paddingBottom={0}>
-            {userComponent && userComponent}
           </Box>
-        </Box>
-        <Modal isOpen={isOpen} onClose={onClose}>
-          <ModalOverlay />
-          <ModalContent>
-            <ModalBody>
-              <Image
-                src={selectedImage || ""}
-                fallback={<Image src="/no-image.png" />}
-                fallbackStrategy="onError"
-                alt="Enlarged view"
-                maxW="100%"
-                maxH="100%"
-                objectFit="contain"
-              />
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-      </CardHeader>
-      <CardBody p={4}>
-        <Text>{event.content}</Text>
-        <Text fontWeight="bold" fontSize={12} marginTop={2}>
-          {unixTimeToRelative(event.created_at)}
-        </Text>
-      </CardBody>
-      <CardFooter p={4}>
-        <HStack>
-          <Button
-            size="sm"
-            variant="solid"
-            colorScheme="blue"
-            onClick={() => newReply()}
-            isDisabled={!isReady}
-          >
-            Reply
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Upvote"
-            leftIcon={<Icon as={ThumbUpIcon} />}
-            onClick={() => newAction("reaction", "+")}
-            isDisabled={!isReady}
-          >
-            {upVotesCount}
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Downvote"
-            leftIcon={<Icon as={ThumbDownIcon} />}
-            onClick={() => newAction("reaction", "-")}
-            isDisabled={!isReady}
-          >
-            {downVotesCount}
-          </Button>
-          <Button
-            size="sm"
-            aria-label="Repost"
-            leftIcon={<Icon as={RepeatIcon} />}
-            onClick={() => newAction("quote")}
-            isDisabled={!isReady}
-          >
-            {repostsCount}
-          </Button>
-          {reactionsWithCount &&
-            Object.keys(reactionsWithCount).map((r) => (
-              <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
-                {r} {reactionsWithCount[r]}
-              </Button>
-            ))}
-        </HStack>
-      </CardFooter>
-    </Card>
+        </CardHeader>
+        <CardBody p={4}>
+          <Text>{event.content}</Text>
+          <Text fontWeight="bold" fontSize={12} marginTop={2}>
+            {unixTimeToRelative(event.created_at)}
+          </Text>
+        </CardBody>
+        <CardFooter p={4}>
+          <ActionButtons />
+        </CardFooter>
+      </Card>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        size="full"
+        closeOnOverlayClick={true}
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>{userComponent && userComponent}</ModalHeader>
+          <ModalBody>
+            <Image
+              src={selectedImage || ""}
+              fallback={<Image src="/no-image.png" />}
+              fallbackStrategy="onError"
+              alt="Enlarged view"
+              height="80vh"
+              marginLeft="auto"
+              marginRight="auto"
+            />
+          </ModalBody>
+
+          <ModalFooter>
+            <ActionButtons />
+
+            <Button marginLeft={4} onClick={onClose}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 }

@@ -25,20 +25,16 @@ import TrayFullIcon from "mdi-react/TrayFullIcon";
 import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
-  const [connected] = useNClient((state) => [state.connected]);
+  const [connected, keystore, eventsQueueCount] = useNClient((state) => [
+    state.connected,
+    state.keystore,
+    state.eventsPublishingQueue.length,
+  ]);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
   const [relaysCount, setRelaysCount] = useState<number>(0);
-  const [keystore] = useNClient((state) => [state.keystore]);
-  const [eventsQueueCount] = useNClient((state) => [
-    state.eventsPublishingQueue.length,
-  ]);
 
-  const {
-    isOpen: isConnectModalOpen,
-    onOpen: onConnectModalOpen,
-    onClose: onConnectModalClose,
-  } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const update = async () => {
     const following = await useNClient.getState().getAllUsersFollowing();
@@ -125,7 +121,7 @@ export function PrimaryLayout() {
         <Button
           w="100%"
           colorScheme="green"
-          onClick={onConnectModalOpen}
+          onClick={onOpen}
           leftIcon={<Icon as={LanConnectIcon} />}
         >
           Connect to relay(s)
@@ -153,9 +149,9 @@ export function PrimaryLayout() {
       </VStack>
       {<BottomBar />}
       {ConnectModal({
-        isOpen: isConnectModalOpen,
-        onOpen: onConnectModalOpen,
-        onClose: onConnectModalClose,
+        isOpen,
+        onOpen,
+        onClose,
       })}
     </Container>
   );

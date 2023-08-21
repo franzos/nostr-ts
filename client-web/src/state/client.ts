@@ -7,6 +7,7 @@ import {
   NUserBase,
   NFilters,
   Subscribe,
+  Count,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -123,6 +124,16 @@ export const useNClient = create<NClient>((set, get) => ({
   getRelays: async () => {
     return get().store.getRelays();
   },
+  updateRelay: async (
+    id: string,
+    options: {
+      isEnabled?: boolean;
+      read?: boolean;
+      write?: boolean;
+    }
+  ) => {
+    return get().store.updateRelay(id, options);
+  },
   relayEvents: [],
   getSubscriptions: async () => {
     return get().store.getSubscriptions();
@@ -212,6 +223,9 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   setNewEventContent: (content: string) => {
     set({ newEvent: get().newEvent.setContentWithoutChecks(content) });
+  },
+  count: async (payload: Count) => {
+    return get().store.count(payload);
   },
   events: [],
   maxEvents: MAX_EVENTS,
@@ -402,6 +416,11 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.hasSubscriptionForEventIds(eventIds, kinds);
   },
 
+  hasViewSubscription: async (view: string) => {
+    const subs = await get().getSubscriptions();
+    return subs.some((s) => s.options && s.options.view === view);
+  },
+
   /**
    * Setup a subscription related to a view
    * @param view
@@ -413,6 +432,7 @@ export const useNClient = create<NClient>((set, get) => ({
 
     const sameView = subs.find((s) => s.options && s.options.view === view);
     if (sameView) {
+      console.log(`Already subscribed to view ${view}`);
       return;
     }
 

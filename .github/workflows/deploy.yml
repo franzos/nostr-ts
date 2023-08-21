@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      GH_PAGES_BUILD: true
 
     steps:
     - name: Checkout Repository

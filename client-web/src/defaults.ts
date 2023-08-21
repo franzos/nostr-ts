@@ -1,6 +1,6 @@
 export const MAX_EVENTS = 25;
 export const DEFAULT_RELAYS = {
-  "wss://nostr.bongbong.com": {
+  "wss://nos.lol": {
     read: true,
     write: true,
   },

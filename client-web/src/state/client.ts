@@ -237,7 +237,7 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.getEventById(id);
   },
   eventProofOfWork: async (event: NEvent, bits: number) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {
         type: "module",
       });

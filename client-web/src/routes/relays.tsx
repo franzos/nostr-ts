@@ -20,7 +20,11 @@ import {
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
-import { NEVENT_KIND, WebSocketClientInfo } from "@nostr-ts/common";
+import {
+  NEVENT_KIND,
+  RelayInformationDocument,
+  WebSocketClientInfo,
+} from "@nostr-ts/common";
 
 const kinds = Object.keys(NEVENT_KIND).map((k) => {
   return {
@@ -57,7 +61,7 @@ export function RelaysRoute() {
     return () => clearInterval(updateInterval);
   }, []);
 
-  function RenderInfoObject({ obj }) {
+  function RenderInfoObject({ obj }: { obj: RelayInformationDocument }) {
     if (!obj) return null;
 
     return (
@@ -115,7 +119,9 @@ export function RelaysRoute() {
         <ModalHeader>Relay</ModalHeader>
         <ModalCloseButton />
         <ModalBody overflowY="auto">
-          {selectedRelay && <RenderInfoObject obj={selectedRelay.info} />}
+          {selectedRelay && selectedRelay.info && (
+            <RenderInfoObject obj={selectedRelay.info} />
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>

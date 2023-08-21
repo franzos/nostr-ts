@@ -41,7 +41,7 @@ export function PublishingQueueRoute() {
     onClose: onQueueItemModalClose,
   } = useDisclosure();
 
-  function RenderRelayInfoObject({ obj }) {
+  function RenderRelayInfoObject({ obj }: { obj: PublishingEventsQueueItem }) {
     return (
       <div>
         {Object.entries(obj).map(([key, value]) => {
@@ -99,13 +99,11 @@ export function PublishingQueueRoute() {
   );
 
   const QueueItemRow = (item: PublishingEventsQueueItem) => {
+    const eventId = item.event.id || "";
     return (
-      <Tr key={item.event.id}>
+      <Tr key={eventId}>
         <Td>
-          <Tooltip label={item.event.id}>{`${item.event.id.substring(
-            0,
-            3
-          )}..`}</Tooltip>
+          <Tooltip label={eventId}>{`${eventId.substring(0, 3)}..`}</Tooltip>
         </Td>
         <Td>{item.powRequired}</Td>
         <Td>{item.powDone ? <Text>TRUE</Text> : <Text>FALSE</Text>}</Td>

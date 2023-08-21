@@ -1,0 +1,43 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master   # Trigger the deployment when changes are pushed to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install Dependencies
+      run: pnpm install --force
+
+    - name: Build packages
+      run: pnpm run build
+
+    - name: Build client-web
+      run: |
+        cd client-web
+        pnpm run build
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./client-web/dist
+        user_name: 'GitHub Actions'
+        user_email: 'github-actions-bot@users.noreply.github.com'
+        repository: franzos/nostr-ts.git
+        branch: gh-pages

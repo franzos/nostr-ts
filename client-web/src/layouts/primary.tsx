@@ -57,10 +57,6 @@ export function PrimaryLayout() {
   };
 
   useEffect(() => {
-    const init = async () => {
-      await update();
-    };
-    init();
     const statsUpdateInterval = setInterval(update, 1000);
 
     return () => clearInterval(statsUpdateInterval);

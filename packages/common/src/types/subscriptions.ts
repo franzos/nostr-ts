@@ -15,6 +15,7 @@ export interface SubscriptionOptions {
    * for ex. `welcome` or `profile:<uuid>
    */
   view?: string;
+  unsubscribeOnEose?: boolean;
 }
 
 /**

@@ -120,17 +120,6 @@ export class RelayClientBase {
     }
 
     const subscriptions = this.sendSubscribe(payload);
-
-    // // LEGACY: Track commands on relay connection
-    // for (const sub of subscriptions) {
-    //   const relay = this.relays.find((r) => r.id === sub.connectionId);
-    //   if (relay) {
-    //     relay.addCommand({
-    //       connectionId: sub.connectionId,
-    //       subscriptionId: sub.id,
-    //     });
-    //   }
-    // }
     return subscriptions;
   }
 
@@ -139,17 +128,23 @@ export class RelayClientBase {
    * @param subscriptionId
    * @param relayId: if unsubscribing from a specific relay
    */
-  unsubscribe(subscriptionId: string) {
+  unsubscribe(subscriptionIds: string[]) {
     for (const relay of this.relays) {
       if (!relay.isReady("read")) {
         continue;
       }
 
-      const sub = relay.getSubscription(subscriptionId);
-      if (sub) {
+      const subs = relay.getSubscriptions();
+      if (!subs || subs.length === 0) {
+        continue;
+      }
+
+      const filtered = subs.filter((s) => subscriptionIds.includes(s.id));
+
+      for (const sub of filtered) {
         const message: ClientClose = {
           type: CLIENT_MESSAGE_TYPE.CLOSE,
-          subscriptionId,
+          subscriptionId: sub.id,
         };
 
         if (sub.options && sub.options.timeout) {
@@ -159,7 +154,7 @@ export class RelayClientBase {
           relay.ws.sendMessage(
             JSON.stringify([message.type, message.subscriptionId])
           );
-          relay.removeSubscription(subscriptionId);
+          relay.removeSubscription(sub.id);
         } catch (e) {
           console.error(e);
         }
@@ -172,9 +167,9 @@ export class RelayClientBase {
       if (relay.isReady("read")) {
         continue;
       }
-      const subscriptions = relay.getSubscriptions();
-      for (const sub of subscriptions) {
-        this.unsubscribe(sub.id);
+      const subs = relay.getSubscriptions();
+      if (subs && subs.length > 0) {
+        this.unsubscribe(subs.map((s) => s.id));
       }
     }
   }

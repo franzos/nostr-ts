@@ -16,7 +16,7 @@ export interface NClientWorker extends NClientBase {
   eventsPublishingQueue: PublishingQueueItem[];
 
   getSubscriptions: () => RelaySubscription[];
-  unsubscribe: (id: string) => void;
+  unsubscribe: (ids: string[]) => void;
   unsubscribeAll: () => void;
 
   count: (payload: CountRequest) => Subscription[] | undefined;

@@ -131,8 +131,8 @@ class WorkerClass implements NClientWorker {
     return this.client?.subscribe(payload);
   }
 
-  unsubscribe(id: string) {
-    return this.client?.unsubscribe(id);
+  unsubscribe(ids: string[]) {
+    return this.client?.unsubscribe(ids);
   }
 
   unsubscribeAll() {
@@ -665,9 +665,7 @@ class WorkerClass implements NClientWorker {
 
     if (subscriptions.length > 0) {
       setTimeout(() => {
-        for (const subscription of subscriptions) {
-          this.unsubscribe(subscription.id);
-        }
+        this.unsubscribe(subscriptions.map((sub) => sub.id));
       }, timeout);
     }
   }

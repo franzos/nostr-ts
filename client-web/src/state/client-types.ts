@@ -32,7 +32,7 @@ export interface NClient extends NClientBase {
   relayEvents: WebSocketEvent[];
 
   getSubscriptions: () => Promise<RelaySubscription[]>;
-  unsubscribe: (id: string) => Promise<void>;
+  unsubscribe: (ids: string[]) => Promise<void>;
   unsubscribeAll: () => Promise<void>;
 
   keystore: "none" | "localstore" | "nos2x" | "download";

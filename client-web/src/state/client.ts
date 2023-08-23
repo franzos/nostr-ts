@@ -95,8 +95,12 @@ export const useNClient = create<NClient>((set, get) => ({
     };
 
     const throttledEvents = throttle(processEvents, 100);
-
     worker.addEventListener("message", throttledEvents);
+
+    const following = await get().store.getAllUsersFollowing();
+    if (following) {
+      set({ followingUserIds: following.map((u) => u.user.pubkey) });
+    }
   },
   connected: false,
   connect: async (relays?: Relay[]) => {
@@ -134,9 +138,9 @@ export const useNClient = create<NClient>((set, get) => ({
   subscribe: async (payload: SubscriptionRequest) => {
     return get().store.subscribe(payload);
   },
-  unsubscribe: async (id: string) => {
-    console.log(`Unsubscribing ${id}`);
-    return get().store.unsubscribe(id);
+  unsubscribe: async (ids: string[]) => {
+    console.log(`Unsubscribing ${ids}`);
+    return get().store.unsubscribe(ids);
   },
   unsubscribeAll: async () => {
     console.log(`Unsubscribing all`);
@@ -512,16 +516,14 @@ export const useNClient = create<NClient>((set, get) => ({
   setViewSubscription: async (view: string, filters: NFilters) => {
     const subs = await get().getSubscriptions();
 
-    const sameView = subs.find((s) => s.options && s.options.view === view);
-    if (sameView) {
-      console.log(`Already subscribed to view ${view}`);
-      return;
-    }
-
+    const subIds = [];
     for (const sub of subs) {
       if (sub.options && sub.options.view) {
-        await get().unsubscribe(sub.id);
+        subIds.push(sub.id);
       }
+    }
+    if (subIds.length > 0) {
+      await get().unsubscribe(subIds);
     }
 
     const relays = await get().getRelays();
@@ -617,10 +619,11 @@ export const useNClient = create<NClient>((set, get) => ({
           await get().requestInformation(item, {
             timeout: 10000,
             timeoutAt: Date.now() + 10000,
+            view,
           })
         );
       }
-    }, 5000);
+    }, 4000);
   },
 
   /**
@@ -628,25 +631,17 @@ export const useNClient = create<NClient>((set, get) => ({
    * @param view
    * @returns
    */
-  removeViewSubscription: async (view?: string) => {
+  removeViewSubscription: async (view: string) => {
     const subs = await get().getSubscriptions();
 
     console.log(`Remove view subscription ${view}`);
 
-    if (!view) {
-      const unsubPromises = subs.map((sub) => get().unsubscribe(sub.id));
-      await Promise.all(unsubPromises);
-      return;
-    }
-
-    const subsToUnsubscribe = subs.filter(
+    const filteredSubs = subs.filter(
       (sub) => sub.options && sub.options.view === view
     );
 
-    const unsubPromises = subsToUnsubscribe.map((sub) =>
-      get().unsubscribe(sub.id)
-    );
-
-    await Promise.all(unsubPromises);
+    if (filteredSubs.length === 0) {
+      await get().unsubscribe(filteredSubs.map((sub) => sub.id));
+    }
   },
 }));

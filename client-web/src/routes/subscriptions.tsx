@@ -91,6 +91,12 @@ export function SubscriptionsRoute() {
         <Td>
           <Tooltip label={sub.id}>{`${sub.id.substring(0, 3)}..`}</Tooltip>
         </Td>
+        <Td>
+          <Tooltip label={sub.relayId}>{`${sub.relayId.substring(
+            0,
+            3
+          )}..`}</Tooltip>
+        </Td>
         <Td>{sub.filters.kinds && kindsToName(sub.filters.kinds)}</Td>
         <Td>
           <Button
@@ -109,7 +115,7 @@ export function SubscriptionsRoute() {
         <Td>
           <Button
             size={"sm"}
-            onClick={() => useNClient.getState().unsubscribe(sub.id)}
+            onClick={() => useNClient.getState().unsubscribe([sub.id])}
           >
             Unsubscribe
           </Button>
@@ -125,6 +131,7 @@ export function SubscriptionsRoute() {
         <Thead>
           <Tr>
             <Th>ID</Th>
+            <Th>Relay</Th>
             <Th>Kind</Th>
             <Th>Filter</Th>
             <Th>View</Th>

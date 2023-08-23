@@ -61,9 +61,9 @@ export const CreateEventForm = () => {
             setUserRelayId(tags[1]);
           }
           const key = tags[0];
-          const user = await useNClient.getState().getUser(key);
-          if (user) {
-            foundUsers.push(user);
+          const record = await useNClient.getState().getUser(key);
+          if (record) {
+            foundUsers.push(record.user);
           } else {
             foundUsers.push(new NUser({ pubkey: key }));
           }
@@ -223,7 +223,7 @@ export const CreateEventForm = () => {
         <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
         {users.map((user) => (
-          <User user={user} key={user.pubkey} relayId={userRelayId} />
+          <User user={user} key={user.pubkey} relayIds={[userRelayId]} />
         ))}
       </FormControl>
       <FormControl marginBottom={4}>

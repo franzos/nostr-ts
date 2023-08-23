@@ -65,9 +65,9 @@ export interface NClientBase {
   updateQueueItem: (payload: PublishingQueueItem) => void;
 
   maxEvents: number;
-  getUser: (pubkey: string) => Promise<NUser | undefined>;
-  addUser: (user: NUserBase) => Promise<void>;
-  updateUser: (user: NUserBase) => Promise<void>;
+  getUser: (pubkey: string) => Promise<UserRecord | undefined>;
+  addUser: (payload: UpdateUserRecord) => Promise<void>;
+  updateUser: (payload: UpdateUserRecord) => Promise<void>;
   countUsers: () => Promise<number>;
   /**
    * Process websocket events
@@ -83,7 +83,7 @@ export interface NClientBase {
     meta: WebSocketClientInfo;
   }) => void;
   getEventById: (id: string) => void;
-  followUser(payload: { pubkey: string; relayId: string }): void;
+  followUser(payload: { pubkey: string; relayIds: string[] }): void;
   unfollowUser(pubkey: string): void;
   followingUser(pubkey: string): Promise<boolean>;
   // For reactive updates
@@ -107,4 +107,14 @@ export interface NClientBase {
     payload: RelaysWithIdsOrKeys,
     options: SubscriptionOptions
   ): Promise<void>;
+}
+
+export interface UpdateUserRecord {
+  user: NUserBase;
+  relayIds: string[];
+}
+
+export interface UserRecord {
+  user: NUser;
+  relayIds: string[];
 }

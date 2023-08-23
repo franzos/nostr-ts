@@ -31,10 +31,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<WelcomeRoute />} />
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
+            {/* <Route path="/mentions/:pubkey" element={<UserMentionsRoute />} /> */}
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />
-            <Route path="/p/:relayid/:pubkey" element={<UserProfileRoute />} />
+            <Route path="/p/:pubkey" element={<UserProfileRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

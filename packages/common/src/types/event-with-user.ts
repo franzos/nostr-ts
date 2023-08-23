@@ -15,6 +15,8 @@ export interface EventBaseWithUserBase {
   // 8
   badgeAwards?: NEvent[];
   badgeAwardsCount?: number;
+
+  mentions?: UserBase[];
 }
 
 export interface NEventWithUserBase extends EventBaseWithUserBase {

@@ -23,6 +23,7 @@ import { MAX_EVENTS } from "../defaults";
 import { expose } from "comlink";
 import { IncomingEventsQueue } from "./incoming-queue";
 import { NClientDB, NClientWorker } from "./worker-types";
+import { UpdateUserRecord } from "./base-types";
 
 const incomingQueue = new IncomingEventsQueue();
 
@@ -193,31 +194,56 @@ class WorkerClass implements NClientWorker {
     }
   }
 
+  private relayIdsToUrls(relayIds: string[]): string[] {
+    return this.getRelays()
+      .filter((r) => relayIds.includes(r.id))
+      .map((r) => r.url);
+  }
+
+  private relayUrlsToIds(relayUrls: string[]): string[] {
+    return this.getRelays()
+      .filter((r) => relayUrls.includes(r.url))
+      .map((r) => r.id);
+  }
+
   async getUser(pubkey: string) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
     const data = await this.db.get("users", pubkey);
-    return data ? new NUser(data.user) : undefined;
+    const relayIds = data ? this.relayUrlsToIds(data.relayUrls) : [];
+    return data
+      ? {
+          user: new NUser(data.user),
+          relayIds,
+        }
+      : undefined;
   }
 
-  async addUser(user: NUserBase) {
+  async addUser(payload: UpdateUserRecord) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
+    const { user } = payload;
+    const relayUrls = payload.relayIds
+      ? this.relayIdsToUrls(payload.relayIds)
+      : [];
     await this.db.put("users", {
       user,
-      relayUrls: [],
+      relayUrls,
     });
   }
-
-  async updateUser(user: NUserBase) {
+  async updateUser(payload: UpdateUserRecord) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
+    const record = await this.db.get("users", payload.user.pubkey);
+    const relayUrls = payload.relayIds
+      ? this.relayIdsToUrls(payload.relayIds)
+      : record.relayUrls;
     await this.db.put("users", {
-      user,
-      relayUrls: [],
+      user: payload.user,
+      relayUrls,
     });
   }
 
@@ -350,9 +376,23 @@ class WorkerClass implements NClientWorker {
                 eventRelayIds: [payload.meta.id as string],
               };
 
-              const user = await this.getUser(event.pubkey);
-              if (user) {
-                newEvent.user = user;
+              const data = await this.getUser(event.pubkey);
+              if (data) {
+                newEvent.user = data.user;
+              }
+
+              const mentions = newEvent.event.hasMentions();
+              if (mentions) {
+                for (const mention of mentions) {
+                  const user = await this.getUser(mention);
+                  if (user) {
+                    if (newEvent.mentions) {
+                      newEvent.mentions.push(user.user);
+                    } else {
+                      newEvent.mentions = [user.user];
+                    }
+                  }
+                }
               }
 
               this.addEvent(newEvent);
@@ -368,26 +408,29 @@ class WorkerClass implements NClientWorker {
 
           const user = await this.getUser(newUser.pubkey);
           if (user) {
-            await this.updateUser(newUser);
+            await this.updateUser({
+              user: newUser,
+              relayIds: [payload.meta.id as string],
+            });
             await this.updateUserFollowing({
               user: newUser,
               relayIds: [payload.meta.id as string],
             });
           } else {
-            await this.addUser(newUser);
+            await this.addUser({
+              user: newUser,
+              relayIds: [payload.meta.id as string],
+            });
             await this.updateUserFollowing({
               user: newUser,
               relayIds: [payload.meta.id as string],
             });
           }
 
-          for (const event of this.eventsMap.values()) {
-            if (event.user?.pubkey === newUser.pubkey) {
-              event.user = newUser;
-              console.log(
-                `User ${event.user.pubkey} metadata updated for event ${event.event.id}`
-              );
-              this.updateEvent(event);
+          for (const item of this.eventsMap.values()) {
+            if (item.event.pubkey === newUser.pubkey) {
+              item.user = newUser;
+              this.updateEvent(item);
             }
           }
         });
@@ -522,7 +565,13 @@ class WorkerClass implements NClientWorker {
     this.checkedUsers = [];
   }
 
-  async followUser({ pubkey, relayId }: { pubkey: string; relayId: string }) {
+  async followUser({
+    pubkey,
+    relayIds,
+  }: {
+    pubkey: string;
+    relayIds: string[];
+  }) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
@@ -536,19 +585,21 @@ class WorkerClass implements NClientWorker {
       });
       await this.db.put("following", {
         user: newFollowing,
-        relayIds: [relayId],
+        relayIds,
       });
-      await this.requestInformation(
-        {
-          source: "users",
-          idsOrKeys: [pubkey],
-          relayId,
-        },
-        {
-          timeout: 10000,
-          timeoutAt: Date.now() + 10000,
-        }
-      );
+      for (const relayId of relayIds) {
+        await this.requestInformation(
+          {
+            source: "users",
+            idsOrKeys: [pubkey],
+            relayId,
+          },
+          {
+            timeout: 10000,
+            timeoutAt: Date.now() + 10000,
+          }
+        );
+      }
     }
     this.followingUserIds.push(pubkey);
   }

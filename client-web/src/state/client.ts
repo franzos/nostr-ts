@@ -27,6 +27,7 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
+import { UpdateUserRecord } from "./base-types";
 
 interface Event {
   data: {
@@ -318,11 +319,11 @@ export const useNClient = create<NClient>((set, get) => ({
   getUser: async (pubkey: string) => {
     return get().store.getUser(pubkey);
   },
-  addUser: async (user: NUserBase) => {
-    return get().store.addUser(user);
+  addUser: async (payload: UpdateUserRecord) => {
+    return get().store.addUser(payload);
   },
-  updateUser: async (user: NUserBase) => {
-    return get().store.updateUser(user);
+  updateUser: async (payload: UpdateUserRecord) => {
+    return get().store.updateUser(payload);
   },
   countUsers: async () => {
     return get().store.countUsers();
@@ -452,7 +453,7 @@ export const useNClient = create<NClient>((set, get) => ({
   /**
    * Follow a user
    */
-  followUser: async (payload: { pubkey: string; relayId: string }) => {
+  followUser: async (payload: { pubkey: string; relayIds: string[] }) => {
     await get().store.followUser(payload);
     const folowing = await get().store.getAllUsersFollowing();
     if (folowing) {

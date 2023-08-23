@@ -14,13 +14,15 @@ export function BottomBar() {
 
   const toast = useToast();
 
+  const update = async () => {
+    const count = await useNClient.getState().countUsers();
+    if (count) {
+      setUserCount(count);
+    }
+  };
+
   useEffect(() => {
-    const statsUpdateInterval = setInterval(async () => {
-      const count = await useNClient.getState().countUsers();
-      if (count) {
-        setUserCount(count);
-      }
-    }, 1000);
+    const statsUpdateInterval = setInterval(update, 1000);
 
     return () => clearInterval(statsUpdateInterval);
   }, []);

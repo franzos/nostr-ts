@@ -40,7 +40,7 @@ export interface NClientDB {
     key: string;
     value: {
       user: UserBase;
-      relayIds: string[];
+      relayUrls: string[];
     };
     indexes: {
       user: {
@@ -52,7 +52,7 @@ export interface NClientDB {
     key: string;
     value: {
       user: UserBase;
-      relayIds: string[];
+      relayUrls: string[];
     };
     indexes: {
       user: {

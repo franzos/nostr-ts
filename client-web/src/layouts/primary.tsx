@@ -42,6 +42,7 @@ export function PrimaryLayout() {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const update = async () => {
+    // if (!connected) return;
     const following = await useNClient.getState().getAllUsersFollowing();
     if (following) {
       setFollowingUsers(following);
@@ -72,6 +73,13 @@ export function PrimaryLayout() {
 
       {connected && (
         <>
+          {/* <MenuItem
+            label="Mentions"
+            value={0}
+            to={`/mentions/${publicKey}`}
+            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
+          /> */}
+
           <MenuItem
             label="Following"
             value={followingUsers.length}

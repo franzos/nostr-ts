@@ -1,5 +1,5 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
-import { CLIENT_MESSAGE_TYPE, NEVENT_KIND, NFilters } from "@nostr-ts/common";
+import { NEVENT_KIND, NFilters } from "@nostr-ts/common";
 import { useState, useEffect } from "react";
 import { useNClient } from "../state/client";
 import { NUser } from "@nostr-ts/web";
@@ -10,7 +10,7 @@ import { MAX_EVENTS } from "../defaults";
 import { CreateEventForm } from "../components/create-event-form";
 import { UserRecord } from "../state/base-types";
 
-export function UserProfileRoute() {
+export function UserMentionsRoute() {
   const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
     state.connected,
     state.events.length >= state.maxEvents,
@@ -20,14 +20,15 @@ export function UserProfileRoute() {
 
   const [searchParams] = useSearchParams();
 
-  const params = useParams<{ pubkey: string; relayid: string }>();
+  const params = useParams<{ pubkey: string }>();
   const pubkey = params.pubkey || "";
 
-  const view = `profile-${pubkey}`;
+  const view = `mentions-${pubkey}`;
   const defaultFilters = new NFilters({
     limit: MAX_EVENTS,
     authors: [pubkey],
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+    "#p": [pubkey],
   });
 
   /**
@@ -36,7 +37,6 @@ export function UserProfileRoute() {
   useEffect(() => {
     const init = async () => {
       if (!connected) return;
-
       await useNClient.getState().clearEvents();
       await useNClient.getState().setViewSubscription(view, defaultFilters);
 
@@ -62,20 +62,6 @@ export function UserProfileRoute() {
           }
         }
       }
-
-      console.log(relayIds);
-
-      await useNClient.getState().count({
-        type: CLIENT_MESSAGE_TYPE.COUNT,
-        filters: new NFilters({
-          kinds: [3],
-          "#p": [pubkey],
-        }),
-        options: {
-          timeout: 10000,
-          timeoutAt: Date.now() + 10000,
-        },
-      });
     };
     init();
   }, []);
@@ -94,23 +80,18 @@ export function UserProfileRoute() {
     }
   }, [eventsEqualOrMoreThanMax]);
 
+  // TODO: {user && <User user={user} relayId={""} />}
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box maxHeight="80vh" overflowY="auto">
         <Box>
           <Heading size="lg">Profile</Heading>
-          {userRecord && (
-            <User
-              user={userRecord.user}
-              relayIds={relayIds}
-              showBanner={true}
-              showAbout={true}
-            />
-          )}
+          {userRecord && <User user={userRecord.user} relayIds={relayIds} />}
         </Box>
         <Box>
           {connected ? (
             <Events
+              userComponent={User}
               view={view}
               filters={defaultFilters}
               connected={connected}

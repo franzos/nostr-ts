@@ -14,13 +14,6 @@ export function FollowingRoute() {
 
   const initDone = useRef<boolean>(false);
 
-  const relayId = (relayIds: string[]) => {
-    if (relayIds && relayIds.length > 0) {
-      return relayIds[0];
-    }
-    return "";
-  };
-
   useEffect(() => {
     const init = async () => {
       if (initDone.current) return;
@@ -43,7 +36,7 @@ export function FollowingRoute() {
               <User
                 user={item.user}
                 key={item.user.pubkey}
-                relayId={relayId(item.relayIds)}
+                relayIds={item.relayIds}
               />
             </Box>
           ))}

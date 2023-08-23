@@ -31,6 +31,12 @@ export function Events(props: {
     }
   };
 
+  const newEvents = async () => {
+    setMoreEventsCount(0);
+    await useNClient.getState().clearEvents();
+    await useNClient.getState().setViewSubscription(props.view, props.filters);
+  };
+
   return (
     <Box maxHeight="80vh" overflowY="auto">
       {events.map((event) => {
@@ -48,14 +54,14 @@ export function Events(props: {
                   event.user && event.user.pubkey ? (
                     <props.userComponent
                       user={event.user}
-                      relayId={event.eventRelayIds[0]}
+                      relayIds={event.eventRelayIds}
                     />
                   ) : (
                     <props.userComponent
                       user={{
                         pubkey: event.event.pubkey,
                       }}
-                      relayId={event.eventRelayIds[0]}
+                      relayIds={event.eventRelayIds}
                     />
                   )
                 ) : undefined
@@ -72,11 +78,7 @@ export function Events(props: {
           <Button flex="1" marginRight={2} onClick={moreEvents}>
             Load {MAX_EVENTS} more
           </Button>
-          <Button
-            flex="1"
-            marginLeft={2}
-            onClick={async () => useNClient.getState().clearEvents()}
-          >
+          <Button flex="1" marginLeft={2} onClick={newEvents}>
             Reset and load new (performance)
           </Button>
         </Box>

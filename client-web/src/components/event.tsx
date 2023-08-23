@@ -18,6 +18,7 @@ import {
   useDisclosure,
   ModalFooter,
   ModalHeader,
+  ModalCloseButton,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -80,6 +81,11 @@ export function Event({
 
   // Image handling
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isEventModalOpen,
+    onOpen: onEventModalOpen,
+    onClose: onEventModalClose,
+  } = useDisclosure();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const openImage = (imageSrc: string) => {
@@ -230,6 +236,70 @@ export function Event({
     );
   };
 
+  function RenderInfoObject({ obj }: { obj: NEvent }) {
+    if (!obj) return null;
+
+    return (
+      <div>
+        {Object.entries(obj).map(([key, value]) => {
+          // If value is an object and not an array, recurse with RenderInfoObject
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value)
+          ) {
+            return (
+              <div key={key}>
+                <strong>{key}:</strong>
+                <RenderInfoObject obj={value} />
+              </div>
+            );
+          }
+
+          // If value is an array, map over its items and render them
+          if (Array.isArray(value)) {
+            return (
+              <div key={key}>
+                <strong>{key}:</strong>
+                <ul>
+                  {value.map((item, index) => (
+                    <li key={index}>
+                      {typeof item === "object" && item !== null ? (
+                        <RenderInfoObject obj={item} />
+                      ) : (
+                        item.toString()
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+
+          // For primitives, render them directly
+          return (
+            <div key={key}>
+              <strong>{key}:</strong> {value?.toString()}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const EventModal = (
+    <Modal isOpen={isEventModalOpen} onClose={onEventModalClose} size="xl">
+      <ModalOverlay />
+      <ModalContent maxHeight="80vh" maxWidth="80vw">
+        <ModalHeader>Event</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody overflowY="auto">
+          {event && <RenderInfoObject obj={event} />}
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+
   return (
     <>
       <Card border="1px solid #e1e1e1" overflow="hidden">
@@ -264,6 +334,15 @@ export function Event({
           <HStack>
             <ActionButtons />
             <Text>Relay {eventRelayIds[0].substring(0, 5)}...</Text>
+
+            <Button
+              size={"sm"}
+              onClick={() => {
+                onEventModalOpen();
+              }}
+            >
+              Details
+            </Button>
           </HStack>
         </CardFooter>
       </Card>
@@ -298,6 +377,7 @@ export function Event({
           </ModalFooter>
         </ModalContent>
       </Modal>
+      {EventModal}
     </>
   );
 }

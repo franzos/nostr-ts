@@ -42,6 +42,8 @@ export function BottomBar() {
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.OK) {
             description = `${event.data[2]}. Event ${event.data[1]}: ${event.data[3]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
+            // Ignore for now
+            return;
             description = `Loaded all requested events for subscription ${event.data[1]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
             description = `Relay ${event.data[1]}: ${JSON.stringify(

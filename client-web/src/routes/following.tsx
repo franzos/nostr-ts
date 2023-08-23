@@ -32,7 +32,7 @@ export function FollowingRoute() {
       {followingUsers.length > 0 ? (
         <>
           {followingUsers.map((item) => (
-            <Box mb="3">
+            <Box mb="3" key={item.user.pubkey}>
               <User
                 user={item.user}
                 key={item.user.pubkey}

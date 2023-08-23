@@ -364,7 +364,7 @@ export const useNClient = create<NClient>((set, get) => ({
     // Check if POW is needed and which relays are available
     const { relays, pow } = await get().determineApplicableRelays(payload);
     if (relays.length === 0) {
-      throw new Error("No relays available");
+      throw new Error("No (write-enabled) relays available. Check relays.");
     }
 
     let requestedPOW = payload.pow;
@@ -553,7 +553,8 @@ export const useNClient = create<NClient>((set, get) => ({
       }[] = [];
 
       for (const ev of get().events) {
-        if (ev.event?.pubkey) {
+        // TODO: Check if user is stale
+        if (ev.event?.pubkey && !ev.user?.pubkey) {
           eventUserPubkeys.push({
             pubkey: ev.event.pubkey,
             relayIds: ev.eventRelayIds,

@@ -384,10 +384,10 @@ class WorkerClass implements NClientWorker {
           for (const event of this.eventsMap.values()) {
             if (event.user?.pubkey === newUser.pubkey) {
               event.user = newUser;
-              postMessage({
-                type: "event:update",
-                data: event,
-              });
+              console.log(
+                `User ${event.user.pubkey} metadata updated for event ${event.event.id}`
+              );
+              this.updateEvent(event);
             }
           }
         });
@@ -402,18 +402,20 @@ class WorkerClass implements NClientWorker {
             return;
           }
 
-          for (const event of this.eventsMap.values()) {
-            if (inResponse.find((tag) => tag.eventId === event.event.id)) {
-              if (event.reactions) {
+          const eventIds = inResponse
+            .filter((tag) => tag.eventId)
+            .map((tag) => tag.eventId);
+
+          for (const id of eventIds) {
+            const event = this.eventsMap.get(id);
+            if (event) {
+              if (event.reactions && event.reactions.length) {
                 event.reactions.push(ev);
               } else {
                 event.reactions = [ev];
               }
-
               console.log(`Reaction event added to event ${event.event.id}`);
               this.updateEvent(event);
-              // it's safe to assume that there's only one matching event
-              return;
             }
           }
         });
@@ -428,18 +430,20 @@ class WorkerClass implements NClientWorker {
             return;
           }
 
-          for (const event of this.eventsMap.values()) {
-            if (inResponse.find((tag) => tag.eventId === event.event.id)) {
+          const eventIds = inResponse
+            .filter((tag) => tag.eventId)
+            .map((tag) => tag.eventId);
+
+          for (const id of eventIds) {
+            const event = this.eventsMap.get(id);
+            if (event) {
               if (event.reposts) {
                 event.reposts.push(ev);
               } else {
                 event.reposts = [ev];
               }
-
-              console.log(`Repost event found for ${event.event.id}`);
+              console.log(`Repost event added to event ${event.event.id}`);
               this.updateEvent(event);
-              // it's safe to assume that there's only one matching event
-              return;
             }
           }
         });

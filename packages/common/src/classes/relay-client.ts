@@ -1,17 +1,16 @@
 import { v4 as uuidv4 } from "uuid";
-import { NEvent } from "./event";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
   ClientCount,
   ClientEvent,
   ClientRequest,
-  ClientSubscription,
-  Count,
+  CountRequest,
+  PublishingQueueItem,
+  PublishingRequest,
   Relay,
-  Subscribe,
-  SubscriptionOptions,
-  WebSocketClientConfig,
+  RelaySubscription,
+  SubscriptionRequest,
   WebSocketEvent,
 } from "../types/index";
 import { RelayConnection } from "./relay-connection";
@@ -34,50 +33,69 @@ export class RelayClientBase {
     }
   }
 
-  private sendSubscribe(
-    message: ClientRequest | ClientCount,
-    subscriptionId: string,
-    options?: SubscriptionOptions
-  ) {
-    const data = JSON.stringify([
-      message.type,
-      message.subscriptionId,
-      message.filters,
-    ]);
+  private sendSubscribe(request: SubscriptionRequest): RelaySubscription[] {
+    const newSubscriptions: RelaySubscription[] = [];
+    const relays = request?.relayIds
+      ? this.relays.filter((r) => request.relayIds.includes(r.id))
+      : this.relays;
 
-    const newSubscriptions: ClientSubscription[] = [];
+    // Always read since we are not posting anything
+    const opt = "read";
+    for (const relay of relays) {
+      if (relay.isReady(opt)) {
+        const { relayIds, ...restOfRequest } = request;
+        const subscription: RelaySubscription = {
+          ...restOfRequest,
+          id: uuidv4(),
+          relayId: relay.id,
+          connectionId: relay.id,
+          created: Date.now(),
+          isActive: true,
+        };
 
-    for (const relay of this.relays) {
-      if (relay.isEnabled && relay.read) {
-        if (message.type === CLIENT_MESSAGE_TYPE.COUNT) {
+        let message: ClientRequest | ClientCount;
+
+        if (request.type === CLIENT_MESSAGE_TYPE.REQ) {
+          message = {
+            type: CLIENT_MESSAGE_TYPE.REQ,
+            subscriptionId: subscription.id,
+            filters: JSON.parse(JSON.stringify(subscription.filters)),
+          };
+        } else if (request.type === CLIENT_MESSAGE_TYPE.COUNT) {
           const nips = relay.info?.supported_nips;
           if (nips && !nips.includes(45)) {
             console.warn(`Relay ${relay.id} does not support count command.`);
+            subscription.error = `Relay ${relay.id} does not support count command.`;
             continue;
           }
+          message = {
+            type: CLIENT_MESSAGE_TYPE.COUNT,
+            subscriptionId: subscription.id,
+            filters: JSON.parse(JSON.stringify(subscription.filters)),
+          };
+        } else {
+          throw new Error("Invalid subscription type.");
         }
+
+        const data = JSON.stringify([
+          message.type,
+          message.subscriptionId,
+          message.filters,
+        ]);
 
         try {
           relay.ws.sendMessage(data);
-          const sub = {
-            url: relay.url,
-            connectionId: relay.id,
-            subscriptionId,
-            type: message.type,
-            filters: message.filters,
-            options: {
-              timeoutAt: options?.timeoutAt,
-              timeout: options?.timeout,
-              view: options?.view,
-            },
-          };
-          relay.addSubscription(sub);
-          newSubscriptions.push(sub);
+          relay.addSubscription(subscription);
         } catch (e) {
           console.error(e);
         }
+      } else {
+        console.warn(
+          `Relay ${relay.id} is not ready for ${opt} operations. Skipping...`
+        );
       }
     }
+
     return newSubscriptions;
   }
 
@@ -87,48 +105,32 @@ export class RelayClientBase {
    * @param payload
    * @returns
    */
-  subscribe(payload?: Subscribe): ClientSubscription[] {
-    const subscriptionId = payload?.subscriptionId || uuidv4();
-    const filters = payload?.filters ? payload.filters.toJson() : {};
 
-    console.log("=> Subscribing to events", payload, subscriptionId);
-
-    const message: ClientRequest = {
-      type: CLIENT_MESSAGE_TYPE.REQ,
-      subscriptionId,
-      filters,
-    };
-
-    return this.sendSubscribe(message, subscriptionId, payload?.options);
-  }
-
-  count(payload?: Count) {
-    const subscriptionId = payload?.subscriptionId || uuidv4();
-    const filters = payload?.filters ? payload.filters.toJson() : {};
-
-    const message: ClientCount = {
-      type: CLIENT_MESSAGE_TYPE.COUNT,
-      subscriptionId,
-      filters,
-    };
-
-    const subscriptions = this.sendSubscribe(
-      message,
-      subscriptionId,
-      payload?.options
-    );
-
-    for (const sub of subscriptions) {
-      const relay = this.relays.find((r) => r.id === sub.connectionId);
-      if (relay) {
-        relay.addCommand({
-          connectionId: sub.connectionId,
-          subscriptionId: sub.subscriptionId,
-          request: message,
-        });
-      }
+  subscribe(payload: SubscriptionRequest): RelaySubscription[] {
+    if (payload.type !== CLIENT_MESSAGE_TYPE.REQ) {
+      throw new Error("Invalid subscription type. Expected REQ.");
     }
 
+    return this.sendSubscribe(payload);
+  }
+
+  count(payload: CountRequest) {
+    if (payload.type !== CLIENT_MESSAGE_TYPE.COUNT) {
+      throw new Error("Invalid subscription type. Expected COUNT.");
+    }
+
+    const subscriptions = this.sendSubscribe(payload);
+
+    // // LEGACY: Track commands on relay connection
+    // for (const sub of subscriptions) {
+    //   const relay = this.relays.find((r) => r.id === sub.connectionId);
+    //   if (relay) {
+    //     relay.addCommand({
+    //       connectionId: sub.connectionId,
+    //       subscriptionId: sub.id,
+    //     });
+    //   }
+    // }
     return subscriptions;
   }
 
@@ -137,32 +139,29 @@ export class RelayClientBase {
    * @param subscriptionId
    * @param relayId: if unsubscribing from a specific relay
    */
-  unsubscribe(subscriptionId: string, relayId?: string) {
-    const message: ClientClose = {
-      type: CLIENT_MESSAGE_TYPE.CLOSE,
-      subscriptionId,
-    };
-    const data = JSON.stringify([message.type, message.subscriptionId]);
-
+  unsubscribe(subscriptionId: string) {
     for (const relay of this.relays) {
-      if (!relay.isEnabled) {
+      if (!relay.isReady("read")) {
         continue;
       }
 
-      if ((relayId && relay.id === relayId) || !relayId) {
-        // Relay ID given and matches
-        // No relay ID given, remove from all relays
-        const subscription = relay.getSubscription(subscriptionId);
-        if (subscription) {
-          if (subscription.options && subscription.options.timeout) {
-            clearTimeout(subscription.options.timeout);
-          }
-          try {
-            relay.ws.sendMessage(data);
-            relay.removeSubscription(subscriptionId);
-          } catch (e) {
-            console.error(e);
-          }
+      const sub = relay.getSubscription(subscriptionId);
+      if (sub) {
+        const message: ClientClose = {
+          type: CLIENT_MESSAGE_TYPE.CLOSE,
+          subscriptionId,
+        };
+
+        if (sub.options && sub.options.timeout) {
+          clearTimeout(sub.options.timeout);
+        }
+        try {
+          relay.ws.sendMessage(
+            JSON.stringify([message.type, message.subscriptionId])
+          );
+          relay.removeSubscription(subscriptionId);
+        } catch (e) {
+          console.error(e);
         }
       }
     }
@@ -170,34 +169,41 @@ export class RelayClientBase {
 
   unsubscribeAll() {
     for (const relay of this.relays) {
-      if (relay.isConnected()) {
+      if (relay.isReady("read")) {
         continue;
       }
-
-      const subscriptions = relay.subscriptions.map(
-        (sub) => sub.subscriptionId
-      );
-
-      for (const subscriptionId of subscriptions) {
-        this.unsubscribe(subscriptionId, relay.id);
+      const subscriptions = relay.getSubscriptions();
+      for (const sub of subscriptions) {
+        this.unsubscribe(sub.id);
       }
     }
   }
 
-  getSubscriptions() {
-    const subscriptions: ClientSubscription[] = [];
+  getSubscription(id: string): RelaySubscription | undefined {
     for (const relay of this.relays) {
-      subscriptions.push(...relay.subscriptions);
+      const sub = relay.getSubscription(id);
+      if (sub) {
+        return sub;
+      }
     }
-    return subscriptions;
+  }
+
+  getSubscriptions(): RelaySubscription[] | undefined {
+    return this.relays.map((relay) => relay.getSubscriptions()).flat();
   }
 
   countSubscriptions() {
-    let total = 0;
+    return this.relays
+      .map((relay) => relay.getSubscriptions().length)
+      .reduce((a, b) => a + b, 0);
+  }
+
+  updateSubscription(sub: RelaySubscription) {
     for (const relay of this.relays) {
-      total += relay.subscriptions.length;
+      if (relay.id === sub.relayId) {
+        relay.updateSubscription(sub);
+      }
     }
-    return total;
   }
 
   countConnections() {
@@ -210,92 +216,76 @@ export class RelayClientBase {
     return total;
   }
 
-  countCommands(): {
-    total: number;
-    completed: number;
-  } {
-    let total = 0;
-    let completed = 0;
-    for (const relay of this.relays) {
-      total += relay.commands.length;
-      completed += relay.commands.filter((c) => c.response !== null).length;
-    }
-    return {
-      total,
-      completed,
-    };
-  }
-
   /**
    * Send an event to the relay network
    * @param event
    */
-  sendEvent(event: NEvent, relayIds?: string[]) {
+  sendEvent(payload: PublishingRequest): PublishingQueueItem[] | undefined {
     const message: ClientEvent = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
-      data: event,
+      data: payload.event,
     };
     const data = JSON.stringify([message.type, message.data]);
 
-    const send: {
-      eventId: string;
-      relay: WebSocketClientConfig;
-      error: string | null;
-    }[] = [];
-
-    const selectedRelays = relayIds
-      ? this.relays.filter((r) => relayIds.includes(r.id))
+    const published: PublishingQueueItem[] = [];
+    const relays = payload.relayIds
+      ? this.relays.filter((r) => payload.relayIds.includes(r.id))
       : this.relays;
-    const enabledRelays = selectedRelays.filter((r) => r.isEnabled && r.write);
 
-    if (enabledRelays.length === 0) {
-      console.log("No relays enabled, not sending event", event);
-      return;
-    }
+    for (const relay of relays) {
+      if (relay.isReady("write")) {
+        const { relayIds, ...restOfRequest } = payload;
 
-    console.log(
-      `Sending event ${event.id} to ${enabledRelays.length} relays`,
-      event
-    );
+        const publish = {
+          id: uuidv4(),
+          ...restOfRequest,
+          relayId: relay.id,
+          send: true,
+          error: undefined,
+        };
 
-    for (const relay of enabledRelays) {
-      if (relay.isEnabled) {
-        if (relay.supportsEvent(event)) {
-          relay.ws.sendMessage(data);
-
-          relay.addCommand({
-            connectionId: relay.id,
-            eventId: event.id,
-            request: message,
-          });
-
-          send.push({
-            eventId: event.id,
-            relay: relay.getInfo("default"),
-            error: null,
-          });
-
-          console.log(`Sent event to ${relay.url}`, message);
-        } else {
+        const supportsEvent = relay.supportsEvent(payload.event);
+        if (!supportsEvent) {
           console.log(
-            `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
+            `Event ${payload.event.id} not published to ${relay.url} because not all needed NIPS are supported`,
             message
           );
+          publish.send = false;
+          publish.error = `Event ${payload.event.id} not published to ${relay.url} because not all needed NIPS are supported`;
 
-          send.push({
-            eventId: event.id,
-            relay: relay.getInfo("withInfo"),
-            error: `Event ${event.id} not published to ${relay.url} because not all needed NIPS are supported`,
-          });
+          published.push(publish);
+          continue;
         }
+
+        relay.ws.sendMessage(data);
+        published.push(publish);
+      } else {
+        console.warn(
+          `Relay ${relay.id} is not ready for write operations. Skipping...`
+        );
       }
     }
 
-    if (send.length === 0) {
-      return;
+    return published.length > 0 ? published : undefined;
+  }
+
+  sendQueueItems(items: PublishingQueueItem[]) {
+    const message = {
+      type: CLIENT_MESSAGE_TYPE.EVENT,
+      data: items.find((i) => i.event)?.event,
+    };
+    const data = JSON.stringify([message.type, message.data]);
+
+    console.log("Sending queue items", items);
+    for (const item of items) {
+      const relay = this.relays.find((r) => r.id === item.relayId);
+      if (relay) {
+        relay.ws.sendMessage(data);
+        item.send = true;
+      }
     }
 
-    return send;
+    return items;
   }
 
   /**
@@ -307,10 +297,6 @@ export class RelayClientBase {
     for (const relay of this.relays) {
       if (relay.isEnabled) {
         relay.ws.listen((data) => {
-          // TODO: Kinda duplicates event queue
-          relay.updateCommandFromRelayMessage({
-            data,
-          });
           onMessage({
             data: data,
             meta: relay.getInfo("default"),
@@ -321,20 +307,13 @@ export class RelayClientBase {
   }
 
   disconnect() {
-    const { completed, total } = this.countCommands();
-
     const stats = {
-      commands: {
-        total,
-        completed,
-      },
       subscriptions: this.countSubscriptions(),
       connections: this.countConnections(),
     };
 
     console.log(`
 Stats:
-- Commands: ${stats.commands.completed}/${stats.commands.total}
 - Subscriptions: ${stats.subscriptions}
 - Connections: ${stats.connections}
     `);

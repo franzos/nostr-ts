@@ -20,7 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
-import { ClientSubscription, NEVENT_KIND } from "@nostr-ts/common";
+import { RelaySubscription, NEVENT_KIND } from "@nostr-ts/common";
 
 const kinds = Object.keys(NEVENT_KIND).map((k) => {
   return {
@@ -42,7 +42,7 @@ const kindsToName = (kinds: NEVENT_KIND[]) => {
 };
 
 export function SubscriptionsRoute() {
-  const [subscriptions, setSubscriptions] = useState<ClientSubscription[]>([]);
+  const [subscriptions, setSubscriptions] = useState<RelaySubscription[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<null | string>(null);
 
   const {
@@ -84,14 +84,12 @@ export function SubscriptionsRoute() {
     </Modal>
   );
 
-  const TableRow = (sub: ClientSubscription) => {
+  const TableRow = (sub: RelaySubscription) => {
     const view = sub.options && sub.options.view ? sub.options.view : "";
     return (
-      <Tr key={`${sub.connectionId}-${sub.subscriptionId}`}>
+      <Tr key={sub.id}>
         <Td>
-          <Tooltip label={sub.subscriptionId}>
-            {`${sub.subscriptionId.substring(0, 3)}..`}
-          </Tooltip>
+          <Tooltip label={sub.id}>{`${sub.id.substring(0, 3)}..`}</Tooltip>
         </Td>
         <Td>{sub.filters.kinds && kindsToName(sub.filters.kinds)}</Td>
         <Td>
@@ -111,9 +109,7 @@ export function SubscriptionsRoute() {
         <Td>
           <Button
             size={"sm"}
-            onClick={() =>
-              useNClient.getState().unsubscribe(sub.subscriptionId)
-            }
+            onClick={() => useNClient.getState().unsubscribe(sub.id)}
           >
             Unsubscribe
           </Button>

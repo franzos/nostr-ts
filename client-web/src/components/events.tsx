@@ -41,17 +41,21 @@ export function Events(props: {
               user={event.user}
               reactions={event.reactions}
               reposts={event.reposts}
-              eventRelayUrls={event.eventRelayUrls}
+              eventRelayIds={event.eventRelayIds}
               key={event.event.id}
               userComponent={
                 props && props.userComponent ? (
                   event.user ? (
-                    <props.userComponent user={event.user} />
+                    <props.userComponent
+                      user={event.user}
+                      relayId={event.eventRelayIds[0]}
+                    />
                   ) : (
                     <props.userComponent
                       user={{
                         pubkey: event.event.pubkey,
                       }}
+                      relayId={event.eventRelayIds[0]}
                     />
                   )
                 ) : undefined

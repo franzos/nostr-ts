@@ -5,7 +5,7 @@ import { UserBase } from "./user";
 export interface EventBaseWithUserBase {
   user?: UserBase;
   event: EventBase;
-  eventRelayUrls: string[];
+  eventRelayIds: string[];
   // 7
   reactions?: NEvent[];
   reactionsCount?: number;
@@ -20,4 +20,21 @@ export interface EventBaseWithUserBase {
 export interface NEventWithUserBase extends EventBaseWithUserBase {
   user?: UserBase;
   event: NEvent;
+}
+
+export interface idOrKey {
+  source: "events" | "users";
+  idOrKey: string;
+}
+
+export interface idOrKeyWithRelayIds {
+  source: "events" | "users";
+  idOrKey: string;
+  relayIds: string[];
+}
+
+export interface RelaysWithIdsOrKeys {
+  source: "events" | "users";
+  relayId: string;
+  idsOrKeys: string[];
 }

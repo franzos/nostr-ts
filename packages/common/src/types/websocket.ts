@@ -77,6 +77,7 @@ export interface WebSocketClientInfo extends WebSocketClientConfig {
    * This is a manual overwrite if the relay has a POW requirement but doesn't publish it
    */
   powRequired?: number;
+  isReady: boolean;
 }
 
 export interface WebSocketClientConnection extends WebSocketClientConfig {

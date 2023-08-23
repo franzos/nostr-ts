@@ -41,6 +41,7 @@ export function Event({
   event,
   reactions,
   reposts,
+  eventRelayIds,
 }: EventProps) {
   const [isReady] = useNClient((state) => [
     state.connected && state.keystore !== "none",
@@ -86,13 +87,26 @@ export function Event({
     onOpen();
   };
 
-  const newReply = () => {
+  const newReply = async () => {
+    const relays = await useNClient.getState().getRelays();
+    const relay = relays.find((r) => r.id === eventRelayIds[0]);
+    if (!relay) {
+      toast({
+        title: "Error",
+        description: `Relay ${eventRelayIds[0]} not found`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
     const ev = NewShortTextNoteResponse({
       text: "",
       inResponseTo: {
         id: event.id,
         pubkey: event.pubkey,
       },
+      relayUrl: relay.url,
     });
     useNClient.getState().setNewEvent(ev);
     useNClient.getState().setNewEventName("NewShortTextNoteResponse");
@@ -126,7 +140,9 @@ export function Event({
     }
 
     try {
-      const evId = await useNClient.getState().signAndSendEvent(ev);
+      const evId = await useNClient.getState().signAndSendEvent({
+        event: ev,
+      });
       if (evId) {
         toast({
           title: "Success",
@@ -135,9 +151,17 @@ export function Event({
           duration: 5000,
           isClosable: true,
         });
-        useNClient.getState().requestInformation("events", [event.id], {
-          timeout: 10000,
-        });
+        useNClient.getState().requestInformation(
+          {
+            source: "events",
+            idsOrKeys: [evId],
+            relayId: eventRelayIds[0],
+          },
+          {
+            timeout: 10000,
+            timeoutAt: Date.now() + 10000,
+          }
+        );
       }
     } catch (e) {
       let error = "";
@@ -237,7 +261,10 @@ export function Event({
           </Text>
         </CardBody>
         <CardFooter p={4}>
-          <ActionButtons />
+          <HStack>
+            <ActionButtons />
+            <Text>Relay {eventRelayIds[0].substring(0, 5)}...</Text>
+          </HStack>
         </CardFooter>
       </Card>
 

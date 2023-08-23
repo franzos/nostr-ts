@@ -1,4 +1,4 @@
-import { NEvent, NFilters } from "../classes/index";
+import { NEvent } from "../classes/index";
 import { FiltersBase } from "./filter";
 
 /**
@@ -54,26 +54,3 @@ export interface ClientRequest extends ClientMessageBase {
   subscriptionId: string;
   filters: FiltersBase;
 }
-
-export interface SubscriptionOptions {
-  /**
-   * Set when the subscription is supposed to timeout
-   */
-  timeoutAt: number;
-  /**
-   * Set an associated timeout
-   */
-  timeout: number;
-  view?: string;
-}
-
-export interface SubscriptionRequest {
-  filters: NFilters;
-  options?: SubscriptionOptions;
-}
-
-export interface Subscribe extends SubscriptionRequest {
-  subscriptionId?: string;
-}
-
-export interface Count extends Subscribe {}

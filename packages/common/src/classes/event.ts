@@ -86,7 +86,7 @@ export class NEvent implements EventBase {
     if (this.pubkey === "") {
       throw new Error("Cannot generate event ID without a public key");
     }
-    const serial = serializeEvent(this.toJson());
+    const serial = serializeEvent(this.ToObj());
     this.id = hash(serial);
   }
 
@@ -105,7 +105,7 @@ export class NEvent implements EventBase {
     this.generateId();
   }
 
-  public toJson(): any {
+  public ToObj(): any {
     const cleanObject = {};
     for (const [key, value] of Object.entries(this)) {
       if (value !== undefined) {
@@ -116,7 +116,7 @@ export class NEvent implements EventBase {
   }
 
   public toURI() {
-    return encodeURI(JSON.stringify(this.toJson()));
+    return encodeURI(JSON.stringify(this.ToObj()));
   }
 
   /**
@@ -251,7 +251,7 @@ export class NEvent implements EventBase {
     this.addTag(tag);
   }
 
-  public hasPublicKeyTags(): string[] | undefined {
+  public hasPublicKeyTags(): [string][] | [string, string][] | undefined {
     return eventHasPublicKeyTags(this);
   }
 

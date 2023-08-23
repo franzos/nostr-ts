@@ -1,6 +1,5 @@
 import { useNClient } from "../state/client";
 import { useState } from "react";
-import { PublishingEventsQueueItem } from "../state/publishing-qeue";
 import {
   useDisclosure,
   Modal,
@@ -25,18 +24,20 @@ import {
 } from "@chakra-ui/react";
 import CheckCircleOutlineIcon from "mdi-react/CheckCircleOutlineIcon";
 import CircleOutlineIcon from "mdi-react/CircleOutlineIcon";
+import { PublishingQueueItem } from "@nostr-ts/common";
 
 export function PublishingQueueRoute() {
   const [queue] = useNClient((s) => [s.eventsPublishingQueue]);
-  const [selectedItem, setSelectedItem] =
-    useState<null | PublishingEventsQueueItem>(null);
+  const [selectedItem, setSelectedItem] = useState<null | PublishingQueueItem>(
+    null
+  );
 
-  const hasError = (item: PublishingEventsQueueItem) => {
-    return item.relays.find((r) => r.error) !== undefined;
+  const hasError = (item: PublishingQueueItem) => {
+    return item.error ? true : false;
   };
 
-  const error = (item: PublishingEventsQueueItem) => {
-    return item.relays.find((r) => r.error)?.error;
+  const error = (item: PublishingQueueItem) => {
+    return item.error ? item.error : "";
   };
 
   const {
@@ -45,7 +46,7 @@ export function PublishingQueueRoute() {
     onClose: onQueueItemModalClose,
   } = useDisclosure();
 
-  function RenderRelayInfoObject({ obj }: { obj: PublishingEventsQueueItem }) {
+  function RenderRelayInfoObject({ obj }: { obj: PublishingQueueItem }) {
     return (
       <div>
         {Object.entries(obj).map(([key, value]) => {
@@ -102,7 +103,7 @@ export function PublishingQueueRoute() {
     </Modal>
   );
 
-  const QueueItemRow = (item: PublishingEventsQueueItem) => {
+  const QueueItemRow = (item: PublishingQueueItem) => {
     const eventId = item.event.id || "";
     return (
       <Tr key={eventId}>
@@ -111,11 +112,7 @@ export function PublishingQueueRoute() {
         </Td>
         <Td>
           <HStack>
-            {item.powRequired ? (
-              <Text>{item.powRequired}</Text>
-            ) : (
-              <Text>0</Text>
-            )}
+            {item.pow ? <Text>{item.pow}</Text> : <Text>0</Text>}
             <Text>/</Text>
             <Icon
               as={item.powDone ? CheckCircleOutlineIcon : CircleOutlineIcon}

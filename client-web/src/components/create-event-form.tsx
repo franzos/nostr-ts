@@ -50,12 +50,17 @@ export const CreateEventForm = () => {
   const [publicKeyTags] = useNClient((state) => [
     state.newEvent?.hasPublicKeyTags(),
   ]);
+  const [userRelayId, setUserRelayId] = useState<string>("");
 
   useEffect(() => {
     const loadUser = async () => {
       const foundUsers = [];
       if (publicKeyTags) {
-        for (const key of publicKeyTags) {
+        for (const tags of publicKeyTags) {
+          if (tags.length === 2) {
+            setUserRelayId(tags[1]);
+          }
+          const key = tags[0];
           const user = await useNClient.getState().getUser(key);
           if (user) {
             foundUsers.push(user);
@@ -120,7 +125,9 @@ export const CreateEventForm = () => {
     }
 
     try {
-      const evId = await useNClient.getState().signAndSendEvent(newEvent);
+      const evId = await useNClient.getState().signAndSendEvent({
+        event: newEvent,
+      });
       if (evId) {
         toast({
           title: "Success",
@@ -216,7 +223,7 @@ export const CreateEventForm = () => {
         <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
         {users.map((user) => (
-          <User user={user} key={user.pubkey} />
+          <User user={user} key={user.pubkey} relayId={userRelayId} />
         ))}
       </FormControl>
       <FormControl marginBottom={4}>

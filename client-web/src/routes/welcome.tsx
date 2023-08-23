@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { NFilters, NEVENT_KIND } from "@nostr-ts/common";
 import { User } from "../components/user";
 import { CreateEventForm } from "../components/create-event-form";
+import { MAX_EVENTS } from "../defaults";
 
 export function WelcomeRoute() {
   const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
@@ -14,6 +15,7 @@ export function WelcomeRoute() {
 
   const defaultFilters = new NFilters({
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+    limit: MAX_EVENTS,
   });
 
   const initDone = useRef<boolean>(false);
@@ -22,7 +24,6 @@ export function WelcomeRoute() {
    * Handle initial load
    */
   useEffect(() => {
-    console.log(initDone.current, connected);
     const init = async () => {
       if (!connected || initDone.current) return;
       initDone.current = true;
@@ -39,7 +40,6 @@ export function WelcomeRoute() {
    */
   useEffect(() => {
     const init = async () => {
-      console.log(initDone.current, connected, "..");
       if (!connected || initDone.current) return;
       initDone.current = true;
       await useNClient

@@ -1,25 +1,28 @@
 import {
-  EventBase,
   WebSocketClientInfo,
   UserBase,
-  ClientSubscription,
-  Count,
+  PublishingRequest,
+  Subscription,
+  PublishingQueueItem,
+  CountRequest,
+  RelaySubscription,
 } from "@nostr-ts/common";
 import { NClientBase } from "./base-types";
-import { PublishingEventsQueueItem } from "./publishing-qeue";
 
 export interface NClientWorker extends NClientBase {
   checkedUsers: string[];
   checkedEvents: string[];
 
-  eventsPublishingQueue: PublishingEventsQueueItem[];
+  eventsPublishingQueue: PublishingQueueItem[];
 
+  getSubscriptions: () => RelaySubscription[];
   unsubscribe: (id: string) => void;
   unsubscribeAll: () => void;
 
-  count: (payload: Count) => ClientSubscription[] | undefined;
-  sendEvent: (event: EventBase) => void;
+  count: (payload: CountRequest) => Subscription[] | undefined;
+  sendEvent: (payload: PublishingRequest) => void;
   setMaxEvents: (max: number) => void;
+  sendQueueItems: (items: PublishingQueueItem[]) => void;
   clearEvents: () => void;
   getRelays: () => WebSocketClientInfo[];
   updateRelay: (
@@ -35,12 +38,26 @@ export interface NClientWorker extends NClientBase {
 export interface NClientDB {
   users: {
     key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
+    value: {
+      user: UserBase;
+      relayIds: string[];
+    };
+    indexes: {
+      user: {
+        pubkey: string;
+      };
+    };
   };
   following: {
     key: string;
-    value: UserBase;
-    indexes: { pubkey: string };
+    value: {
+      user: UserBase;
+      relayIds: string[];
+    };
+    indexes: {
+      user: {
+        pubkey: string;
+      };
+    };
   };
 }

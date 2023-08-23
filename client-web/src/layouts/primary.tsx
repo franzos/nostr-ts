@@ -31,7 +31,12 @@ export function PrimaryLayout() {
     state.eventsPublishingQueue.length,
   ]);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
-  const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
+  const [followingUsers, setFollowingUsers] = useState<
+    {
+      user: NUserBase;
+      relayIds: string[];
+    }[]
+  >([]);
   const [relaysCount, setRelaysCount] = useState<number>(0);
 
   const { isOpen, onOpen, onClose } = useDisclosure();

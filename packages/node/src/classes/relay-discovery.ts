@@ -83,7 +83,6 @@ export class RelayDiscovery {
       this.recommendedRelays.push(relayUrl);
       try {
         const info = await getRelayInformationDocument(relayUrl);
-        console.log("=> Adding relay ...", relayUrl);
         this.discoveredRelays.push({
           url: relayUrl,
           info,

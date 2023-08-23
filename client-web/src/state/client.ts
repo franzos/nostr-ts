@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import {
   NEventWithUserBase,
   WebSocketEvent,
@@ -6,8 +8,13 @@ import {
   NEVENT_KIND,
   NUserBase,
   NFilters,
-  Subscribe,
-  Count,
+  PublishingQueueItem,
+  SubscriptionRequest,
+  CountRequest,
+  PublishingRequest,
+  WebSocketClientInfo,
+  CLIENT_MESSAGE_TYPE,
+  RelaysWithIdsOrKeys,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -19,7 +26,7 @@ import {
   saveKeyStoreConfig,
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
-import { PublishingEventsQueueItem } from "./publishing-qeue";
+import { SubscriptionOptions } from "@nostr-ts/common";
 
 interface Event {
   data: {
@@ -29,7 +36,7 @@ interface Event {
       | "relay:message"
       | "event:queue:new"
       | "event:queue:update";
-    data: NEventWithUserBase | WebSocketEvent | PublishingEventsQueueItem;
+    data: NEventWithUserBase | WebSocketEvent | PublishingQueueItem;
   };
 }
 
@@ -67,36 +74,22 @@ export const useNClient = create<NClient>((set, get) => ({
         if (payload.type === "event:new" || payload.type === "event:update") {
           const data = payload.data as NEventWithUserBase;
           if (payload.type === "event:new") {
-            set({
-              events: [...get().events, data],
-            });
+            get().addEvent(data);
           } else if (payload.type === "event:update") {
-            const eventIndex = get().events.findIndex(
-              (event) => event.event.id === data.event.id
-            );
-
-            if (eventIndex !== -1) {
-              const updatedEvents = [...get().events];
-              updatedEvents[eventIndex] = data;
-              set({ events: updatedEvents });
-            }
+            get().updateEvent(data);
           }
         } else if (payload.type === "relay:message") {
-          console.log("relay:message", payload.data);
           const data = payload.data as WebSocketEvent;
           set({
             relayEvents: [...get().relayEvents, data],
           });
+          // } else if (payload.type === "event:queue:new") {
+          //   const data = payload.data as PublishingQueueItem;
+          //   set({
+          //     eventsPublishingQueue: [...get().eventsPublishingQueue, data],
+          //   });
         } else if (payload.type === "event:queue:update") {
-          const data = payload.data as PublishingEventsQueueItem;
-          const index = get().eventsPublishingQueue.findIndex(
-            (item) => item.event.id === data.event.id
-          );
-          if (index !== -1) {
-            const updatedQueue = [...get().eventsPublishingQueue];
-            updatedQueue[index] = Object.assign(updatedQueue[index], data);
-            set({ eventsPublishingQueue: updatedQueue });
-          }
+          get().updateQueueItem(payload.data as PublishingQueueItem);
         }
       });
     };
@@ -138,13 +131,15 @@ export const useNClient = create<NClient>((set, get) => ({
   getSubscriptions: async () => {
     return get().store.getSubscriptions();
   },
-  subscribe: async (payload: Subscribe) => {
+  subscribe: async (payload: SubscriptionRequest) => {
     return get().store.subscribe(payload);
   },
   unsubscribe: async (id: string) => {
+    console.log(`Unsubscribing ${id}`);
     return get().store.unsubscribe(id);
   },
   unsubscribeAll: async () => {
+    console.log(`Unsubscribing all`);
     return get().store.unsubscribeAll();
   },
   keystore: "none",
@@ -224,17 +219,98 @@ export const useNClient = create<NClient>((set, get) => ({
   setNewEventContent: (content: string) => {
     set({ newEvent: get().newEvent.setContentWithoutChecks(content) });
   },
-  count: async (payload: Count) => {
+  count: async (payload: CountRequest) => {
     return get().store.count(payload);
   },
   events: [],
+  addEvent: (payload: NEventWithUserBase) => {
+    set({
+      events: [...get().events, payload],
+    });
+  },
+  updateEvent: (payload: NEventWithUserBase) => {
+    const eventIndex = get().events.findIndex(
+      (event) => event.event.id === payload.event.id
+    );
+
+    if (eventIndex !== -1) {
+      const updatedEvents = [...get().events];
+      updatedEvents[eventIndex] = payload;
+      set({ events: updatedEvents });
+    }
+  },
   maxEvents: MAX_EVENTS,
   setMaxEvents: async (max: number) => {
-    console.log(`Setting max events to ${max}`);
     await get().store.setMaxEvents(max);
     set({ maxEvents: max });
   },
-  skippedEvents: 0,
+  // skippedEvents: 0,
+
+  /**
+   * Check which of the given relays are available
+   * - check requirements
+   */
+  determineApplicableRelays: async (
+    request: PublishingRequest
+  ): Promise<{
+    relays: WebSocketClientInfo[];
+    pow: number;
+  }> => {
+    // TODO: RELAY check if supported (supportsEvent)
+    const allRelays = await get().getRelays();
+    const relays = request.relayIds
+      ? allRelays.filter((r) => request.relayIds?.includes(r.id))
+      : allRelays;
+
+    return {
+      relays: relays.filter((r) => r.isReady && r.write === true),
+      pow: 0,
+    };
+  },
+
+  /**
+   * Generate queue items from request
+   * - Process relays
+   * - Generate queue item
+   */
+  generateQueueItems: async (
+    request: PublishingRequest
+  ): Promise<PublishingQueueItem[]> => {
+    const { relays } = await get().determineApplicableRelays(request);
+
+    const newSubs: PublishingQueueItem[] = [];
+    for (const relay of relays) {
+      if (relay.isReady && relay.write) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { relayIds: _relayIds, ...restOfRequest } = request;
+        const sub: PublishingQueueItem = {
+          ...restOfRequest,
+          id: uuidv4(),
+          relayId: relay.id,
+          send: false,
+        };
+        newSubs.push(sub);
+      }
+    }
+    return newSubs;
+  },
+  /**
+   * Add items to publishing queue
+   */
+  addQueueItems: (items: PublishingQueueItem[]) => {
+    set({
+      eventsPublishingQueue: [...get().eventsPublishingQueue, ...items],
+    });
+  },
+  updateQueueItem: async (item: PublishingQueueItem) => {
+    const queue = get().eventsPublishingQueue;
+    const index = queue.findIndex((e) => e.event.id === item.event.id);
+    if (index !== -1) {
+      const updatedQueue = [...queue];
+      updatedQueue[index] = item;
+      set({ eventsPublishingQueue: updatedQueue });
+    }
+  },
   getUser: async (pubkey: string) => {
     return get().store.getUser(pubkey);
   },
@@ -270,83 +346,74 @@ export const useNClient = create<NClient>((set, get) => ({
       });
     });
   },
-  sendEvent: async (event: NEvent) => {
+  sendEvent: async (event: PublishingRequest) => {
     return get().store.sendEvent(event);
   },
-  signAndSendEvent: async (event: NEvent, proofOfWorkBits?: number) => {
+  signAndSendEvent: async (payload: PublishingRequest) => {
     const keypair = get().keypair;
     if (!keypair) {
       throw new Error("Keypair not initialized");
     }
 
     const keystore = get().keystore;
-    const relays = await get().getRelays();
-    const available = relays.filter((r) => r.write);
 
-    let signedEvent: NEvent;
+    let ev = payload.event;
+    ev.pubkey = keypair.publicKey;
+    ev.generateId();
 
-    // Ready event
-    event.pubkey = keypair.publicKey;
-    event.generateId();
-    const origId = event.id;
+    // Check if POW is needed and which relays are available
+    const { relays, pow } = await get().determineApplicableRelays(payload);
+    if (relays.length === 0) {
+      throw new Error("No relays available");
+    }
 
-    set({
-      eventsPublishingQueue: [
-        ...get().eventsPublishingQueue,
-        {
-          event,
-          send: false,
-          powRequired: proofOfWorkBits,
-          powStartTime: proofOfWorkBits && proofOfWorkBits > 0 ? Date.now() : 0,
-          powEndTime: 0,
-          powDone: false,
-          accepted: false,
-          relays: available.map((r) => {
-            return {
-              id: r.id,
-              send: false,
-            };
-          }),
-        },
-      ],
-    });
-
-    // TODO: Check if relay requires POW
-    if (proofOfWorkBits && proofOfWorkBits > 0) {
-      console.log(`Generating proof of work for event ${event.id}`);
-      const result = await get().eventProofOfWork(event, proofOfWorkBits);
-      console.log(`Proof of work for event ${event.id} is ${result}`);
-      event = new NEvent(result);
-
-      const index = get().eventsPublishingQueue.findIndex(
-        (e) => e.event.id === origId
-      );
-      if (index >= 0) {
-        const queue = get().eventsPublishingQueue;
-        queue[index].event = event;
-        queue[index].powDone = true;
-        queue[index].powEndTime = Date.now();
-        console.log(
-          `Proof of work took ${
-            (queue[index].powEndTime as number) -
-            (queue[index].powStartTime as number)
-          }ms`
+    let requestedPOW = payload.pow;
+    const neededPow = pow;
+    if (requestedPOW && requestedPOW !== 0) {
+      if (requestedPOW < neededPow) {
+        // Smaller than needed, throw error
+        throw new Error(
+          `Requested POW ${requestedPOW} is lower than needed ${neededPow}`
         );
-        set({ eventsPublishingQueue: queue });
+      } else if (requestedPOW > neededPow) {
+        // Equal or higher than needed, use requested
+      }
+    } else {
+      // No requested POW, use needed
+      requestedPOW = neededPow;
+    }
+
+    let queueItems: PublishingQueueItem[] = [];
+
+    if (requestedPOW > 0) {
+      queueItems = await get().generateQueueItems({
+        ...payload,
+        pow: requestedPOW,
+      });
+      get().addQueueItems?.(queueItems);
+      const result = await get().eventProofOfWork(payload.event, requestedPOW);
+      ev = new NEvent(result);
+
+      for (const item of queueItems) {
+        item.event = ev;
+        item.powDone = Date.now();
       }
     }
 
+    //   event = new NEvent(result);
+
     if (keystore === "localstore") {
-      event.sign({
+      ev.sign({
         privateKey: keypair.privateKey || "",
         publicKey: keypair.publicKey,
       });
-      signedEvent = event;
     } else if (keystore === "nos2x") {
       if (window.nostr && window.nostr.signEvent) {
-        const ev = await window.nostr.signEvent(event.toJson());
-        console.log("signed event", ev);
-        signedEvent = new NEvent(ev);
+        const signedEv = await window.nostr.signEvent(ev.ToObj());
+        if (!signedEv.sig) {
+          throw new Error("No signature");
+        }
+        ev.sig = signedEv.sig;
       } else {
         throw new Error("Nostr not initialized");
       }
@@ -354,9 +421,24 @@ export const useNClient = create<NClient>((set, get) => ({
       throw new Error("Invalid keystore");
     }
 
-    event.isReadyToPublishOrThrow();
-    await get().sendEvent(signedEvent);
-    return event.id;
+    ev.isReadyToPublishOrThrow();
+
+    if (queueItems.length === 0) {
+      queueItems = await get().generateQueueItems({
+        ...payload,
+        pow: requestedPOW,
+        event: ev,
+      });
+      get().addQueueItems?.(queueItems);
+    } else {
+      for (const item of queueItems) {
+        item.event = ev;
+        get().updateQueueItem(item);
+      }
+    }
+
+    await get().store.sendQueueItems(queueItems);
+    return ev.id;
   },
   eventsPublishingQueue: [],
   clearEvents: async () => {
@@ -366,11 +448,11 @@ export const useNClient = create<NClient>((set, get) => ({
   /**
    * Follow a user
    */
-  followUser: async (pubkey: string) => {
-    await get().store.followUser(pubkey);
+  followUser: async (payload: { pubkey: string; relayId: string }) => {
+    await get().store.followUser(payload);
     const folowing = await get().store.getAllUsersFollowing();
     if (folowing) {
-      set({ followingUserIds: folowing.map((u) => u.pubkey) });
+      set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
     }
   },
   /**
@@ -380,7 +462,7 @@ export const useNClient = create<NClient>((set, get) => ({
     await get().store.unfollowUser(pubkey);
     const folowing = await get().store.getAllUsersFollowing();
     if (folowing) {
-      set({ followingUserIds: folowing.map((u) => u.pubkey) });
+      set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
     }
   },
   /**
@@ -397,17 +479,17 @@ export const useNClient = create<NClient>((set, get) => ({
    * Update information of user we are following
    * @param user
    */
-  updateUserFollowing: async (user: NUserBase) => {
-    return get().store.updateUserFollowing(user);
+  updateUserFollowing: async (payload: {
+    user: NUserBase;
+    relayIds?: string[];
+  }) => {
+    return get().store.updateUserFollowing(payload);
   },
   requestInformation: (
-    source: "events" | "users",
-    idsOrKeys: string[],
-    options?: {
-      timeout?: number;
-    }
+    payload: RelaysWithIdsOrKeys,
+    options: SubscriptionOptions
   ) => {
-    return get().store.requestInformation(source, idsOrKeys, options);
+    return get().store.requestInformation(payload, options);
   },
   hasSubscriptionForEventIds: async (
     eventIds: string[],
@@ -438,40 +520,106 @@ export const useNClient = create<NClient>((set, get) => ({
 
     for (const sub of subs) {
       if (sub.options && sub.options.view) {
-        await get().unsubscribe(sub.subscriptionId);
+        await get().unsubscribe(sub.id);
       }
     }
 
+    const relays = await get().getRelays();
+
     await get().subscribe({
-      filters,
+      type: CLIENT_MESSAGE_TYPE.REQ,
+      filters: {
+        ...filters,
+        limit: filters.limit
+          ? Math.round(filters.limit / relays.length)
+          : undefined,
+      },
       options: {
         view,
-        timeout: 0,
-        timeoutAt: 0,
+        timeout: 10000,
+        timeoutAt: Date.now() + 10000,
       },
     });
 
-    const infoRequestPromises = [];
+    setTimeout(async () => {
+      const eventUserPubkeys: {
+        pubkey: string;
+        relayIds: string[];
+      }[] = [];
 
-    const eventUserPubkeys = get()
-      .events.filter((e) => !e.user?.pubkey)
-      .map((e) => e.event.pubkey);
+      const eventIds: {
+        id: string;
+        relayIds: string[];
+      }[] = [];
 
-    const eventIds = get()
-      .events.filter((e) => !e.reactions)
-      .map((e) => e.event.id);
+      for (const ev of get().events) {
+        if (ev.event?.pubkey) {
+          eventUserPubkeys.push({
+            pubkey: ev.event.pubkey,
+            relayIds: ev.eventRelayIds,
+          });
+        }
+        if (!ev.reactions) {
+          eventIds.push({
+            id: ev.event.id,
+            relayIds: ev.eventRelayIds,
+          });
+        }
+      }
 
-    if (eventUserPubkeys.length > 0) {
-      infoRequestPromises.push(
-        get().requestInformation("users", eventUserPubkeys)
-      );
-    }
+      const relayIdToPubkeysMap: Record<string, Set<string>> = {};
 
-    if (eventIds.length > 0) {
-      infoRequestPromises.push(get().requestInformation("events", eventIds));
-    }
+      for (const ev of eventUserPubkeys) {
+        for (const relayId of ev.relayIds) {
+          if (!relayIdToPubkeysMap[relayId]) {
+            relayIdToPubkeysMap[relayId] = new Set();
+          }
+          relayIdToPubkeysMap[relayId].add(ev.pubkey);
+        }
+      }
 
-    await Promise.all(infoRequestPromises);
+      const reqUsers: RelaysWithIdsOrKeys[] = Object.entries(
+        relayIdToPubkeysMap
+      ).map(([relayId, pubkeysSet]) => {
+        return {
+          source: "users",
+          relayId,
+          idsOrKeys: [...pubkeysSet],
+        };
+      });
+
+      // This map will keep track of relayIds and their associated eventIds.
+      const relayIdToEventIdsMap: Record<string, Set<string>> = {};
+
+      for (const ev of eventIds) {
+        for (const relayId of ev.relayIds) {
+          if (!relayIdToEventIdsMap[relayId]) {
+            relayIdToEventIdsMap[relayId] = new Set();
+          }
+          relayIdToEventIdsMap[relayId].add(ev.id);
+        }
+      }
+
+      const reqEvents: RelaysWithIdsOrKeys[] = Object.entries(
+        relayIdToEventIdsMap
+      ).map(([relayId, eventIdsSet]) => {
+        return {
+          source: "events",
+          relayId,
+          idsOrKeys: [...eventIdsSet],
+        };
+      });
+
+      const infoRequestPromises = [];
+      for (const item of [...reqUsers, ...reqEvents]) {
+        infoRequestPromises.push(
+          await get().requestInformation(item, {
+            timeout: 10000,
+            timeoutAt: Date.now() + 10000,
+          })
+        );
+      }
+    }, 5000);
   },
 
   /**
@@ -482,10 +630,10 @@ export const useNClient = create<NClient>((set, get) => ({
   removeViewSubscription: async (view?: string) => {
     const subs = await get().getSubscriptions();
 
+    console.log(`Remove view subscription ${view}`);
+
     if (!view) {
-      const unsubPromises = subs.map((sub) =>
-        get().unsubscribe(sub.subscriptionId)
-      );
+      const unsubPromises = subs.map((sub) => get().unsubscribe(sub.id));
       await Promise.all(unsubPromises);
       return;
     }
@@ -495,7 +643,7 @@ export const useNClient = create<NClient>((set, get) => ({
     );
 
     const unsubPromises = subsToUnsubscribe.map((sub) =>
-      get().unsubscribe(sub.subscriptionId)
+      get().unsubscribe(sub.id)
     );
 
     await Promise.all(unsubPromises);

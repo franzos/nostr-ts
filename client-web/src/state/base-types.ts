@@ -1,6 +1,5 @@
 import {
   Relay,
-  ClientSubscription,
   NEventWithUserBase,
   NUserBase,
   RelayAuth,
@@ -11,10 +10,13 @@ import {
   RelayOK,
   WebSocketClientInfo,
   NEVENT_KIND,
-  Subscribe,
+  SubscriptionRequest,
+  Subscription,
+  PublishingQueueItem,
+  RelaysWithIdsOrKeys,
+  SubscriptionOptions,
 } from "@nostr-ts/common";
 import { NUser } from "@nostr-ts/web";
-import { PublishingEventsQueueItem } from "./publishing-qeue";
 
 export interface NClientBase {
   init(config?: { maxEvents?: number }): Promise<void>;
@@ -42,18 +44,35 @@ export interface NClientBase {
    * @returns
    */
   disconnect: () => void;
-  subscribe: (payload: Subscribe) => Promise<ClientSubscription[] | undefined>;
-  getSubscriptions: () => Promise<ClientSubscription[]>;
+  subscribe: (
+    payload: SubscriptionRequest
+  ) => Promise<Subscription[] | undefined>;
   eventsMap?: Map<string, NEventWithUserBase>;
+  /**
+   * Add event to array or map
+   * - In worker, must post message to main thread
+   */
+  addEvent: (payload: NEventWithUserBase) => void;
+  /**
+   * Update event on array or map
+   * - In worker, must post message to main thread
+   */
+  updateEvent: (payload: NEventWithUserBase) => void;
 
-  eventsPublishingQueue: PublishingEventsQueueItem[];
+  eventsPublishingQueue: PublishingQueueItem[];
+
+  addQueueItems?: (payload: PublishingQueueItem[]) => void;
+  updateQueueItem: (payload: PublishingQueueItem) => void;
 
   maxEvents: number;
   getUser: (pubkey: string) => Promise<NUser | undefined>;
   addUser: (user: NUserBase) => Promise<void>;
   updateUser: (user: NUserBase) => Promise<void>;
   countUsers: () => Promise<number>;
-  addEvent?: (payload: {
+  /**
+   * Process websocket events
+   */
+  processEvent?: (payload: {
     data:
       | RelayAuth
       | RelayCount
@@ -64,22 +83,28 @@ export interface NClientBase {
     meta: WebSocketClientInfo;
   }) => void;
   getEventById: (id: string) => void;
-  followUser(pubkey: string): void;
+  followUser(payload: { pubkey: string; relayId: string }): void;
   unfollowUser(pubkey: string): void;
   followingUser(pubkey: string): Promise<boolean>;
   // For reactive updates
   followingUserIds: string[];
-  getAllUsersFollowing(): Promise<NUserBase[] | undefined>;
-  updateUserFollowing(user: NUserBase): Promise<void>;
+  getAllUsersFollowing(): Promise<
+    | {
+        user: NUserBase;
+        relayIds: string[];
+      }[]
+    | undefined
+  >;
+  updateUserFollowing(payload: {
+    user: NUserBase;
+    relayIds?: string[];
+  }): Promise<void>;
   hasSubscriptionForEventIds(
     eventIds: string[],
     kinds: NEVENT_KIND[]
   ): Promise<string[] | undefined>;
   requestInformation(
-    source: "events" | "users",
-    idsOrKeys: string[],
-    options?: {
-      timeout?: number;
-    }
+    payload: RelaysWithIdsOrKeys,
+    options: SubscriptionOptions
   ): Promise<void>;
 }

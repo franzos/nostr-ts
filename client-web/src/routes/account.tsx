@@ -25,7 +25,6 @@ export function AccountRoute() {
 
   const generateKeypair = () => {
     const keypair = generateClientKeys();
-    console.log(keypair);
     useNClient.getState().setKeyStore({
       keystore: "localstore",
       publicKey: keypair.publicKey,

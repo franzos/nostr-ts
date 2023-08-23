@@ -13,9 +13,11 @@ import { Link } from "react-router-dom";
 
 export function User({
   user,
+  relayId,
   hideFollow,
 }: {
   user: UserBase;
+  relayId: string;
   hideFollow?: boolean;
 }) {
   const [following] = useNClient((state) => [
@@ -28,7 +30,7 @@ export function User({
   const name = data && data.name ? data.name : "Anonymous";
   const picture = data && data.picture ? data.picture : "/no-image.png";
 
-  const profileLink = `/p/${user.pubkey}`;
+  const profileLink = `/p/${relayId}/${user.pubkey}`;
 
   return (
     <Flex>
@@ -49,7 +51,10 @@ export function User({
           onClick={() =>
             following
               ? useNClient.getState().unfollowUser(user.pubkey)
-              : useNClient.getState().followUser(user.pubkey)
+              : useNClient.getState().followUser({
+                  pubkey: user.pubkey,
+                  relayId,
+                })
           }
         >
           {following ? "Unfollow" : "Follow"}

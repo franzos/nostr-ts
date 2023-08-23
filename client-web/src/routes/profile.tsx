@@ -1,5 +1,10 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
-import { NEVENT_KIND, NFilters, NUserBase } from "@nostr-ts/common";
+import {
+  CLIENT_MESSAGE_TYPE,
+  NEVENT_KIND,
+  NFilters,
+  NUserBase,
+} from "@nostr-ts/common";
 import { useState, useEffect } from "react";
 import { useNClient } from "../state/client";
 import { NUser } from "@nostr-ts/web";
@@ -16,8 +21,9 @@ export function UserProfileRoute() {
   ]);
   const [user, setUser] = useState<NUserBase | null>(null);
 
-  const params = useParams<{ pubkey: string }>();
+  const params = useParams<{ pubkey: string; relayid: string }>();
   const pubkey = params.pubkey || "";
+  const relayId = params.relayid || "";
 
   const view = `profile-${pubkey}`;
   const defaultFilters = new NFilters({
@@ -51,10 +57,15 @@ export function UserProfileRoute() {
       }
 
       await useNClient.getState().count({
+        type: CLIENT_MESSAGE_TYPE.COUNT,
         filters: new NFilters({
           kinds: [3],
           "#p": [pubkey],
         }),
+        options: {
+          timeout: 10000,
+          timeoutAt: Date.now() + 10000,
+        },
       });
     };
     init();
@@ -79,7 +90,7 @@ export function UserProfileRoute() {
       <Box maxHeight="80vh" overflowY="auto">
         <Box>
           <Heading size="lg">Profile</Heading>
-          {user && <User user={user} />}
+          {user && <User user={user} relayId={relayId} />}
         </Box>
         <Box>
           {connected ? (

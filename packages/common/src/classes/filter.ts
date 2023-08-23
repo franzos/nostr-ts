@@ -46,7 +46,7 @@ export class NFilters implements FiltersBase {
     this.limit = limit;
   }
 
-  public toJson() {
+  public toObj(): FiltersBase {
     return JSON.parse(JSON.stringify(this));
   }
 }

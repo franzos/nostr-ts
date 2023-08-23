@@ -5,7 +5,12 @@ import { NUserBase } from "@nostr-ts/common";
 import { User } from "../components/user";
 
 export function FollowingRoute() {
-  const [followingUsers, setFollowingUsers] = useState<NUserBase[]>([]);
+  const [followingUsers, setFollowingUsers] = useState<
+    {
+      user: NUserBase;
+      relayIds: string[];
+    }[]
+  >([]);
 
   const initDone = useRef<boolean>(false);
 
@@ -26,9 +31,13 @@ export function FollowingRoute() {
       <Heading size="lg">Following</Heading>
       {followingUsers.length > 0 ? (
         <>
-          {followingUsers.map((user) => (
+          {followingUsers.map((item) => (
             <Box mb="3">
-              <User user={user} key={user.pubkey} />
+              <User
+                user={item.user}
+                key={item.user.pubkey}
+                relayId={item.relayIds[0]}
+              />
             </Box>
           ))}
         </>

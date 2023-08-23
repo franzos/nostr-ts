@@ -35,7 +35,6 @@ export function BottomBar() {
       if (diff > 0) {
         setLastCount(current);
         const newEvents = relayEvents.slice(-diff);
-        console.log(newEvents);
         for (const event of newEvents) {
           let description = "";
           if (event.data[0] === RELAY_MESSAGE_TYPE.NOTICE) {
@@ -43,13 +42,12 @@ export function BottomBar() {
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.OK) {
             description = `${event.data[2]}. Event ${event.data[1]}: ${event.data[3]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
-            description = `${event.data[1]}`;
+            description = `Loaded all requested events for subscription ${event.data[1]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
             description = `Relay ${event.data[1]}: ${JSON.stringify(
               event.data[2]
             )} events`;
           }
-          console.log(description);
           if (description !== "") {
             toast({
               title: `Relay ${event.data[0]}`,

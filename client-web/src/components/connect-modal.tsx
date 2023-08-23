@@ -48,6 +48,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
   );
   const [newRelayUrl, setNewRelayUrl] = useState<string>("");
   const [loadingRelaysNos2x, setLoadingRelaysNos2x] = useState<boolean>(false);
+  const [isBusy, setIsBusy] = useState<boolean>(false);
   const toast = useToast();
 
   const relaysFromExtention = async (retryCount?: number) => {
@@ -88,6 +89,13 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
       }
       setTimeout(() => relaysFromExtention(count), 1000); // retry after 1 second
     }
+  };
+
+  const connect = async () => {
+    setIsBusy(true);
+    await useNClient.getState().connect(initialRelayUrls);
+    setIsBusy(false);
+    onClose();
   };
 
   return (
@@ -189,11 +197,9 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         <ModalFooter>
           <Button
             colorScheme="green"
-            disabled={initialRelayUrls.length === 0}
-            onClick={async () => {
-              await useNClient.getState().connect(initialRelayUrls);
-              onClose();
-            }}
+            isDisabled={initialRelayUrls.length === 0}
+            isLoading={isBusy}
+            onClick={connect}
           >
             Connect
           </Button>

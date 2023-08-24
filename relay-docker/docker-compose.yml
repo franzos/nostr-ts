@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: barkyq
+      POSTGRES_PASSWORD: super_secret_password
+      POSTGRES_DB: nostrdb
+    container_name: postgres_service
+
+  gnost_relay:
+    build:
+      context: .
+      dockerfile: Dockerfile.gnost-relay
+      # My nftables are buggy
+      network: host
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://barkyq:super_secret_password@postgres:5432/nostrdb
+    depends_on:
+      - postgres
+    container_name: gnost_relay_service
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - gnost_relay
+    container_name: nginx_service

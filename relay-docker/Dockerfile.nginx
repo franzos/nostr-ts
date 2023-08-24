@@ -1,0 +1,8 @@
+FROM nginx:latest
+
+RUN rm -f /etc/nginx/conf.d/*
+
+COPY nginx.conf /etc/nginx/conf.d/
+
+COPY selfsigned.crt /etc/ssl/certs/
+COPY selfsigned.key /etc/ssl/private/

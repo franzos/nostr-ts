@@ -38,6 +38,7 @@ export interface NClient extends NClientBase {
   keystore: "none" | "localstore" | "nos2x" | "download";
   loadKeyStore: () => void;
   saveKeyStore: () => void;
+  resetKeyStore: () => void;
   setKeyStore: (config: NClientKeystore) => void;
   keypair: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;

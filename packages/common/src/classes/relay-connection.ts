@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import {
   RelayInformationDocument,
   RelaySubscription,
@@ -30,7 +30,7 @@ export class RelayConnection implements WebSocketClientConnection {
   private subscriptions: Subscription[] = [];
 
   constructor(conf: WebSocketClientConfig) {
-    this.id = conf.id ? conf.id : uuidv4();
+    this.id = conf.id ? conf.id : nanoid();
     this.url = conf.url;
     this.read = conf.read;
     this.write = conf.write;

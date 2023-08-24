@@ -32,6 +32,7 @@ import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
+import { excerpt } from "../lib/excerpt";
 
 export interface EventProps extends NEventWithUserBase {
   userComponent?: JSX.Element;
@@ -152,7 +153,7 @@ export function Event({
       if (evId) {
         toast({
           title: "Success",
-          description: `Event ${evId} submitted`,
+          description: `Event ${excerpt(evId, 5)} submitted`,
           status: "success",
           duration: 5000,
           isClosable: true,
@@ -300,6 +301,39 @@ export function Event({
     </Modal>
   );
 
+  const ImageModal = (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="full"
+      closeOnOverlayClick={true}
+    >
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>{userComponent && userComponent}</ModalHeader>
+        <ModalBody>
+          <Image
+            src={selectedImage || ""}
+            fallback={<Image src="/no-image.png" />}
+            fallbackStrategy="onError"
+            alt="Enlarged view"
+            height="80vh"
+            marginLeft="auto"
+            marginRight="auto"
+          />
+        </ModalBody>
+
+        <ModalFooter>
+          <ActionButtons />
+
+          <Button marginLeft={4} onClick={onClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
   return (
     <>
       <Card border="1px solid #e1e1e1" overflow="hidden">
@@ -333,7 +367,7 @@ export function Event({
         <CardFooter p={4}>
           <HStack>
             <ActionButtons />
-            <Text>Relay {eventRelayIds[0].substring(0, 5)}...</Text>
+            <Text>Relay {excerpt(eventRelayIds[0], 5)}</Text>
 
             <Button
               size={"sm"}
@@ -347,36 +381,7 @@ export function Event({
         </CardFooter>
       </Card>
 
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        size="full"
-        closeOnOverlayClick={true}
-      >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{userComponent && userComponent}</ModalHeader>
-          <ModalBody>
-            <Image
-              src={selectedImage || ""}
-              fallback={<Image src="/no-image.png" />}
-              fallbackStrategy="onError"
-              alt="Enlarged view"
-              height="80vh"
-              marginLeft="auto"
-              marginRight="auto"
-            />
-          </ModalBody>
-
-          <ModalFooter>
-            <ActionButtons />
-
-            <Button marginLeft={4} onClick={onClose}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      {ImageModal}
       {EventModal}
     </>
   );

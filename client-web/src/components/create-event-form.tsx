@@ -29,6 +29,7 @@ import WifiStarIcon from "mdi-react/WifiStarIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { NUser } from "@nostr-ts/web";
 import { User } from "./user";
+import { excerpt } from "../lib/excerpt";
 
 export const CreateEventForm = () => {
   const [isReady] = useNClient((state) => [
@@ -131,7 +132,7 @@ export const CreateEventForm = () => {
       if (evId) {
         toast({
           title: "Success",
-          description: `Event ${evId} submitted`,
+          description: `Event ${excerpt(evId, 5)} submitted`,
           status: "success",
           duration: 5000,
           isClosable: true,

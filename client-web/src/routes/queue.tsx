@@ -25,6 +25,7 @@ import {
 import CheckCircleOutlineIcon from "mdi-react/CheckCircleOutlineIcon";
 import CircleOutlineIcon from "mdi-react/CircleOutlineIcon";
 import { PublishingQueueItem } from "@nostr-ts/common";
+import { excerpt } from "../lib/excerpt";
 
 export function PublishingQueueRoute() {
   const [queue] = useNClient((s) => [s.eventsPublishingQueue]);
@@ -108,7 +109,7 @@ export function PublishingQueueRoute() {
     return (
       <Tr key={eventId}>
         <Td>
-          <Tooltip label={eventId}>{`${eventId.substring(0, 3)}..`}</Tooltip>
+          <Tooltip label={eventId}>{excerpt(eventId, 5)}</Tooltip>
         </Td>
         <Td>
           <HStack>

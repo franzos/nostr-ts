@@ -24,6 +24,7 @@ import {
   RelayInformationDocument,
   WebSocketClientInfo,
 } from "@nostr-ts/common";
+import { excerpt } from "../lib/excerpt";
 
 export function RelaysRoute() {
   const [relays, setRelays] = useState<WebSocketClientInfo[]>([]);
@@ -144,7 +145,7 @@ export function RelaysRoute() {
     return (
       <Tr key={rl.id}>
         <Td>
-          <Tooltip label={rl.id}>{`${rl.id.substring(0, 3)}..`}</Tooltip>
+          <Tooltip label={rl.id}>{excerpt(rl.id, 5)}</Tooltip>
         </Td>
         <Td>{rl.url}</Td>
         <Td>

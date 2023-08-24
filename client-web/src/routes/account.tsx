@@ -83,17 +83,27 @@ export function AccountRoute() {
             nos2x-fox for Firefox, and store your keys in the extention (less
             insecure).
           </Text>
-          <HStack>
-            <Button onClick={generateKeypair}>Generate new keypair</Button>
-            <Button
-              isLoading={loadingPublicKeyNosx2}
-              onClick={() => publicKeyFromExtention()}
-            >
-              Load from nos2x
-            </Button>
-          </HStack>
         </>
       )}
+
+      <HStack marginTop={4}>
+        {!keystore ||
+          (keystore === "none" ? (
+            <>
+              <Button onClick={generateKeypair}>Generate new keypair</Button>
+              <Button
+                isLoading={loadingPublicKeyNosx2}
+                onClick={() => publicKeyFromExtention()}
+              >
+                Load from nos2x
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => useNClient.getState().resetKeyStore()}>
+              Reset
+            </Button>
+          ))}
+      </HStack>
       {keypair && (
         <Box mt={4}>
           <FormControl marginBottom={4}>
@@ -101,23 +111,24 @@ export function AccountRoute() {
             <Input type="text" value={publicKey} isReadOnly />
           </FormControl>
 
-          <FormControl marginBottom={4}>
-            <FormLabel>Private key:</FormLabel>
-            <HStack spacing={2}>
-              <Input
-                type={showPrivateKey ? "text" : "password"}
-                value={keypair.privateKey}
-                isReadOnly
-              />
-              <Button
-                isDisabled={keystore !== "localstore"}
-                size="sm"
-                onClick={() => setShowPrivateKey(!showPrivateKey)}
-              >
-                {showPrivateKey ? "Hide" : "Show"}
-              </Button>
-            </HStack>
-          </FormControl>
+          {keystore === "localstore" && (
+            <FormControl marginBottom={4}>
+              <FormLabel>Private key:</FormLabel>
+              <HStack spacing={2}>
+                <Input
+                  type={showPrivateKey ? "text" : "password"}
+                  value={keypair.privateKey}
+                  isReadOnly
+                />
+                <Button
+                  size="sm"
+                  onClick={() => setShowPrivateKey(!showPrivateKey)}
+                >
+                  {showPrivateKey ? "Hide" : "Show"}
+                </Button>
+              </HStack>
+            </FormControl>
+          )}
         </Box>
       )}
     </Box>

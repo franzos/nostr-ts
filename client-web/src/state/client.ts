@@ -1,5 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
-
+import { nanoid } from "nanoid";
 import {
   NEventWithUserBase,
   WebSocketEvent,
@@ -184,6 +183,16 @@ export const useNClient = create<NClient>((set, get) => ({
       }
     }
   },
+  resetKeyStore: () => {
+    saveKeyStoreConfig({
+      keystore: "none",
+    });
+    set({
+      keystore: "none",
+      keypair: { publicKey: "", privateKey: "" },
+      keypairIsLoaded: false,
+    });
+  },
   setKeyStore: (config: NClientKeystore) => {
     if (config.keystore === "localstore") {
       console.log(`Setting keystore for ${config.keystore}`, config);
@@ -290,7 +299,7 @@ export const useNClient = create<NClient>((set, get) => ({
         const { relayIds: _relayIds, ...restOfRequest } = request;
         const sub: PublishingQueueItem = {
           ...restOfRequest,
-          id: uuidv4(),
+          id: nanoid(),
           relayId: relay.id,
           send: false,
         };

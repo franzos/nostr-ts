@@ -2,6 +2,7 @@ import { Box, HStack, Text, useToast } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
+import { excerpt } from "../lib/excerpt";
 
 export function BottomBar() {
   const [userCount, setUserCount] = useState(0);
@@ -39,10 +40,14 @@ export function BottomBar() {
         const newEvents = relayEvents.slice(-diff);
         for (const event of newEvents) {
           let description = "";
+          let success = true;
           if (event.data[0] === RELAY_MESSAGE_TYPE.NOTICE) {
             description = event.data[1];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.OK) {
-            description = `${event.data[2]}. Event ${event.data[1]}: ${event.data[3]}`;
+            description = `Event ${excerpt(event.data[1], 5)}: ${
+              event.data[3]
+            }`;
+            success = event.data[2];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
             // Ignore for now
             return;
@@ -57,7 +62,7 @@ export function BottomBar() {
               title: `Relay ${event.data[0]}`,
               position: "top-right",
               description,
-              status: "info",
+              status: success ? "info" : "error",
               duration: 5000,
               isClosable: true,
             });

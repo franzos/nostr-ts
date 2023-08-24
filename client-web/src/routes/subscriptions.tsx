@@ -21,6 +21,7 @@ import {
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RelaySubscription, NEVENT_KIND } from "@nostr-ts/common";
+import { excerpt } from "../lib/excerpt";
 
 const kinds = Object.keys(NEVENT_KIND).map((k) => {
   return {
@@ -89,13 +90,10 @@ export function SubscriptionsRoute() {
     return (
       <Tr key={sub.id}>
         <Td>
-          <Tooltip label={sub.id}>{`${sub.id.substring(0, 3)}..`}</Tooltip>
+          <Tooltip label={sub.id}>{excerpt(sub.id, 5)}</Tooltip>
         </Td>
         <Td>
-          <Tooltip label={sub.relayId}>{`${sub.relayId.substring(
-            0,
-            3
-          )}..`}</Tooltip>
+          <Tooltip label={sub.relayId}>{excerpt(sub.relayId, 5)}</Tooltip>
         </Td>
         <Td>{sub.filters.kinds && kindsToName(sub.filters.kinds)}</Td>
         <Td>
@@ -110,7 +108,7 @@ export function SubscriptionsRoute() {
           </Button>
         </Td>
         <Td>
-          <Tooltip label={view}>{`${view.substring(0, 4)}..`}</Tooltip>
+          <Tooltip label={view}>{excerpt(view, 5)}</Tooltip>
         </Td>
         <Td>
           <Button

@@ -15,7 +15,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DEFAULT_RELAYS } from "../defaults";
 import { Relay } from "@nostr-ts/common";
 
@@ -91,8 +91,19 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
     }
   };
 
+  useEffect(() => {
+    const relays = localStorage.getItem("nostr-client:relays");
+    if (relays) {
+      setInitialRelayUrls(JSON.parse(relays));
+    }
+  }, []);
+
   const connect = async () => {
     setIsBusy(true);
+    localStorage.setItem(
+      "nostr-client:relays",
+      JSON.stringify(initialRelayUrls)
+    );
     await useNClient.getState().connect(initialRelayUrls);
     setIsBusy(false);
     onClose();

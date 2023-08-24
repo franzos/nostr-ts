@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 import {
   CLIENT_MESSAGE_TYPE,
   ClientClose,
@@ -46,7 +46,7 @@ export class RelayClientBase {
         const { relayIds, ...restOfRequest } = request;
         const subscription: RelaySubscription = {
           ...restOfRequest,
-          id: uuidv4(),
+          id: nanoid(),
           relayId: relay.id,
           connectionId: relay.id,
           created: Date.now(),
@@ -232,7 +232,7 @@ export class RelayClientBase {
         const { relayIds, ...restOfRequest } = payload;
 
         const publish = {
-          id: uuidv4(),
+          id: nanoid(),
           ...restOfRequest,
           relayId: relay.id,
           send: true,

@@ -193,29 +193,15 @@ class WorkerClass implements NClientWorker {
       });
     }
   }
-
-  private relayIdsToUrls(relayIds: string[]): string[] {
-    return this.getRelays()
-      .filter((r) => relayIds.includes(r.id))
-      .map((r) => r.url);
-  }
-
-  private relayUrlsToIds(relayUrls: string[]): string[] {
-    return this.getRelays()
-      .filter((r) => relayUrls.includes(r.url))
-      .map((r) => r.id);
-  }
-
   async getUser(pubkey: string) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
     const data = await this.db.get("users", pubkey);
-    const relayIds = data ? this.relayUrlsToIds(data.relayUrls) : [];
     return data
       ? {
           user: new NUser(data.user),
-          relayIds,
+          relayUrls: data.relayUrls,
         }
       : undefined;
   }
@@ -225,12 +211,9 @@ class WorkerClass implements NClientWorker {
       throw new Error("DB not initialized");
     }
     const { user } = payload;
-    const relayUrls = payload.relayIds
-      ? this.relayIdsToUrls(payload.relayIds)
-      : [];
     await this.db.put("users", {
       user,
-      relayUrls,
+      relayUrls: payload.relayUrls,
     });
   }
   async updateUser(payload: UpdateUserRecord) {
@@ -238,12 +221,9 @@ class WorkerClass implements NClientWorker {
       throw new Error("DB not initialized");
     }
     const record = await this.db.get("users", payload.user.pubkey);
-    const relayUrls = payload.relayIds
-      ? this.relayIdsToUrls(payload.relayIds)
-      : record.relayUrls;
     await this.db.put("users", {
-      user: payload.user,
-      relayUrls,
+      user: payload.user ? payload.user : record.user,
+      relayUrls: payload.relayUrls ? payload.relayUrls : record.relayUrls,
     });
   }
 
@@ -373,7 +353,7 @@ class WorkerClass implements NClientWorker {
             if (event.pubkey) {
               const newEvent: NEventWithUserBase = {
                 event: new NEvent(event),
-                eventRelayIds: [payload.meta.id as string],
+                eventRelayUrls: [payload.meta.url as string],
               };
 
               const data = await this.getUser(event.pubkey);
@@ -410,20 +390,20 @@ class WorkerClass implements NClientWorker {
           if (user) {
             await this.updateUser({
               user: newUser,
-              relayIds: [payload.meta.id as string],
+              relayUrls: [payload.meta.url as string],
             });
             await this.updateUserFollowing({
               user: newUser,
-              relayIds: [payload.meta.id as string],
+              relayUrls: [payload.meta.url as string],
             });
           } else {
             await this.addUser({
               user: newUser,
-              relayIds: [payload.meta.id as string],
+              relayUrls: [payload.meta.url as string],
             });
             await this.updateUserFollowing({
               user: newUser,
-              relayIds: [payload.meta.id as string],
+              relayUrls: [payload.meta.url as string],
             });
           }
 
@@ -520,7 +500,7 @@ class WorkerClass implements NClientWorker {
         // Set event
         this.addEvent({
           event: payload.event,
-          eventRelayIds: result.map((r) => r.relayId),
+          eventRelayUrls: result.map((r) => r.relayUrl),
         });
         // Set queue item
       }
@@ -567,10 +547,10 @@ class WorkerClass implements NClientWorker {
 
   async followUser({
     pubkey,
-    relayIds,
+    relayUrls,
   }: {
     pubkey: string;
-    relayIds: string[];
+    relayUrls: string[];
   }) {
     if (!this.db) {
       throw new Error("DB not initialized");
@@ -585,14 +565,14 @@ class WorkerClass implements NClientWorker {
       });
       await this.db.put("following", {
         user: newFollowing,
-        relayIds,
+        relayUrls,
       });
-      for (const relayId of relayIds) {
+      for (const relayUrl of relayUrls) {
         await this.requestInformation(
           {
             source: "users",
             idsOrKeys: [pubkey],
-            relayId,
+            relayUrl,
           },
           {
             timeout: 10000,
@@ -623,7 +603,7 @@ class WorkerClass implements NClientWorker {
   async getAllUsersFollowing(): Promise<
     | {
         user: NUserBase;
-        relayIds: string[];
+        relayUrls: string[];
       }[]
     | undefined
   > {
@@ -637,7 +617,7 @@ class WorkerClass implements NClientWorker {
 
   async updateUserFollowing(payload: {
     user: NUserBase;
-    relayIds?: string[];
+    relayUrls?: string[];
   }): Promise<void> {
     if (!this.db) {
       throw new Error("DB not initialized");
@@ -646,7 +626,7 @@ class WorkerClass implements NClientWorker {
     if (following) {
       await this.db.put("following", {
         user: payload.user,
-        relayIds: payload.relayIds ? payload.relayIds : following.relayIds,
+        relayUrls: payload.relayUrls ? payload.relayUrls : following.relayUrls,
       });
     }
   }
@@ -706,7 +686,7 @@ class WorkerClass implements NClientWorker {
       const subs = await this.subscribe({
         type: CLIENT_MESSAGE_TYPE.REQ,
         filters,
-        relayIds: [payload.relayId],
+        relayUrls: [payload.relayUrl],
         options,
       });
       if (subs) {

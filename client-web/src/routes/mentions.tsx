@@ -16,7 +16,7 @@ export function UserMentionsRoute() {
     state.events.length >= state.maxEvents,
   ]);
   const [userRecord, setUserRecord] = useState<UserRecord | null>(null);
-  const [relayIds, setRelayIds] = useState<string[]>([]);
+  const [relayUrls, setrelayUrls] = useState<string[]>([]);
 
   const [searchParams] = useSearchParams();
 
@@ -46,18 +46,18 @@ export function UserMentionsRoute() {
         const dbUser = await useNClient.getState().getUser(pubkey);
         if (dbUser) {
           setUserRecord(dbUser);
-          setRelayIds(dbUser.relayIds);
+          setrelayUrls(dbUser.relayUrls);
         } else {
           setUserRecord({
             user: new NUser({
               pubkey,
             }),
-            relayIds,
+            relayUrls,
           });
 
           for (const params of searchParams.entries()) {
             if (params[0] === "relays") {
-              setRelayIds(params[1].split(","));
+              setrelayUrls(params[1].split(","));
             }
           }
         }
@@ -80,13 +80,13 @@ export function UserMentionsRoute() {
     }
   }, [eventsEqualOrMoreThanMax]);
 
-  // TODO: {user && <User user={user} relayId={""} />}
+  // TODO: {user && <User user={user} relayUrl={""} />}
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box maxHeight="80vh" overflowY="auto">
         <Box>
           <Heading size="lg">Profile</Heading>
-          {userRecord && <User user={userRecord.user} relayIds={relayIds} />}
+          {userRecord && <User user={userRecord.user} relayUrls={relayUrls} />}
         </Box>
         <Box>
           {connected ? (

@@ -51,7 +51,7 @@ export const CreateEventForm = () => {
   const [publicKeyTags] = useNClient((state) => [
     state.newEvent?.hasPublicKeyTags(),
   ]);
-  const [userRelayId, setUserRelayId] = useState<string>("");
+  const [userrelayUrl, setUserrelayUrl] = useState<string>("");
 
   useEffect(() => {
     const loadUser = async () => {
@@ -59,7 +59,7 @@ export const CreateEventForm = () => {
       if (publicKeyTags) {
         for (const tags of publicKeyTags) {
           if (tags.length === 2) {
-            setUserRelayId(tags[1]);
+            setUserrelayUrl(tags[1]);
           }
           const key = tags[0];
           const record = await useNClient.getState().getUser(key);
@@ -224,7 +224,7 @@ export const CreateEventForm = () => {
         <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
         {users.map((user) => (
-          <User user={user} key={user.pubkey} relayIds={[userRelayId]} />
+          <User user={user} key={user.pubkey} relayUrls={[userrelayUrl]} />
         ))}
       </FormControl>
       <FormControl marginBottom={4}>

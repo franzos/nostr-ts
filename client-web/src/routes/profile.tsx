@@ -16,11 +16,11 @@ export function UserProfileRoute() {
     state.events.length >= state.maxEvents,
   ]);
   const [userRecord, setUserRecord] = useState<UserRecord | null>(null);
-  const [relayIds, setRelayIds] = useState<string[]>([]);
+  const [relayUrls, setrelayUrls] = useState<string[]>([]);
 
   const [searchParams] = useSearchParams();
 
-  const params = useParams<{ pubkey: string; relayid: string }>();
+  const params = useParams<{ pubkey: string; relayUrl: string }>();
   const pubkey = params.pubkey || "";
 
   const view = `profile-${pubkey}`;
@@ -46,24 +46,24 @@ export function UserProfileRoute() {
         const dbUser = await useNClient.getState().getUser(pubkey);
         if (dbUser) {
           setUserRecord(dbUser);
-          setRelayIds(dbUser.relayIds);
+          setrelayUrls(dbUser.relayUrls);
         } else {
           setUserRecord({
             user: new NUser({
               pubkey,
             }),
-            relayIds,
+            relayUrls,
           });
 
           for (const params of searchParams.entries()) {
             if (params[0] === "relays") {
-              setRelayIds(params[1].split(","));
+              setrelayUrls(params[1].split(","));
             }
           }
         }
       }
 
-      console.log(relayIds);
+      console.log(relayUrls);
 
       await useNClient.getState().count({
         type: CLIENT_MESSAGE_TYPE.COUNT,
@@ -102,7 +102,7 @@ export function UserProfileRoute() {
           {userRecord && (
             <User
               user={userRecord.user}
-              relayIds={relayIds}
+              relayUrls={relayUrls}
               showBanner={true}
               showAbout={true}
             />

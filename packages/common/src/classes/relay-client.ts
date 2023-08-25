@@ -35,19 +35,19 @@ export class RelayClientBase {
 
   private sendSubscribe(request: SubscriptionRequest): RelaySubscription[] {
     const newSubscriptions: RelaySubscription[] = [];
-    const relays = request?.relayIds
-      ? this.relays.filter((r) => request.relayIds.includes(r.id))
+    const relays = request?.relayUrls
+      ? this.relays.filter((r) => request.relayUrls.includes(r.url))
       : this.relays;
 
     // Always read since we are not posting anything
     const opt = "read";
     for (const relay of relays) {
       if (relay.isReady(opt)) {
-        const { relayIds, ...restOfRequest } = request;
+        const { relayUrls, ...restOfRequest } = request;
         const subscription: RelaySubscription = {
           ...restOfRequest,
           id: nanoid(),
-          relayId: relay.id,
+          relayUrl: relay.url,
           connectionId: relay.id,
           created: Date.now(),
           isActive: true,
@@ -126,7 +126,7 @@ export class RelayClientBase {
   /**
    * Unsubscribe from receiving events
    * @param subscriptionId
-   * @param relayId: if unsubscribing from a specific relay
+   * @param relayUrl: if unsubscribing from a specific relay
    */
   unsubscribe(subscriptionIds: string[]) {
     for (const relay of this.relays) {
@@ -195,7 +195,7 @@ export class RelayClientBase {
 
   updateSubscription(sub: RelaySubscription) {
     for (const relay of this.relays) {
-      if (relay.id === sub.relayId) {
+      if (relay.url === sub.relayUrl) {
         relay.updateSubscription(sub);
       }
     }
@@ -223,18 +223,18 @@ export class RelayClientBase {
     const data = JSON.stringify([message.type, message.data]);
 
     const published: PublishingQueueItem[] = [];
-    const relays = payload.relayIds
-      ? this.relays.filter((r) => payload.relayIds.includes(r.id))
+    const relays = payload.relayUrls
+      ? this.relays.filter((r) => payload.relayUrls.includes(r.url))
       : this.relays;
 
     for (const relay of relays) {
       if (relay.isReady("write")) {
-        const { relayIds, ...restOfRequest } = payload;
+        const { relayUrls, ...restOfRequest } = payload;
 
         const publish = {
           id: nanoid(),
           ...restOfRequest,
-          relayId: relay.id,
+          relayUrl: relay.id,
           send: true,
           error: undefined,
         };
@@ -273,7 +273,7 @@ export class RelayClientBase {
 
     console.log("Sending queue items", items);
     for (const item of items) {
-      const relay = this.relays.find((r) => r.id === item.relayId);
+      const relay = this.relays.find((r) => r.url === item.relayUrl);
       if (relay) {
         relay.ws.sendMessage(data);
         item.send = true;

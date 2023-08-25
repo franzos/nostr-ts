@@ -8,7 +8,7 @@ export function FollowingRoute() {
   const [followingUsers, setFollowingUsers] = useState<
     {
       user: NUserBase;
-      relayIds: string[];
+      relayUrls: string[];
     }[]
   >([]);
 
@@ -36,7 +36,7 @@ export function FollowingRoute() {
               <User
                 user={item.user}
                 key={item.user.pubkey}
-                relayIds={item.relayIds}
+                relayUrls={item.relayUrls}
               />
             </Box>
           ))}

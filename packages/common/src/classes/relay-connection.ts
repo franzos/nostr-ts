@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import {
   RelayInformationDocument,
   RelaySubscription,
@@ -30,7 +29,6 @@ export class RelayConnection implements WebSocketClientConnection {
   private subscriptions: Subscription[] = [];
 
   constructor(conf: WebSocketClientConfig) {
-    this.id = conf.id ? conf.id : nanoid();
     this.url = conf.url;
     this.read = conf.read;
     this.write = conf.write;
@@ -115,7 +113,7 @@ export class RelayConnection implements WebSocketClientConnection {
     return sub
       ? {
           ...sub,
-          relayId: this.id,
+          relayUrl: this.url,
           connectionId: this.id,
         }
       : null;
@@ -124,7 +122,7 @@ export class RelayConnection implements WebSocketClientConnection {
   public getSubscriptions(): RelaySubscription[] {
     return this.subscriptions.map((sub) => ({
       ...sub,
-      relayId: this.id,
+      relayUrl: this.url,
       connectionId: this.id,
     }));
   }
@@ -132,7 +130,6 @@ export class RelayConnection implements WebSocketClientConnection {
   public getInfo(fields: "default" | "withInfo"): WebSocketClientInfo {
     if (fields === "default") {
       return {
-        id: this.id,
         url: this.url,
         read: this.read,
         write: this.write,
@@ -141,7 +138,6 @@ export class RelayConnection implements WebSocketClientConnection {
       };
     } else {
       return {
-        id: this.id,
         url: this.url,
         read: this.read,
         write: this.write,

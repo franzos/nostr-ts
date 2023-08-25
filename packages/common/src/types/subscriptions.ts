@@ -25,7 +25,7 @@ export interface SubscriptionRequest {
   type: CLIENT_MESSAGE_TYPE;
   filters: FiltersBase;
   options: SubscriptionOptions;
-  relayIds?: string[];
+  relayUrls?: string[];
 }
 
 export interface CountRequest extends SubscriptionRequest {
@@ -35,7 +35,7 @@ export interface CountRequest extends SubscriptionRequest {
 /**
  * Active subscription
  */
-export interface Subscription extends Omit<SubscriptionRequest, "relayIds"> {
+export interface Subscription extends Omit<SubscriptionRequest, "relayUrls"> {
   id: string;
   type: CLIENT_MESSAGE_TYPE;
   filters: FiltersBase;
@@ -48,6 +48,6 @@ export interface Subscription extends Omit<SubscriptionRequest, "relayIds"> {
 }
 
 export interface RelaySubscription extends Subscription {
-  relayId: string;
+  relayUrl: string;
   connectionId: string;
 }

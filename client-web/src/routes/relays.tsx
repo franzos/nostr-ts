@@ -15,16 +15,11 @@ import {
   Thead,
   Tr,
   useDisclosure,
-  Tooltip,
   Switch,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
-import {
-  RelayInformationDocument,
-  WebSocketClientInfo,
-} from "@nostr-ts/common";
-import { excerpt } from "../lib/excerpt";
+import { WebSocketClientInfo } from "@nostr-ts/common";
 
 export function RelaysRoute() {
   const [relays, setRelays] = useState<WebSocketClientInfo[]>([]);
@@ -58,7 +53,7 @@ export function RelaysRoute() {
   const toggleRelayRead = async (rl: WebSocketClientInfo) => {
     setIsBusy(true);
     const newState = !rl.read;
-    await useNClient.getState().updateRelay(rl.id, {
+    await useNClient.getState().updateRelay(rl.url, {
       read: newState,
     });
     await update();
@@ -68,63 +63,12 @@ export function RelaysRoute() {
   const toggleRelayWrite = async (rl: WebSocketClientInfo) => {
     setIsBusy(true);
     const newState = !rl.write;
-    await useNClient.getState().updateRelay(rl.id, {
+    await useNClient.getState().updateRelay(rl.url, {
       write: newState,
     });
     await update();
     setIsBusy(false);
   };
-
-  function RenderInfoObject({ obj }: { obj: RelayInformationDocument }) {
-    if (!obj) return null;
-
-    return (
-      <div>
-        {Object.entries(obj).map(([key, value]) => {
-          // If value is an object and not an array, recurse with RenderInfoObject
-          if (
-            typeof value === "object" &&
-            value !== null &&
-            !Array.isArray(value)
-          ) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <RenderInfoObject obj={value} />
-              </div>
-            );
-          }
-
-          // If value is an array, map over its items and render them
-          if (Array.isArray(value)) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <ul>
-                  {value.map((item, index) => (
-                    <li key={index}>
-                      {typeof item === "object" && item !== null ? (
-                        <RenderInfoObject obj={item} />
-                      ) : (
-                        item.toString()
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          }
-
-          // For primitives, render them directly
-          return (
-            <div key={key}>
-              <strong>{key}:</strong> {value?.toString()}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
 
   const RelayModal = (
     <Modal isOpen={isRelayModalOpen} onClose={onRelayModalClose} size="xl">
@@ -134,7 +78,9 @@ export function RelaysRoute() {
         <ModalCloseButton />
         <ModalBody overflowY="auto">
           {selectedRelay && selectedRelay.info && (
-            <RenderInfoObject obj={selectedRelay.info} />
+            <pre>
+              <code>{JSON.stringify(selectedRelay.info, null, 2)}</code>
+            </pre>
           )}
         </ModalBody>
       </ModalContent>
@@ -143,10 +89,7 @@ export function RelaysRoute() {
 
   const TableRow = (rl: WebSocketClientInfo) => {
     return (
-      <Tr key={rl.id}>
-        <Td>
-          <Tooltip label={rl.id}>{excerpt(rl.id, 5)}</Tooltip>
-        </Td>
+      <Tr key={rl.url}>
         <Td>{rl.url}</Td>
         <Td>
           <Button
@@ -184,7 +127,6 @@ export function RelaysRoute() {
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>
-            <Th>ID</Th>
             <Th>Url</Th>
             <Th>Info</Th>
             <Th>Read</Th>

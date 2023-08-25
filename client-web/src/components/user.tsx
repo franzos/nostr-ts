@@ -14,13 +14,13 @@ import { Link } from "react-router-dom";
 
 export function User({
   user,
-  relayIds,
+  relayUrls,
   hideFollow,
   showBanner,
   showAbout,
 }: {
   user: UserBase;
-  relayIds: string[];
+  relayUrls: string[];
   hideFollow?: boolean;
   showBanner?: boolean;
   showAbout?: boolean;
@@ -37,8 +37,8 @@ export function User({
   const banner = data && data.banner ? data.banner : undefined;
   const about = data && data.about ? data.about : undefined;
 
-  const profileLink = `/p/${user.pubkey}?relays=${relayIds.join(",")}`;
-  // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayIds.join(",")}`;
+  const profileLink = `/p/${user.pubkey}?relays=${relayUrls.join(",")}`;
+  // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
 
   return (
     <>
@@ -68,7 +68,7 @@ export function User({
                 ? useNClient.getState().unfollowUser(user.pubkey)
                 : useNClient.getState().followUser({
                     pubkey: user.pubkey,
-                    relayIds,
+                    relayUrls,
                   })
             }
           >

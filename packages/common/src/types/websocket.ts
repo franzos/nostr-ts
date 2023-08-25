@@ -62,7 +62,6 @@ export interface WebSocketClientBase {
 }
 
 export interface WebSocketClientConfig extends Relay {
-  id?: string;
   url: string;
   read: boolean;
   write: boolean;
@@ -70,7 +69,6 @@ export interface WebSocketClientConfig extends Relay {
 }
 
 export interface WebSocketClientInfo extends WebSocketClientConfig {
-  id: string;
   url: string;
   /**
    * Undefined or 0 means no PoW required

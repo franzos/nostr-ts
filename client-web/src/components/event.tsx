@@ -19,6 +19,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalCloseButton,
+  Spacer,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -43,7 +44,7 @@ export function Event({
   event,
   reactions,
   reposts,
-  eventRelayIds,
+  eventRelayUrls,
 }: EventProps) {
   const [isReady] = useNClient((state) => [
     state.connected && state.keystore !== "none",
@@ -96,11 +97,12 @@ export function Event({
 
   const newReply = async () => {
     const relays = await useNClient.getState().getRelays();
-    const relay = relays.find((r) => r.id === eventRelayIds[0]);
+    // TODO: Select relay related to event
+    const relay = relays.find((r) => r.url === eventRelayUrls[0]);
     if (!relay) {
       toast({
         title: "Error",
-        description: `Relay ${eventRelayIds[0]} not found`,
+        description: `Relay ${eventRelayUrls[0]} not found`,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -162,7 +164,7 @@ export function Event({
           {
             source: "events",
             idsOrKeys: [evId],
-            relayId: eventRelayIds[0],
+            relayUrl: eventRelayUrls[0],
           },
           {
             timeout: 10000,
@@ -237,57 +239,6 @@ export function Event({
     );
   };
 
-  function RenderInfoObject({ obj }: { obj: NEvent }) {
-    if (!obj) return null;
-
-    return (
-      <div>
-        {Object.entries(obj).map(([key, value]) => {
-          // If value is an object and not an array, recurse with RenderInfoObject
-          if (
-            typeof value === "object" &&
-            value !== null &&
-            !Array.isArray(value)
-          ) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <RenderInfoObject obj={value} />
-              </div>
-            );
-          }
-
-          // If value is an array, map over its items and render them
-          if (Array.isArray(value)) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <ul>
-                  {value.map((item, index) => (
-                    <li key={index}>
-                      {typeof item === "object" && item !== null ? (
-                        <RenderInfoObject obj={item} />
-                      ) : (
-                        item.toString()
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          }
-
-          // For primitives, render them directly
-          return (
-            <div key={key}>
-              <strong>{key}:</strong> {value?.toString()}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   const EventModal = (
     <Modal isOpen={isEventModalOpen} onClose={onEventModalClose} size="xl">
       <ModalOverlay />
@@ -295,7 +246,9 @@ export function Event({
         <ModalHeader>Event</ModalHeader>
         <ModalCloseButton />
         <ModalBody overflowY="auto">
-          {event && <RenderInfoObject obj={event} />}
+          <pre>
+            <code>{JSON.stringify(event, null, 2)}</code>
+          </pre>
         </ModalBody>
       </ModalContent>
     </Modal>
@@ -365,12 +318,15 @@ export function Event({
           </Text>
         </CardBody>
         <CardFooter p={4}>
-          <HStack>
+          <HStack width="100%">
             <ActionButtons />
-            <Text>Relay {excerpt(eventRelayIds[0], 5)}</Text>
+
+            <Spacer />
+            <Text>Relay {eventRelayUrls[0]}</Text>
 
             <Button
               size={"sm"}
+              variant="outline"
               onClick={() => {
                 onEventModalOpen();
               }}

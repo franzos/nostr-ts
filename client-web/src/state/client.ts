@@ -272,8 +272,8 @@ export const useNClient = create<NClient>((set, get) => ({
   }> => {
     // TODO: RELAY check if supported (supportsEvent)
     const allRelays = await get().getRelays();
-    const relays = request.relayIds
-      ? allRelays.filter((r) => request.relayIds?.includes(r.id))
+    const relays = request.relayUrls
+      ? allRelays.filter((r) => request.relayUrls?.includes(r.url))
       : allRelays;
 
     return {
@@ -296,11 +296,11 @@ export const useNClient = create<NClient>((set, get) => ({
     for (const relay of relays) {
       if (relay.isReady && relay.write) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { relayIds: _relayIds, ...restOfRequest } = request;
+        const { relayUrls: _relayUrls, ...restOfRequest } = request;
         const sub: PublishingQueueItem = {
           ...restOfRequest,
           id: nanoid(),
-          relayId: relay.id,
+          relayUrl: relay.url,
           send: false,
         };
         newSubs.push(sub);
@@ -462,7 +462,7 @@ export const useNClient = create<NClient>((set, get) => ({
   /**
    * Follow a user
    */
-  followUser: async (payload: { pubkey: string; relayIds: string[] }) => {
+  followUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
     await get().store.followUser(payload);
     const folowing = await get().store.getAllUsersFollowing();
     if (folowing) {
@@ -495,7 +495,7 @@ export const useNClient = create<NClient>((set, get) => ({
    */
   updateUserFollowing: async (payload: {
     user: NUserBase;
-    relayIds?: string[];
+    relayUrls?: string[];
   }) => {
     return get().store.updateUserFollowing(payload);
   },
@@ -556,12 +556,12 @@ export const useNClient = create<NClient>((set, get) => ({
     setTimeout(async () => {
       const eventUserPubkeys: {
         pubkey: string;
-        relayIds: string[];
+        relayUrls: string[];
       }[] = [];
 
       const eventIds: {
         id: string;
-        relayIds: string[];
+        relayUrls: string[];
       }[] = [];
 
       for (const ev of get().events) {
@@ -569,56 +569,56 @@ export const useNClient = create<NClient>((set, get) => ({
         if (ev.event?.pubkey && !ev.user?.pubkey) {
           eventUserPubkeys.push({
             pubkey: ev.event.pubkey,
-            relayIds: ev.eventRelayIds,
+            relayUrls: ev.eventRelayUrls,
           });
         }
         if (!ev.reactions) {
           eventIds.push({
             id: ev.event.id,
-            relayIds: ev.eventRelayIds,
+            relayUrls: ev.eventRelayUrls,
           });
         }
       }
 
-      const relayIdToPubkeysMap: Record<string, Set<string>> = {};
+      const relayUrlToPubkeysMap: Record<string, Set<string>> = {};
 
       for (const ev of eventUserPubkeys) {
-        for (const relayId of ev.relayIds) {
-          if (!relayIdToPubkeysMap[relayId]) {
-            relayIdToPubkeysMap[relayId] = new Set();
+        for (const relayUrl of ev.relayUrls) {
+          if (!relayUrlToPubkeysMap[relayUrl]) {
+            relayUrlToPubkeysMap[relayUrl] = new Set();
           }
-          relayIdToPubkeysMap[relayId].add(ev.pubkey);
+          relayUrlToPubkeysMap[relayUrl].add(ev.pubkey);
         }
       }
 
       const reqUsers: RelaysWithIdsOrKeys[] = Object.entries(
-        relayIdToPubkeysMap
-      ).map(([relayId, pubkeysSet]) => {
+        relayUrlToPubkeysMap
+      ).map(([relayUrl, pubkeysSet]) => {
         return {
           source: "users",
-          relayId,
+          relayUrl,
           idsOrKeys: [...pubkeysSet],
         };
       });
 
-      // This map will keep track of relayIds and their associated eventIds.
-      const relayIdToEventIdsMap: Record<string, Set<string>> = {};
+      // This map will keep track of relayUrls and their associated eventIds.
+      const relayUrlToEventIdsMap: Record<string, Set<string>> = {};
 
       for (const ev of eventIds) {
-        for (const relayId of ev.relayIds) {
-          if (!relayIdToEventIdsMap[relayId]) {
-            relayIdToEventIdsMap[relayId] = new Set();
+        for (const relayUrl of ev.relayUrls) {
+          if (!relayUrlToEventIdsMap[relayUrl]) {
+            relayUrlToEventIdsMap[relayUrl] = new Set();
           }
-          relayIdToEventIdsMap[relayId].add(ev.id);
+          relayUrlToEventIdsMap[relayUrl].add(ev.id);
         }
       }
 
       const reqEvents: RelaysWithIdsOrKeys[] = Object.entries(
-        relayIdToEventIdsMap
-      ).map(([relayId, eventIdsSet]) => {
+        relayUrlToEventIdsMap
+      ).map(([relayUrl, eventIdsSet]) => {
         return {
           source: "events",
-          relayId,
+          relayUrl,
           idsOrKeys: [...eventIdsSet],
         };
       });

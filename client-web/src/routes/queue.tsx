@@ -47,46 +47,6 @@ export function PublishingQueueRoute() {
     onClose: onQueueItemModalClose,
   } = useDisclosure();
 
-  function RenderRelayInfoObject({ obj }: { obj: PublishingQueueItem }) {
-    return (
-      <div>
-        {Object.entries(obj).map(([key, value]) => {
-          if (typeof value === "object" && !Array.isArray(value)) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <RenderRelayInfoObject obj={value} />
-              </div>
-            );
-          }
-          if (Array.isArray(value)) {
-            return (
-              <div key={key}>
-                <strong>{key}:</strong>
-                <ul>
-                  {value.map((v, index) => (
-                    <li key={index}>
-                      {typeof v === "object" ? (
-                        <RenderRelayInfoObject obj={v} />
-                      ) : (
-                        v
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          }
-          return (
-            <div key={key}>
-              <strong>{key}:</strong> {value ? value.toString() : "null"}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   const QueueModal = (
     <Modal
       isOpen={isQueueItemModalOpen}
@@ -98,7 +58,11 @@ export function PublishingQueueRoute() {
         <ModalHeader>Queue Item Detail</ModalHeader>
         <ModalCloseButton />
         <ModalBody overflowY="auto">
-          {selectedItem && <RenderRelayInfoObject obj={selectedItem} />}
+          {selectedItem && (
+            <pre>
+              <code>{JSON.stringify(selectedItem, null, 2)}</code>
+            </pre>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>

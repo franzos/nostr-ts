@@ -83,7 +83,7 @@ export interface NClientBase {
     meta: WebSocketClientInfo;
   }) => void;
   getEventById: (id: string) => void;
-  followUser(payload: { pubkey: string; relayIds: string[] }): void;
+  followUser(payload: { pubkey: string; relayUrls: string[] }): void;
   unfollowUser(pubkey: string): void;
   followingUser(pubkey: string): Promise<boolean>;
   // For reactive updates
@@ -91,13 +91,13 @@ export interface NClientBase {
   getAllUsersFollowing(): Promise<
     | {
         user: NUserBase;
-        relayIds: string[];
+        relayUrls: string[];
       }[]
     | undefined
   >;
   updateUserFollowing(payload: {
     user: NUserBase;
-    relayIds?: string[];
+    relayUrls?: string[];
   }): Promise<void>;
   hasSubscriptionForEventIds(
     eventIds: string[],
@@ -111,10 +111,10 @@ export interface NClientBase {
 
 export interface UpdateUserRecord {
   user: NUserBase;
-  relayIds: string[];
+  relayUrls: string[];
 }
 
 export interface UserRecord {
   user: NUser;
-  relayIds: string[];
+  relayUrls: string[];
 }

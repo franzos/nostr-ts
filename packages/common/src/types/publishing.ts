@@ -7,13 +7,13 @@ export interface PublishingRequest {
    * Manually set the POW value
    */
   pow?: number;
-  relayIds?: string[];
+  relayUrls?: string[];
 }
 
 export interface PublishingQueueItem
-  extends Omit<PublishingRequest, "relayIds"> {
+  extends Omit<PublishingRequest, "relayUrls"> {
   id: string;
-  relayId: string;
+  relayUrl: string;
   send: boolean;
   accepted?: boolean;
   powStart?: number;

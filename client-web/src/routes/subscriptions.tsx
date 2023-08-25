@@ -93,9 +93,13 @@ export function SubscriptionsRoute() {
           <Tooltip label={sub.id}>{excerpt(sub.id, 5)}</Tooltip>
         </Td>
         <Td>
-          <Tooltip label={sub.relayId}>{excerpt(sub.relayId, 5)}</Tooltip>
+          <Tooltip label={sub.relayUrl}>{sub.relayUrl.substring(6)}</Tooltip>
         </Td>
-        <Td>{sub.filters.kinds && kindsToName(sub.filters.kinds)}</Td>
+        <Td>
+          <Text fontSize="sm">
+            {sub.filters.kinds && kindsToName(sub.filters.kinds)}
+          </Text>
+        </Td>
         <Td>
           <Button
             size={"sm"}

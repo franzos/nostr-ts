@@ -34,7 +34,7 @@ export function PrimaryLayout() {
   const [followingUsers, setFollowingUsers] = useState<
     {
       user: NUserBase;
-      relayIds: string[];
+      relayUrls: string[];
     }[]
   >([]);
   const [relaysCount, setRelaysCount] = useState<number>(0);

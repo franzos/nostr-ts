@@ -24,7 +24,6 @@ export function extractEventContent(
   const validationResult = isValidEventContent(content, kind);
 
   if (!validationResult.isValid) {
-    console.log("Invalid content");
     return undefined;
   }
 
@@ -43,6 +42,8 @@ export function extractEventContent(
   }
 
   const publicKeys: string[] = [];
+  const relayUrls: string[] = [];
+  let prefix;
   let nostrMatch;
   const replaceIndexes = [];
 
@@ -50,14 +51,36 @@ export function extractEventContent(
     const item = nostrMatch[0];
     if (isNostrUrl(item)) {
       const decoded = decodeNostrUrl(item);
-      if (decoded.prefix === "npub" && decoded.tlvItems.length > 0) {
-        const publicKey = decoded.tlvItems[0].value as string;
+      prefix = decoded.prefix;
+      if (prefix === "npub" && decoded.tlvItems.length > 0) {
+        const match = decoded.tlvItems.filter((i) => i.type === 0);
+        if (match.length === 0) continue;
+        const publicKey = match[0].value as string;
         publicKeys.push(publicKey);
         replaceIndexes.push({
           index: nostrMatch.index,
           length: item.length,
           replaceWith: publicKey,
         });
+      } else if (prefix === "nprofile") {
+        const match = decoded.tlvItems.filter((i) => i.type === 0);
+        if (match.length === 0) continue;
+        const publicKey = match[0].value as string;
+        publicKeys.push(publicKey);
+        replaceIndexes.push({
+          index: nostrMatch.index,
+          length: item.length,
+          replaceWith: publicKey,
+        });
+        const relayMatches = decoded.tlvItems.filter((i) => i.type === 1);
+        if (relayMatches.length === 0) continue;
+        for (const relayUrl of relayMatches) {
+          if (isValidWebSocketUrl(relayUrl.value as string)) {
+            relayUrls.push(relayUrl.value as string);
+          } else {
+            console.error(`Invalid relay url ${relayUrl.value}`);
+          }
+        }
       }
     }
   }
@@ -72,12 +95,13 @@ export function extractEventContent(
     offset += replaceWith.length - length;
   }
 
-  if (publicKeys.length > 0) {
+  if (publicKeys.length > 0 && prefix) {
     evc.message = content.trim();
     evc.nurls = [
       {
         type: "npub",
         publicKeys,
+        relayUrls,
       },
     ];
     return evc;

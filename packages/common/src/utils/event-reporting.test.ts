@@ -1,4 +1,4 @@
-import { Report, NREPORT_KIND } from "../types";
+import { EventReport, NREPORT_KIND } from "../types";
 import { NEvent } from "../classes";
 import { eventHasReport, generateReportTags } from "./event-reporting";
 
@@ -51,7 +51,7 @@ test("eventHasReport: impersonation", () => {
 });
 
 test("generateReportTags: impersonation", () => {
-  const report: Report = {
+  const report: EventReport = {
     kind: NREPORT_KIND.IMPERSONATION,
     publicKey:
       "1234567890123456789012345678901234567890123456789012345678901234",
@@ -61,7 +61,7 @@ test("generateReportTags: impersonation", () => {
 });
 
 test("generateReportTags: event", () => {
-  const report: Report = {
+  const report: EventReport = {
     kind: NREPORT_KIND.ILLEGAL,
     publicKey:
       "1234567890123456789012345678901234567890123456789012345678901234",

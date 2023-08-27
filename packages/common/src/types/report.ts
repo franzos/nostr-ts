@@ -4,7 +4,7 @@ import { NREPORT_KIND } from "./report-types";
  * Reporting
  * https://github.com/nostr-protocol/nips/blob/master/56.md
  */
-export interface Report {
+export interface EventReport {
   /**
    * If reporting a note, an e tag MUST also be included referencing the note id.
    */

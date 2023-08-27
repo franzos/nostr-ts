@@ -2,7 +2,7 @@ import { EventBase } from "../types/event";
 import { EventEventTag } from "../types/event-event-tag";
 
 /**
- * Marked "e" tags (PREFERRED)
+ * Get marked event "e" tags (PREFERRED)
  *
  * ["e", <relay-url>]
  * ["e", <event-id>, <relay-url>]
@@ -37,7 +37,7 @@ export function eventHasEventTags(
 }
 
 /**
- * Get event positional "e" tags (DEPRECATED)
+ * Get positional event "e" tags (DEPRECATED)
  */
 export function eventHasPositionalEventTags(event: EventBase) {
   const tags = event.tags.filter((tag) => tag[0] === "e");

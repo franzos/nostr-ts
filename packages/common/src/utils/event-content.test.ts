@@ -112,6 +112,7 @@ test("extractEventContent: nostr", () => {
         publicKeys: [
           "ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481",
         ],
+        relayUrls: [],
       },
     ],
   });
@@ -132,6 +133,28 @@ test("extractEventContent: nostr x2", () => {
           "ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481",
           "82f3b82c7f855340fc1905b20ac50b95d64c700d2b9546507415088e81535425",
         ],
+        relayUrls: [],
+      },
+    ],
+    relayUrl: undefined,
+  });
+});
+
+test("extractEventContent: nprofile", () => {
+  const content =
+    "Checkout nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p later";
+  const res = extractEventContent(content);
+
+  expect(res).toEqual({
+    message:
+      "Checkout 3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d later",
+    nurls: [
+      {
+        type: "npub",
+        publicKeys: [
+          "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
+        ],
+        relayUrls: ["wss://r.x.com", "wss://djbas.sadkb.com"],
       },
     ],
     relayUrl: undefined,

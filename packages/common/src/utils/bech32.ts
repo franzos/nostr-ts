@@ -114,6 +114,13 @@ function convertTLV(tlvItems: ParsedTLVItem[]): ConvertedTLVItem[] {
   });
 }
 
+/**
+ * Encode TLV data into a Bech32 string
+ * Spec: https://github.com/nostr-protocol/nips/blob/master/19.md
+ * @param prefix
+ * @param tlvItems
+ * @returns
+ */
 export function encodeBech32(
   prefix: BECH32_PREFIX,
   tlvItems: Array<{ type: number; value: string | number }>
@@ -139,7 +146,8 @@ export function encodeBech32(
 }
 
 /**
- * https://github.com/nostr-protocol/nips/blob/master/19.md
+ * Decode a Bech32 string into TLV data
+ * Spec: https://github.com/nostr-protocol/nips/blob/master/19.md
  * @param bech32Str
  * @returns
  */

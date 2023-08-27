@@ -39,7 +39,7 @@ export function UserInfo({
             <Avatar size="sm" src={picture} />
           </Link>
         </Box>
-        <Box>
+        <Box overflowWrap="anywhere">
           <Link to={profileLink}>
             <Heading size="sm">{displayName}</Heading>
             <Text fontSize="sm">{name}</Text>

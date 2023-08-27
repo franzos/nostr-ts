@@ -4,8 +4,9 @@ export interface DecodedInvoice {
   paymentRequest: string;
   sections: {
     name: string;
+    tag?: string;
     letters: string;
-    value?: any;
+    value?: object | string | number;
   }[];
 }
 

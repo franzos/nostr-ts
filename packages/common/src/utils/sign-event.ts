@@ -4,6 +4,7 @@ import { EventBase } from "../types";
 import { hashEvent } from "./hash-event";
 
 export function sign(eventHash: string, privateKey: string) {
+  if (eventHash.length !== 64) throw new Error("Invalid event hash");
   const sig = schnorr.sign(eventHash, privateKey);
   return bytesToHex(sig);
 }

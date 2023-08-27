@@ -1,37 +1,12 @@
 import { EventBase, EventCoordinatesTag } from "../types";
 
-export function eventHasEventCoordinatesTags(
-  event: EventBase
-): EventCoordinatesTag[] | undefined {
-  const coordinates = eventCoordinatesFromTags(event.tags);
-  if (!coordinates) {
-    return;
-  }
-  return coordinates;
-}
-
-export function makeEventCoordinatesTag(opts: EventCoordinatesTag) {
-  const { kind, pubkey, identifier, relay } = opts;
-  if (relay) {
-    return [`a:${kind}:${pubkey}:${identifier}, ${relay}`];
-  } else {
-    return [`a:${kind}:${pubkey}:${identifier}`];
-  }
-}
-
 /**
+ * Extract event coordinates from tags
  *
  * ["a", "<kind>:<pubkey>:<d-identifier>"]
  * ["a", "<kind>:<pubkey>:<d-identifier>", "<relay>"]
- *
- * return {
- *  kind: <kind>,
- *  pubkey: <pubkey>,
- *  identifier: <d-identifier>,
- *  relay: <relay>
- * }
  */
-export function eventCoordinatesFromTags(
+function eventCoordinatesFromTags(
   tags: any[]
 ): EventCoordinatesTag[] | undefined {
   if (!tags) {
@@ -88,4 +63,31 @@ export function eventCoordinatesFromTags(
 
   // Return result array
   return result;
+}
+
+/**
+ * Get event coordinates or undefined
+ */
+export function eventHasEventCoordinatesTags(
+  event: EventBase
+): EventCoordinatesTag[] | undefined {
+  const coordinates = eventCoordinatesFromTags(event.tags);
+  if (!coordinates) {
+    return;
+  }
+  return coordinates;
+}
+
+/**
+ * Make event coordinates tag
+ * @param opts
+ * @returns
+ */
+export function makeEventCoordinatesTag(opts: EventCoordinatesTag) {
+  const { kind, pubkey, identifier, relay } = opts;
+  if (relay) {
+    return [`a:${kind}:${pubkey}:${identifier}, ${relay}`];
+  } else {
+    return [`a:${kind}:${pubkey}:${identifier}`];
+  }
 }

@@ -23,7 +23,7 @@ import {
 } from "@chakra-ui/react";
 import {
   NEvent,
-  NEventWithUserBase,
+  ProcessedEvent,
   NewQuoteRepost,
   NewReaction,
   NewShortTextNoteResponse,
@@ -36,7 +36,7 @@ import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
 import { UserIcon } from "./user-icon";
 
-export interface EventProps extends NEventWithUserBase {
+export interface EventProps extends ProcessedEvent {
   userComponent?: JSX.Element;
 }
 
@@ -430,6 +430,7 @@ export function Event({
                       showAbout: true,
                       showBanner: true,
                       relayUrls: eventRelayUrls,
+                      avatarSize: "xs",
                     }}
                   />
                 </Box>

@@ -1,6 +1,6 @@
 import {
   Relay,
-  NEventWithUserBase,
+  ProcessedEvent,
   NUserBase,
   RelayAuth,
   RelayCount,
@@ -47,17 +47,17 @@ export interface NClientBase {
   subscribe: (
     payload: SubscriptionRequest
   ) => Promise<Subscription[] | undefined>;
-  eventsMap?: Map<string, NEventWithUserBase>;
+  eventsMap?: Map<string, ProcessedEvent>;
   /**
    * Add event to array or map
    * - In worker, must post message to main thread
    */
-  addEvent: (payload: NEventWithUserBase) => void;
+  addEvent: (payload: ProcessedEvent) => void;
   /**
    * Update event on array or map
    * - In worker, must post message to main thread
    */
-  updateEvent: (payload: NEventWithUserBase) => void;
+  updateEvent: (payload: ProcessedEvent) => void;
 
   eventsPublishingQueue: PublishingQueueItem[];
 

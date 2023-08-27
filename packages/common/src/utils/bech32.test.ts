@@ -1,7 +1,10 @@
 import { encodeBech32, decodeBech32, BECH32_PREFIX } from "..";
 
-test("encode and decode nostr entity", () => {
-  // Decode npub
+/**
+ * DECODE BECH32
+ */
+
+test("decode bech", () => {
   const npub = decodeBech32(
     "npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg"
   );
@@ -13,7 +16,6 @@ test("encode and decode nostr entity", () => {
     },
   ]);
 
-  // Decode npub #2
   const npub2 = decodeBech32(
     "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
   );
@@ -25,7 +27,6 @@ test("encode and decode nostr entity", () => {
     },
   ]);
 
-  // // Decode nsec
   const nsec = decodeBech32(
     "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5"
   );
@@ -37,7 +38,6 @@ test("encode and decode nostr entity", () => {
     },
   ]);
 
-  // Device lnurl
   const lnurl1 = decodeBech32(
     "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"
   );
@@ -50,7 +50,6 @@ test("encode and decode nostr entity", () => {
     },
   ]);
 
-  // Decode nprofile
   const nprofile = decodeBech32(
     "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p"
   );
@@ -64,19 +63,30 @@ test("encode and decode nostr entity", () => {
     { type: 1, value: "wss://djbas.sadkb.com" },
   ]);
 
-  // Encode npub
+  const nnote = decodeBech32(
+    "note1fntxtkcy9pjwucqwa9mddn7v03wwwsu9j330jj350nvhpky2tuaspk6nqc"
+  );
+  expect(nnote.prefix).toEqual("note");
+  expect(nnote.tlvItems).toEqual([
+    {
+      type: 0,
+      value: "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b",
+    },
+  ]);
+
+  /**
+   * ENCODE
+   */
   const encodedNpub = encodeBech32(BECH32_PREFIX.PublicKeys, npub.tlvItems);
   expect(encodedNpub).toEqual(
     "npub10elfcs4fr0l0r8af98jlmgdh9c8tcxjvz9qkw038js35mp4dma8qzvjptg"
   );
 
-  // // Encode nsec
   const encodedNsec = encodeBech32(BECH32_PREFIX.PrivateKeys, nsec.tlvItems);
   expect(encodedNsec).toEqual(
     "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5"
   );
 
-  // Encode nprofile
   const encodedNprofile = encodeBech32(
     BECH32_PREFIX.Profile,
     nprofile.tlvItems

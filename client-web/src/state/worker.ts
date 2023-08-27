@@ -1,7 +1,7 @@
 import {
   NEvent,
   RELAY_MESSAGE_TYPE,
-  NEventWithUserBase,
+  ProcessedEvent,
   EventBase,
   NFilters,
   NEVENT_KIND,
@@ -31,7 +31,7 @@ class WorkerClass implements NClientWorker {
   connected: boolean;
   db: IDBPDatabase<NClientDB> | null;
   client: RelayClient | null;
-  eventsMap: Map<string, NEventWithUserBase> = new Map();
+  eventsMap: Map<string, ProcessedEvent> = new Map();
   maxEvents: number;
   checkedUsers: string[] = [];
   checkedEvents: string[] = [];
@@ -145,7 +145,7 @@ class WorkerClass implements NClientWorker {
    * - Add event to map
    * - Post message to main thread
    */
-  addEvent(payload: NEventWithUserBase) {
+  addEvent(payload: ProcessedEvent) {
     this.eventsMap.set(payload.event.id, payload);
     postMessage({
       type: "event:new",
@@ -157,7 +157,7 @@ class WorkerClass implements NClientWorker {
    * - Update event on map
    * - Post message to main thread
    */
-  updateEvent(payload: NEventWithUserBase) {
+  updateEvent(payload: ProcessedEvent) {
     this.eventsMap.set(payload.event.id, payload);
     postMessage({
       type: "event:update",
@@ -357,7 +357,7 @@ class WorkerClass implements NClientWorker {
             return;
           }
 
-          const newEvent: NEventWithUserBase = {
+          const newEvent: ProcessedEvent = {
             event: new NEvent(event),
             eventRelayUrls: [payload.meta.url as string],
           };
@@ -440,13 +440,13 @@ class WorkerClass implements NClientWorker {
           if (hasRootTag) {
             const rootEvent = this.eventsMap.get(hasRootTag.eventId);
             if (rootEvent) {
-              if (rootEvent.lightningReceipts) {
-                rootEvent.lightningReceipts.push({
+              if (rootEvent.zapReceipt) {
+                rootEvent.zapReceipt.push({
                   event: ev,
                   user: user?.user,
                 });
               } else {
-                rootEvent.lightningReceipts = [
+                rootEvent.zapReceipt = [
                   {
                     event: ev,
                     user: user?.user,

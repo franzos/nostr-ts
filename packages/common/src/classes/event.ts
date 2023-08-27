@@ -10,7 +10,7 @@ import {
   iNewShortTextNote,
   iNewShortTextNoteResponse,
   iNewUpdateUserMetadata,
-  Report,
+  EventReport,
   NEventContent,
   iNewLongFormContent,
   iNewZAPRequest,
@@ -49,12 +49,13 @@ import {
   makeEventAmountTag,
   eventHasAmountTags,
   makeEventCoordinatesTag,
-  countLeadingZeroes,
   eventAddNonceTag,
   eventReplaceNonceTag,
   eventHasEventTags,
   eventHasPositionalEventTag,
   eventHasPositionalEventTags,
+  proofOfWork,
+  EventRelayTag,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -88,29 +89,49 @@ export class NEvent implements EventBase {
     this.sig = data.sig ? data.sig : "";
   }
 
+  /**
+   * Generate event ID
+   * - Public key should be set
+   */
   public generateId() {
     if (this.pubkey === "") {
-      throw new Error("Cannot generate event ID without a public key");
+      throw new Error(
+        "Cannot generate event ID without a public key. Set a public key first."
+      );
     }
     const serial = serializeEvent(this.ToObj());
     this.id = hash(serial);
   }
 
+  /**
+   * Sign event
+   * - Event ID should be set
+   */
   public sign(keyPair: { privateKey: string; publicKey: string }) {
+    if (this.id === "") {
+      throw new Error("Cannot sign event without an ID. Generate ID first.");
+    }
     this.pubkey = keyPair.publicKey;
     this.sig = sign(this.id, keyPair.privateKey);
   }
 
   /**
-   * 1. Sign the event (event.sig)
-   * 2. Generate the event ID (event.id)
+   * Sign event and generate ID
+   *
+   *
+   * 1. Generate the event ID (event.id)
+   * 2. Sign the event (event.sig)
    * @param privateKey
    */
   public signAndGenerateId(keyPair: { privateKey: string; publicKey: string }) {
-    this.sign(keyPair);
+    this.pubkey = keyPair.publicKey;
     this.generateId();
+    this.sign(keyPair);
   }
 
+  /**
+   * Event object for transmission and storage
+   */
   public ToObj(): any {
     const cleanObject = {};
     for (const [key, value] of Object.entries(this)) {
@@ -121,28 +142,25 @@ export class NEvent implements EventBase {
     return cleanObject;
   }
 
+  /**
+   * Event as URI
+   */
   public toURI() {
     return encodeURI(JSON.stringify(this.ToObj()));
   }
 
   /**
-   *
+   * Generate proof of work
    * @param difficulty bits required for proof of work
    */
-  public proofOfWork(targetDifficulty: number) {
-    let adjustmentValue = 0;
+  public proofOfWork(targetDifficulty: number, limitRounds?: number) {
+    const ev = proofOfWork(this, targetDifficulty, limitRounds);
 
-    while (true) {
-      this.replaceNonceTag([targetDifficulty, adjustmentValue]);
-      this.generateId();
-      const leadingZeroes = countLeadingZeroes(this.id);
-
-      if (leadingZeroes >= targetDifficulty) {
-        console.log("Proof of work complete");
-        break;
-      }
-
-      adjustmentValue++;
+    if (!ev) {
+      throw new Error("Failed to generate proof of work.");
+    } else {
+      this.id = ev.id;
+      this.tags = ev.tags;
     }
   }
 
@@ -268,7 +286,14 @@ export class NEvent implements EventBase {
     }
   }
 
-  public hasRelaysTag(): string[] | undefined {
+  /**
+   * Get event relay tags or undefined
+   * usually used on kind:10002
+   *
+   * Standard tag
+   * Spec: https://github.com/nostr-protocol/nips/blob/master/65.md#relay-list-metadata
+   */
+  public hasRelaysTag(): EventRelayTag[] | undefined {
     return eventHasRelaysTag(this);
   }
 
@@ -309,7 +334,9 @@ export class NEvent implements EventBase {
   }
 
   /**
+   * Create amount tag
    * Standard tag
+   * related to ZAP
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
    *
    * @param amount millisats
@@ -318,6 +345,12 @@ export class NEvent implements EventBase {
     this.addTag(makeEventAmountTag(amount));
   }
 
+  /**
+   * Get event amount(s) or undefined
+   * Standard tag
+   * related to ZAP
+   * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
+   */
   public hasAmountTags() {
     return eventHasAmountTags(this);
   }
@@ -414,7 +447,7 @@ export class NEvent implements EventBase {
   }
 
   /**
-   * Check if event has a content warning
+   * Get event content warning reason (may be "") or undefined
    */
   public hasContentWarningTag() {
     return eventHasContentWarning(this);
@@ -441,7 +474,7 @@ export class NEvent implements EventBase {
    * Standard tag
    * @param report
    */
-  public addReportTags(report: Report) {
+  public addReportTags(report: EventReport) {
     if (this.kind !== NEVENT_KIND.REPORTING) {
       throw new Error(
         `Event kind ${this.kind} should not have a report. Expected ${NEVENT_KIND.REPORTING}.`

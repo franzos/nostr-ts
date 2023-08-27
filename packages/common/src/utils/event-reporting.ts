@@ -1,13 +1,14 @@
-import { EventBase, NEVENT_KIND, Report, NREPORT_KIND } from "../types";
+import { EventBase, NEVENT_KIND, EventReport, NREPORT_KIND } from "../types";
 
 /**
  * Extracts a report from an event
  * This will throw an error if event is not a report
+ *
  * https://github.com/nostr-protocol/nips/blob/master/56.md
  * @param event
  * @returns
  */
-export function eventHasReport(event: EventBase): Report | undefined {
+export function eventHasReport(event: EventBase): EventReport | undefined {
   if (event.kind !== NEVENT_KIND.REPORTING) {
     throw new Error(
       `Event is not a report: ${event.kind}. Expected ${NEVENT_KIND.REPORTING}.`
@@ -49,7 +50,7 @@ export function eventHasReport(event: EventBase): Report | undefined {
     return undefined;
   }
 
-  const report: Report = {
+  const report: EventReport = {
     eventId,
     kind,
     publicKey,
@@ -59,7 +60,12 @@ export function eventHasReport(event: EventBase): Report | undefined {
   return report;
 }
 
-export function generateReportTags(report: Report): string[][] {
+/**
+ * Generate report tags
+ * @param report
+ * @returns
+ */
+export function generateReportTags(report: EventReport): string[][] {
   const { eventId, kind, publicKey } = report;
   if (!kind) {
     throw new Error("Report must have a kind.");

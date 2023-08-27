@@ -1,6 +1,5 @@
 export * from "./bech32";
 export * from "./bolt11";
-export * from "./count-leading-zeroes";
 export * from "./event-amount";
 export * from "./event-content-warning";
 export * from "./event-content";

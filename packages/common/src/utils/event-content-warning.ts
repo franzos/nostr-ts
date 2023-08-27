@@ -1,9 +1,9 @@
 import { EventBase } from "../types";
 
 /**
- * Check array of tags if any are NIP-36
- * https://github.com/nostr-protocol/nips/blob/master/36.md
- * @param tags
+ * Get event content warning reason (may be "") or undefined
+ * Spec: https://github.com/nostr-protocol/nips/blob/master/36.md
+ *
  * @returns reason for content warning or undefined
  */
 export function eventHasContentWarning(event: EventBase): string | undefined {
@@ -27,7 +27,5 @@ export function eventHasContentWarning(event: EventBase): string | undefined {
     }
   }
 
-  if (hasContentWarning) {
-    return contentWarningReason;
-  }
+  return hasContentWarning ? contentWarningReason : undefined;
 }

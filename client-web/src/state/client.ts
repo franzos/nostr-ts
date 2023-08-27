@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import {
-  NEventWithUserBase,
+  ProcessedEvent,
   WebSocketEvent,
   Relay,
   NEvent,
@@ -36,7 +36,7 @@ interface Event {
       | "relay:message"
       | "event:queue:new"
       | "event:queue:update";
-    data: NEventWithUserBase | WebSocketEvent | PublishingQueueItem;
+    data: ProcessedEvent | WebSocketEvent | PublishingQueueItem;
   };
 }
 
@@ -72,7 +72,7 @@ export const useNClient = create<NClient>((set, get) => ({
         const payload = event.data;
 
         if (payload.type === "event:new" || payload.type === "event:update") {
-          const data = payload.data as NEventWithUserBase;
+          const data = payload.data as ProcessedEvent;
           if (payload.type === "event:new") {
             get().addEvent(data);
           } else if (payload.type === "event:update") {
@@ -237,12 +237,12 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.count(payload);
   },
   events: [],
-  addEvent: (payload: NEventWithUserBase) => {
+  addEvent: (payload: ProcessedEvent) => {
     set({
       events: [...get().events, payload],
     });
   },
-  updateEvent: (payload: NEventWithUserBase) => {
+  updateEvent: (payload: ProcessedEvent) => {
     const eventIndex = get().events.findIndex(
       (event) => event.event.id === payload.event.id
     );

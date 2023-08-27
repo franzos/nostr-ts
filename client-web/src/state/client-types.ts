@@ -1,6 +1,6 @@
 import {
   NEvent,
-  NEventWithUserBase,
+  ProcessedEvent,
   WebSocketClientInfo,
   WebSocketEvent,
   NFilters,
@@ -64,7 +64,7 @@ export interface NClient extends NClientBase {
   generateQueueItems: (
     request: PublishingRequest
   ) => Promise<PublishingQueueItem[]>;
-  events: NEventWithUserBase[];
+  events: ProcessedEvent[];
   /**
    * Track kind name like NewShortTextNote
    */

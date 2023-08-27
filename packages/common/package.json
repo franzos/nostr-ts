@@ -1,6 +1,6 @@
 {
   "name": "@nostr-ts/common",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Commonly used nostr types and utils",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",

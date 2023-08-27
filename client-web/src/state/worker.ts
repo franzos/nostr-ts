@@ -88,7 +88,7 @@ class WorkerClass implements NClientWorker {
   }
 
   updateRelay(
-    id: string,
+    url: string,
     options: {
       isEnabled?: boolean;
       read?: boolean;
@@ -96,7 +96,7 @@ class WorkerClass implements NClientWorker {
     }
   ) {
     for (const relay of this.client?.relays || []) {
-      if (relay.id === id) {
+      if (relay.url === url) {
         if (typeof options.isEnabled !== "undefined") {
           relay.isEnabled = options.isEnabled;
         }
@@ -238,7 +238,7 @@ class WorkerClass implements NClientWorker {
     return this.client?.count(payload);
   }
 
-  async processEvent(payload: WebSocketEvent) {
+  async processEvent(payload: WebSocketEvent, count: number = 0) {
     if (!payload.data) {
       return;
     }
@@ -347,11 +347,14 @@ class WorkerClass implements NClientWorker {
           }
 
           // Check if event already exists
+          // TODO: This doesn't cover events that are replies to other events; needs rewrite
+          // maybe a level? 0, 1, 2 and then do the rest durin the render step
           const exists = event.id ? this.eventsMap.has(event.id) : false;
 
-          if (exists) {
-            return;
-          }
+          // TODO: It's probably better to check hasEventTags first to ensure replies are assigned
+          // if (exists) {
+          //   return;
+          // }
 
           if (!event.pubkey) {
             return;
@@ -418,9 +421,20 @@ class WorkerClass implements NClientWorker {
                 console.log(`Reply event added to event ${origEvent.event.id}`);
                 return;
               }
+              // If we cannot find the root event, skip the reply for now
+              if (count < 3) {
+                setTimeout(() => {
+                  this.processEvent(payload, count + 1);
+                }, 1000);
+              }
+              return;
             } else {
               console.log(`No root tag found for event ${event.id}`);
             }
+          }
+
+          if (exists) {
+            return;
           }
 
           this.addEvent(newEvent);
@@ -594,10 +608,11 @@ class WorkerClass implements NClientWorker {
       ];
       if (queued.includes(kind)) {
         // Set event
-        this.addEvent({
-          event: payload.event,
-          eventRelayUrls: result.map((r) => r.relayUrl),
-        });
+        // TODO: Not sure if we should set it directly, or wait for the relay to send it back
+        // this.addEvent({
+        //   event: payload.event,
+        //   eventRelayUrls: result.map((r) => r.relayUrl),
+        // });
         // Set queue item
       }
 

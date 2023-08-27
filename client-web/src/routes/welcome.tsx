@@ -28,7 +28,7 @@ export function WelcomeRoute() {
       if (!connected || initDone.current) return;
       initDone.current = true;
       await useNClient.getState().clearEvents();
-      defaultFilters.until = Date.now() - 10000;
+      defaultFilters.until = Math.round(Date.now() / 1000 - 120);
       await useNClient
         .getState()
         .setViewSubscription("welcome", defaultFilters);

@@ -103,18 +103,26 @@ export function Event({
     onOpen();
   };
 
-  const newReply = async () => {
+  const relatedRelay = async () => {
     const relays = await useNClient.getState().getRelays();
-    // TODO: Select relay related to event
-    const relay = relays.find((r) => r.url === eventRelayUrls[0]);
+    const relay = relays.find((r) => eventRelayUrls.includes(r.url));
+    if (relay) return relay;
+
+    toast({
+      title: "Error",
+      description: `None of the required relays are active ${eventRelayUrls.join(
+        ", "
+      )}.`,
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+    return;
+  };
+
+  const newReply = async () => {
+    const relay = await relatedRelay();
     if (!relay) {
-      toast({
-        title: "Error",
-        description: `Relay ${eventRelayUrls[0]} not found`,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
       return;
     }
     const ev = NewShortTextNoteResponse({
@@ -133,13 +141,18 @@ export function Event({
    * Quote or react to an event
    */
   const newAction = async (type: "quote" | "reaction", reaction?: string) => {
+    const relay = await relatedRelay();
+    if (!relay) {
+      return;
+    }
+
     let ev: NEvent;
 
     switch (type) {
       case "quote":
         ev = NewQuoteRepost({
           inResponseTo: event,
-          relayUrl: "",
+          relayUrl: relay.url,
         });
         break;
       case "reaction":
@@ -150,6 +163,7 @@ export function Event({
             id: event.id,
             pubkey: event.pubkey,
           },
+          relayUrl: relay.url,
         });
         break;
       default:
@@ -159,6 +173,7 @@ export function Event({
     try {
       const evId = await useNClient.getState().signAndSendEvent({
         event: ev,
+        relayUrls: [relay.url],
       });
       if (evId) {
         toast({

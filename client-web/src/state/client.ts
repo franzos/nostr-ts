@@ -122,14 +122,14 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.getRelays();
   },
   updateRelay: async (
-    id: string,
+    url: string,
     options: {
       isEnabled?: boolean;
       read?: boolean;
       write?: boolean;
     }
   ) => {
-    return get().store.updateRelay(id, options);
+    return get().store.updateRelay(url, options);
   },
   relayEvents: [],
   getSubscriptions: async () => {
@@ -272,9 +272,10 @@ export const useNClient = create<NClient>((set, get) => ({
   }> => {
     // TODO: RELAY check if supported (supportsEvent)
     const allRelays = await get().getRelays();
-    const relays = request.relayUrls
-      ? allRelays.filter((r) => request.relayUrls?.includes(r.url))
-      : allRelays;
+    const relays =
+      request.relayUrls && request.relayUrls.length > 0
+        ? allRelays.filter((r) => request.relayUrls?.includes(r.url))
+        : allRelays;
 
     return {
       relays: relays.filter((r) => r.isReady && r.write === true),
@@ -289,11 +290,21 @@ export const useNClient = create<NClient>((set, get) => ({
    */
   generateQueueItems: async (
     request: PublishingRequest
-  ): Promise<PublishingQueueItem[]> => {
+  ): Promise<PublishingQueueItem[] | undefined> => {
+    let applicableRelays: WebSocketClientInfo[] = [];
     const { relays } = await get().determineApplicableRelays(request);
-
+    if (request.relayUrls && request.relayUrls.length > 0) {
+      applicableRelays = relays.filter((r) =>
+        request.relayUrls?.includes(r.url)
+      );
+    } else {
+      applicableRelays = relays;
+    }
+    if (applicableRelays.length === 0) {
+      return undefined;
+    }
     const newSubs: PublishingQueueItem[] = [];
-    for (const relay of relays) {
+    for (const relay of applicableRelays) {
       if (relay.isReady && relay.write) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { relayUrls: _relayUrls, ...restOfRequest } = request;
@@ -375,11 +386,21 @@ export const useNClient = create<NClient>((set, get) => ({
     ev.pubkey = keypair.publicKey;
     ev.generateId();
 
+    let relayUrls = payload.relayUrls;
+
     // Check if POW is needed and which relays are available
     const { relays, pow } = await get().determineApplicableRelays(payload);
     if (relays.length === 0) {
-      throw new Error("No (write-enabled) relays available. Check relays.");
+      if (relayUrls?.length === 0) {
+        throw new Error(
+          `None of the required relays are available: ${relayUrls.join(", ")}.`
+        );
+      } else {
+        throw new Error(`No write-enabled relays available.`);
+      }
     }
+
+    relayUrls = relays.map((r) => r.url);
 
     let requestedPOW = payload.pow;
     const neededPow = pow;
@@ -400,10 +421,14 @@ export const useNClient = create<NClient>((set, get) => ({
     let queueItems: PublishingQueueItem[] = [];
 
     if (requestedPOW > 0) {
-      queueItems = await get().generateQueueItems({
+      const items = await get().generateQueueItems({
         ...payload,
+        relayUrls,
         pow: requestedPOW,
       });
+      if (items) {
+        queueItems = items;
+      }
       get().addQueueItems?.(queueItems);
       const result = await get().eventProofOfWork(payload.event, requestedPOW);
       ev = new NEvent(result);
@@ -438,11 +463,16 @@ export const useNClient = create<NClient>((set, get) => ({
     ev.isReadyToPublishOrThrow();
 
     if (queueItems.length === 0) {
-      queueItems = await get().generateQueueItems({
+      // If this is 0, we didn't need POW
+      const items = await get().generateQueueItems({
         ...payload,
+        relayUrls,
         pow: requestedPOW,
         event: ev,
       });
+      if (items) {
+        queueItems = items;
+      }
       get().addQueueItems?.(queueItems);
     } else {
       for (const item of queueItems) {

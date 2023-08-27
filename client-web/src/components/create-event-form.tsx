@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   FormControl,
@@ -14,7 +14,6 @@ import {
 import {
   NEVENT_KIND,
   NewLongFormContent,
-  NewQuoteRepost,
   NewRecommendRelay,
   NewShortTextNote,
 } from "@nostr-ts/common";
@@ -36,6 +35,16 @@ export const CreateEventForm = () => {
     state.connected && state.keystore !== "none",
   ]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [users, setUsers] = useState<
+    {
+      user: NUser;
+      relayUrls: string[];
+    }[]
+  >([]);
+  const [publicKeyTags] = useNClient((state) => [
+    state.newEvent?.hasPublicKeyTags(),
+  ]);
+  const [isBusy, setBusy] = useState<boolean>(false);
   const [keystore, keypair, eventKind, newEventName, newEvent] = useNClient(
     (state) => [
       state.keystore,
@@ -45,37 +54,78 @@ export const CreateEventForm = () => {
       state.newEvent,
     ]
   );
+
+  const [relayUrls, setRelayUrls] = useState<string[]>([]);
+
   const toast = useToast();
 
-  const [users, setUsers] = useState<NUser[]>([]);
-  const [publicKeyTags] = useNClient((state) => [
-    state.newEvent?.hasPublicKeyTags(),
-  ]);
-  const [userrelayUrl, setUserrelayUrl] = useState<string>("");
+  const currentPubkey = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const loadUser = async () => {
-      const foundUsers = [];
+      if (
+        newEventName !== "NewShortTextNoteResponse"
+        // newEventName !== "NewQuoteRepost"
+      ) {
+        return;
+      }
+
+      const publicKey = useNClient.getState().newEvent?.pubkey;
+      if (!publicKey) {
+        return;
+      }
+      if (currentPubkey.current === publicKey) {
+        return;
+      }
+      currentPubkey.current = publicKey;
+
+      const foundUsers: {
+        user: NUser;
+        relayUrls: string[];
+      }[] = [];
+      const foundRelayUrls = [];
       if (publicKeyTags) {
         for (const tags of publicKeyTags) {
+          let relayUrl;
+          /**
+           * Get the relay url from the tags [p, pubkey, relayUrl]
+           */
           if (tags.length === 2) {
-            setUserrelayUrl(tags[1]);
+            relayUrl = tags[1];
+            foundRelayUrls.push(tags[1]);
           }
           const key = tags[0];
           const record = await useNClient.getState().getUser(key);
           if (record) {
-            foundUsers.push(record.user);
+            foundUsers.push({
+              user: record.user,
+              relayUrls: record.relayUrls
+                ? record.relayUrls
+                : relayUrl
+                ? [relayUrl]
+                : [],
+            });
           } else {
-            foundUsers.push(new NUser({ pubkey: key }));
+            foundUsers.push({
+              user: new NUser({ pubkey: key }),
+              relayUrls: relayUrl ? [relayUrl] : [],
+            });
           }
         }
       }
-      setUsers(foundUsers);
+      if (foundUsers.length > 0) {
+        setUsers(foundUsers);
+      }
+      if (foundRelayUrls.length > 0) {
+        setRelayUrls(foundRelayUrls);
+      }
+      setKind(newEventName, true);
     };
     loadUser();
   }, [publicKeyTags, newEventName]);
 
   const submit = async () => {
+    setBusy(true);
     setErrors([]);
     if (!newEvent) {
       setErrors(["Event is required"]);
@@ -128,6 +178,7 @@ export const CreateEventForm = () => {
     try {
       const evId = await useNClient.getState().signAndSendEvent({
         event: newEvent,
+        relayUrls,
       });
       if (evId) {
         toast({
@@ -139,7 +190,9 @@ export const CreateEventForm = () => {
         });
 
         const overwrite = true;
-        setKind(newEventName, overwrite);
+        const resetUser = true;
+        setKind("NewShortTextNote", overwrite, resetUser);
+        setBusy(false);
       }
     } catch (e) {
       let error = "";
@@ -156,6 +209,7 @@ export const CreateEventForm = () => {
         duration: 5000,
         isClosable: true,
       });
+      setBusy(false);
       return;
     }
   };
@@ -177,7 +231,7 @@ export const CreateEventForm = () => {
     }
   };
 
-  const setKind = (name: string, overwrite = false) => {
+  const setKind = (name: string, overwrite = false, resetUser = false) => {
     let event;
     if (!overwrite && name === newEventName) {
       console.log(`Already set to ${name}`);
@@ -202,11 +256,15 @@ export const CreateEventForm = () => {
         });
         name = "NewLongFormContent";
         break;
-      case "NewQuoteRepost":
-        event = NewQuoteRepost({
-          inResponseTo: new NUser({ pubkey: "" }),
-          relayUrl: Object.keys(DEFAULT_RELAYS)[0],
-        });
+      // case "NewQuoteRepost":
+      //   console.log("TODO: NewQuoteRepost");
+      //   // event = NewQuoteRepost({
+      //   //   inResponseTo: useNClient.getState().newEvent,
+      //   //   relayUrl: relayUrls[0],
+      //   // });
+      //   break;
+      case "NewShortTextNoteResponse":
+        event = useNClient.getState().newEvent;
         break;
       default:
         setErrors(["Invalid event type"]);
@@ -216,6 +274,9 @@ export const CreateEventForm = () => {
     useNClient.getState().setNewEvent(event);
     useNClient.getState().setNewEventName(name);
     setErrors([]);
+    if (resetUser) {
+      setUsers([]);
+    }
   };
 
   return (
@@ -223,12 +284,12 @@ export const CreateEventForm = () => {
       <FormControl marginBottom={4}>
         <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
-        {users.map((user) => (
+        {users.map((record) => (
           <User
-            user={user}
-            key={user.pubkey}
+            user={record.user}
+            key={record.user.pubkey}
             options={{
-              relayUrls: [userrelayUrl],
+              relayUrls: record.relayUrls,
             }}
           />
         ))}
@@ -291,6 +352,7 @@ export const CreateEventForm = () => {
         onClick={submit}
         leftIcon={<Icon as={SendIcon} />}
         isDisabled={!isReady}
+        isLoading={isBusy}
       >
         Send
       </Button>

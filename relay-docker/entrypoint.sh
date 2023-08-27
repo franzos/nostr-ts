@@ -1,6 +1,6 @@
 #!/bin/sh
 
 # Wait for Postgres to start
-sleep 2
+sleep 3
 
 ./gnost-relay

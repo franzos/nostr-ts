@@ -91,6 +91,7 @@ export function RelaysRoute() {
     return (
       <Tr key={rl.url}>
         <Td>{rl.url}</Td>
+        <Td>{rl.isReady ? "Ready" : "Not Ready"}</Td>
         <Td>
           <Button
             size={"sm"}
@@ -127,6 +128,7 @@ export function RelaysRoute() {
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>
+            <Th>Ready</Th>
             <Th>Url</Th>
             <Th>Info</Th>
             <Th>Read</Th>

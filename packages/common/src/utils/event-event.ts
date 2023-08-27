@@ -1,6 +1,9 @@
-import { EventBase, EventEventTag } from "../types";
+import { EventBase } from "../types/event";
+import { EventEventTag } from "../types/event-event-tag";
 
 /**
+ * Marked "e" tags (PREFERRED)
+ *
  * ["e", <relay-url>]
  * ["e", <event-id>, <relay-url>]
  * ['e', 'eventId', 'relayUrl', 'marker']
@@ -31,4 +34,64 @@ export function eventHasEventTags(
     }
   }
   return evTags && evTags.length > 0 ? evTags : undefined;
+}
+
+/**
+ * Get event positional "e" tags (DEPRECATED)
+ */
+export function eventHasPositionalEventTags(event: EventBase) {
+  const tags = event.tags.filter((tag) => tag[0] === "e");
+  if (tags.length === 0) return undefined;
+  const evTags: EventEventTag[] = [];
+
+  for (let i = 0; i < tags.length; i++) {
+    if (i === 0) {
+      evTags.push({
+        eventId: tags[i][1],
+        relayUrl: "",
+        marker: "root",
+      });
+    }
+
+    if (tags.length === 2) {
+      if (i === 1) {
+        evTags.push({
+          eventId: tags[i][1],
+          relayUrl: "",
+          marker: "reply",
+        });
+      }
+    } else if (tags.length > 2) {
+      if (i === 1) {
+        evTags.push({
+          eventId: tags[i][1],
+          relayUrl: "",
+          marker: "mention",
+        });
+      } else if (i > 1) {
+        evTags.push({
+          eventId: tags[i][1],
+          relayUrl: "",
+          marker: "reply",
+        });
+      }
+    }
+  }
+
+  return evTags && evTags.length > 0 ? evTags : undefined;
+}
+
+/**
+ * Positional "e" tags (DEPRECATED)
+ * Basically checks whether the event is using the deprecated format
+ *
+ * This is a boolean check that doesn't return the tags
+ * I use this primarily to differentiate between the formats
+ */
+export function eventHasPositionalEventTag(event: EventBase): boolean {
+  if (!event.tags || event.tags.length === 0) return false;
+  const tags = event.tags.filter((tag) => tag[0] === "e" && tag.length > 2);
+  // If none have been found,
+  if (tags.length === 0) return true;
+  return false;
 }

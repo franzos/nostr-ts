@@ -35,39 +35,4 @@ describe("Proof of Work Performance", () => {
       `10 bits proof of work took ${endTime - startTime} ms  - event function`
     );
   });
-
-  // test("15 bits proof of work", async () => {
-  //   const startTime = Date.now();
-  //   proofOfWork(sampleEvent, 15);
-  //   const endTime = Date.now();
-
-  //   console.log(`15 bits proof of work took ${endTime - startTime} ms`);
-  // });
-
-  // test("20 bits proof of work", async () => {
-  //   const startTime = Date.now();
-  //   proofOfWork(sampleEvent, 20);
-  //   const endTime = Date.now();
-
-  //   console.log(`20 bits proof of work took ${endTime - startTime} ms`);
-  // });
-
-  // test("20 bits proof of work - event function", async () => {
-  //   const ev = new NEvent(sampleEvent);
-  //   const startTime = Date.now();
-  //   ev.proofOfWork(20);
-  //   const endTime = Date.now();
-
-  //   console.log(
-  //     `20 bits proof of work took ${endTime - startTime} ms  - event function`
-  //   );
-  // });
-
-  // test("25 bits proof of work", async () => {
-  //   const startTime = Date.now();
-  //   proofOfWork(sampleEvent, 25);
-  //   const endTime = Date.now();
-
-  //   console.log(`25 bits proof of work took ${endTime - startTime} ms`);
-  // });
 });

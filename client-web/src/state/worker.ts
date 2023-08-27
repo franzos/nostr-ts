@@ -349,33 +349,111 @@ class WorkerClass implements NClientWorker {
           // Check if event already exists
           const exists = event.id ? this.eventsMap.has(event.id) : false;
 
-          if (!exists) {
-            if (event.pubkey) {
-              const newEvent: NEventWithUserBase = {
-                event: new NEvent(event),
-                eventRelayUrls: [payload.meta.url as string],
-              };
+          if (exists) {
+            return;
+          }
 
-              const data = await this.getUser(event.pubkey);
-              if (data) {
-                newEvent.user = data.user;
-              }
+          if (!event.pubkey) {
+            return;
+          }
 
-              const mentions = newEvent.event.hasMentions();
-              if (mentions) {
-                for (const mention of mentions) {
-                  const user = await this.getUser(mention);
-                  if (user) {
-                    if (newEvent.mentions) {
-                      newEvent.mentions.push(user.user);
-                    } else {
-                      newEvent.mentions = [user.user];
-                    }
-                  }
+          const newEvent: NEventWithUserBase = {
+            event: new NEvent(event),
+            eventRelayUrls: [payload.meta.url as string],
+          };
+
+          const data = await this.getUser(event.pubkey);
+          if (data) {
+            newEvent.user = data.user;
+          }
+
+          const mentions = newEvent.event.hasMentions();
+          if (mentions) {
+            for (const mention of mentions) {
+              const user = await this.getUser(mention);
+              if (user) {
+                if (newEvent.mentions) {
+                  newEvent.mentions.push(user.user);
+                } else {
+                  newEvent.mentions = [user.user];
+                }
+              } else {
+                if (newEvent.mentions) {
+                  newEvent.mentions.push(new NUserBase({ pubkey: mention }));
+                } else {
+                  newEvent.mentions = [new NUserBase({ pubkey: mention })];
                 }
               }
+            }
+          }
 
-              this.addEvent(newEvent);
+          // Check if event is a response to another event
+          const eventTags = newEvent.event.hasEventTags();
+          if (eventTags) {
+            const rootTag = eventTags.find((tag) => tag.marker === "root");
+            // let replyTag = eventTags.find((tag) => tag.marker === "reply");
+
+            if (rootTag) {
+              const eventId = rootTag.eventId;
+
+              const origEvent = this.eventsMap.get(eventId);
+              if (origEvent) {
+                if (origEvent.replies) {
+                  const exist = origEvent.replies.find(
+                    (reply) => reply.event.id === newEvent.event.id
+                  );
+                  if (!exist) {
+                    origEvent.replies.push({
+                      ...newEvent,
+                    });
+                  }
+                } else {
+                  origEvent.replies = [
+                    {
+                      ...newEvent,
+                    },
+                  ];
+                }
+                this.updateEvent(origEvent);
+                console.log(`Reply event added to event ${origEvent.event.id}`);
+                return;
+              }
+            } else {
+              console.log(`No root tag found for event ${event.id}`);
+            }
+          }
+
+          this.addEvent(newEvent);
+        });
+      } else if (kind === NEVENT_KIND.ZAP_RECEIPT) {
+        incomingQueue.enqueueBackground(async () => {
+          const event = payload.data[2] as EventBase;
+
+          if (!event.pubkey) {
+            return;
+          }
+
+          const ev = new NEvent(event);
+          const user = await this.getUser(ev.pubkey);
+          const tags = ev.hasEventTags();
+          const hasRootTag = tags?.find((tag) => tag.marker === "root");
+          if (hasRootTag) {
+            const rootEvent = this.eventsMap.get(hasRootTag.eventId);
+            if (rootEvent) {
+              if (rootEvent.lightningReceipts) {
+                rootEvent.lightningReceipts.push({
+                  event: ev,
+                  user: user?.user,
+                });
+              } else {
+                rootEvent.lightningReceipts = [
+                  {
+                    event: ev,
+                    user: user?.user,
+                  },
+                ];
+              }
+              this.updateEvent(rootEvent);
             }
           }
         });
@@ -424,6 +502,7 @@ class WorkerClass implements NClientWorker {
             // TODO: Support users
             return;
           }
+          const data = await this.getUser(ev.pubkey);
 
           const eventIds = inResponse
             .filter((tag) => tag.eventId)
@@ -433,9 +512,17 @@ class WorkerClass implements NClientWorker {
             const event = this.eventsMap.get(id);
             if (event) {
               if (event.reactions && event.reactions.length) {
-                event.reactions.push(ev);
+                event.reactions.push({
+                  event: ev,
+                  user: data?.user,
+                });
               } else {
-                event.reactions = [ev];
+                event.reactions = [
+                  {
+                    event: ev,
+                    user: data?.user,
+                  },
+                ];
               }
               console.log(`Reaction event added to event ${event.event.id}`);
               this.updateEvent(event);
@@ -452,6 +539,7 @@ class WorkerClass implements NClientWorker {
             // TODO: Support users
             return;
           }
+          const data = await this.getUser(ev.pubkey);
 
           const eventIds = inResponse
             .filter((tag) => tag.eventId)
@@ -461,9 +549,17 @@ class WorkerClass implements NClientWorker {
             const event = this.eventsMap.get(id);
             if (event) {
               if (event.reposts) {
-                event.reposts.push(ev);
+                event.reposts.push({
+                  event: ev,
+                  user: data?.user,
+                });
               } else {
-                event.reposts = [ev];
+                event.reposts = [
+                  {
+                    event: ev,
+                    user: data?.user,
+                  },
+                ];
               }
               console.log(`Repost event added to event ${event.event.id}`);
               this.updateEvent(event);
@@ -642,7 +738,7 @@ class WorkerClass implements NClientWorker {
     const timeout = options?.timeout || 10000;
     let filtered: string[] = [];
 
-    if (payload.source === "events") {
+    if (payload.source === "events" || payload.source === "events:related") {
       filtered = payload.idsOrKeys.filter(
         (id) => !this.checkedEvents.includes(id)
       );
@@ -670,10 +766,26 @@ class WorkerClass implements NClientWorker {
     for (let i = 0; i < filtered.length; i += 25) {
       const keys = filtered.slice(i, i + 25);
       let filters: NFilters;
+
       if (payload.source === "events") {
         filters = new NFilters({
-          kinds: [NEVENT_KIND.REACTION, NEVENT_KIND.REPOST],
-          "#e": filtered,
+          kinds: [
+            NEVENT_KIND.SHORT_TEXT_NOTE,
+            NEVENT_KIND.LONG_FORM_CONTENT,
+            NEVENT_KIND.REACTION,
+            NEVENT_KIND.REPOST,
+            NEVENT_KIND.ZAP_RECEIPT,
+          ],
+          ids: keys,
+        });
+      } else if (payload.source === "events:related") {
+        filters = new NFilters({
+          kinds: [
+            NEVENT_KIND.SHORT_TEXT_NOTE,
+            NEVENT_KIND.REACTION,
+            NEVENT_KIND.REPOST,
+          ],
+          "#e": keys,
         });
       } else if (payload.source === "users") {
         filters = new NFilters({

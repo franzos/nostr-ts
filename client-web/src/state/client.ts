@@ -553,13 +553,18 @@ export const useNClient = create<NClient>((set, get) => ({
       },
     });
 
-    setTimeout(async () => {
+    const process = async () => {
       const eventUserPubkeys: {
         pubkey: string;
         relayUrls: string[];
       }[] = [];
 
-      const eventIds: {
+      // const eventIds: {
+      //   id: string;
+      //   relayUrls: string[];
+      // }[] = [];
+
+      const relEventIds: {
         id: string;
         relayUrls: string[];
       }[] = [];
@@ -572,8 +577,21 @@ export const useNClient = create<NClient>((set, get) => ({
             relayUrls: ev.eventRelayUrls,
           });
         }
+        // if (!ev.inResponseTo) {
+        //   const tags = eventHasEventTags(ev.event);
+        //   if (tags) {
+        //     for (const tag of tags) {
+        //       if (tag.marker === "root") {
+        //         eventIds.push({
+        //           id: tag.eventId,
+        //           relayUrls: tag.relayUrl ? [tag.relayUrl] : ev.eventRelayUrls,
+        //         });
+        //       }
+        //     }
+        //   }
+        // }
         if (!ev.reactions) {
-          eventIds.push({
+          relEventIds.push({
             id: ev.event.id,
             relayUrls: ev.eventRelayUrls,
           });
@@ -601,30 +619,51 @@ export const useNClient = create<NClient>((set, get) => ({
         };
       });
 
-      // This map will keep track of relayUrls and their associated eventIds.
-      const relayUrlToEventIdsMap: Record<string, Set<string>> = {};
+      // const relayUrlToEventIdsMap: Record<string, Set<string>> = {};
 
-      for (const ev of eventIds) {
+      // for (const ev of eventIds) {
+      //   for (const relayUrl of ev.relayUrls) {
+      //     if (!relayUrlToEventIdsMap[relayUrl]) {
+      //       relayUrlToEventIdsMap[relayUrl] = new Set();
+      //     }
+      //     relayUrlToEventIdsMap[relayUrl].add(ev.id);
+      //   }
+      // }
+
+      // const reqEvents: RelaysWithIdsOrKeys[] = Object.entries(
+      //   relayUrlToEventIdsMap
+      // ).map(([relayUrl, eventIdsSet]) => {
+      //   return {
+      //     source: "events",
+      //     relayUrl,
+      //     idsOrKeys: [...eventIdsSet],
+      //   };
+      // });
+
+      // This map will keep track of relayUrls and their associated eventIds.
+      const relayUrlToRelEventIdsMap: Record<string, Set<string>> = {};
+
+      for (const ev of relEventIds) {
         for (const relayUrl of ev.relayUrls) {
-          if (!relayUrlToEventIdsMap[relayUrl]) {
-            relayUrlToEventIdsMap[relayUrl] = new Set();
+          if (!relayUrlToRelEventIdsMap[relayUrl]) {
+            relayUrlToRelEventIdsMap[relayUrl] = new Set();
           }
-          relayUrlToEventIdsMap[relayUrl].add(ev.id);
+          relayUrlToRelEventIdsMap[relayUrl].add(ev.id);
         }
       }
 
-      const reqEvents: RelaysWithIdsOrKeys[] = Object.entries(
-        relayUrlToEventIdsMap
+      const reqRelEvents: RelaysWithIdsOrKeys[] = Object.entries(
+        relayUrlToRelEventIdsMap
       ).map(([relayUrl, eventIdsSet]) => {
         return {
-          source: "events",
+          source: "events:related",
           relayUrl,
           idsOrKeys: [...eventIdsSet],
         };
       });
 
       const infoRequestPromises = [];
-      for (const item of [...reqUsers, ...reqEvents]) {
+      for (const item of [...reqUsers, ...reqRelEvents]) {
         infoRequestPromises.push(
           await get().requestInformation(item, {
             timeout: 10000,
@@ -633,7 +672,11 @@ export const useNClient = create<NClient>((set, get) => ({
           })
         );
       }
-    }, 4000);
+    };
+
+    // TODO: This is not accurate
+    setTimeout(process, 3000);
+    setTimeout(process, 8000);
   },
 
   /**

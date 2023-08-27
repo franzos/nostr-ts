@@ -38,7 +38,7 @@ export function Events(props: {
   };
 
   return (
-    <Box maxHeight="80vh" overflowY="auto">
+    <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
       {events.map((event) => {
         return (
           <Box padding={2} key={event.event.id}>
@@ -47,6 +47,8 @@ export function Events(props: {
               user={event.user}
               reactions={event.reactions}
               reposts={event.reposts}
+              mentions={event.mentions}
+              replies={event.replies}
               eventRelayUrls={event.eventRelayUrls}
               key={event.event.id}
               userComponent={
@@ -54,14 +56,19 @@ export function Events(props: {
                   event.user && event.user.pubkey ? (
                     <props.userComponent
                       user={event.user}
-                      relayUrls={event.eventRelayUrls}
+                      options={{
+                        showFollowing: true,
+                        relayUrls: event.eventRelayUrls,
+                      }}
                     />
                   ) : (
                     <props.userComponent
                       user={{
                         pubkey: event.event.pubkey,
                       }}
-                      relayUrls={event.eventRelayUrls}
+                      options={{
+                        relayUrls: event.eventRelayUrls,
+                      }}
                     />
                   )
                 ) : undefined

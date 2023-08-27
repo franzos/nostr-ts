@@ -1,4 +1,10 @@
 import { NEVENT_KIND, NEventContent } from "../types";
+import {
+  NOSTR_URL_REGEX_GLOBAL,
+  decodeNostrUrl,
+  encodePublicKeyToNostrUrl,
+  isNostrUrl,
+} from "./nostr-url";
 import { isValidWebSocketUrl } from "./websocket-url";
 
 /**
@@ -6,6 +12,7 @@ import { isValidWebSocketUrl } from "./websocket-url";
  * - for ex "wss://relay.example.com"
  * - for ex "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
  * - for ex "Checkout nostr:2234567890123456789012345678901234567890123456789012345678901234"
+ * - for ex "Gracias nostr:npub1kade5vf37snr4hv5hgstav6j5ygry6z09kkq0flp47p8cmeuz5zs7zz2an ! ⚡️⚡️⚡️";
  * - for ex "Checkout nostr:2234567890123456789012345678901234567890123456789012345678901234 nostr:2234567890123456789012345678901234567890123456789012345678901234"
  * - for ex. "Checkout this pic" // no match
  * @param content
@@ -14,58 +21,85 @@ export function extractEventContent(
   content: string,
   kind?: NEVENT_KIND
 ): NEventContent | undefined {
-  if (!isValidEventContent(content, kind)) {
-    return;
+  const validationResult = isValidEventContent(content, kind);
+
+  if (!validationResult.isValid) {
+    console.log("Invalid content");
+    return undefined;
   }
 
   const urlRegex = /(.*)?(wss:\/\/[a-zA-Z0-9.-]+)/;
-  const nostrRegex = /(nostr:[a-fA-F0-9]{64})/g;
+  const evc: NEventContent = {
+    message: undefined,
+    relayUrl: undefined,
+    nurls: [],
+  };
 
-  let match;
-
-  match = urlRegex.exec(content);
-  if (match) {
-    const message = match[1] ? match[1].trim() : undefined;
-    return { type: "relayUrl", relayUrl: match[2], message };
+  const urlMatch = urlRegex.exec(content);
+  if (urlMatch) {
+    evc.message = urlMatch[1] ? urlMatch[1].trim() : undefined;
+    evc.relayUrl = urlMatch[2];
+    return evc;
   }
 
-  let result;
-  let publicKeys = [];
-  while ((result = nostrRegex.exec(content)) !== null) {
-    publicKeys.push(result[1].split(":")[1]);
+  const publicKeys: string[] = [];
+  let nostrMatch;
+  const replaceIndexes = [];
+
+  while ((nostrMatch = NOSTR_URL_REGEX_GLOBAL.exec(content)) !== null) {
+    const item = nostrMatch[0];
+    if (isNostrUrl(item)) {
+      const decoded = decodeNostrUrl(item);
+      if (decoded.prefix === "npub" && decoded.tlvItems.length > 0) {
+        const publicKey = decoded.tlvItems[0].value as string;
+        publicKeys.push(publicKey);
+        replaceIndexes.push({
+          index: nostrMatch.index,
+          length: item.length,
+          replaceWith: publicKey,
+        });
+      }
+    }
+  }
+
+  let offset = 0;
+  for (const { index, length, replaceWith } of replaceIndexes) {
+    const realIndex = index + offset;
+    content =
+      content.slice(0, realIndex) +
+      replaceWith +
+      content.slice(realIndex + length);
+    offset += replaceWith.length - length;
   }
 
   if (publicKeys.length > 0) {
-    const message = content.replace(nostrRegex, "").trim();
-    return { type: "nostr", publicKeys, message };
+    evc.message = content.trim();
+    evc.nurls = [
+      {
+        type: "npub",
+        publicKeys,
+      },
+    ];
+    return evc;
   }
 
-  // If there was no match, return undefined
-  return;
+  return undefined;
 }
 
 export function createEventContent(content: NEventContent) {
-  if (!content.type) {
-    return content.message;
-  } else if (content.type === "relayUrl") {
-    return content.relayUrl;
-  } else if (content.type === "nostr") {
-    if (!content.publicKeys) return content.message;
-
-    for (const key of content.publicKeys) {
-      // check length
-      if (key.length !== 64) {
-        throw new Error(`Invalid key length: ${key}`);
-      }
+  if (!content) return "";
+  let newContent = content.message ? `${content.message} ` : "";
+  if (content.relayUrl) return `${newContent} ${content.relayUrl}`.trim();
+  if (!content.nurls || content.nurls.length === 0) return newContent.trim();
+  for (const nurl of content.nurls) {
+    if (nurl.type === "npub") {
+      // TODO: handle multiple npub
+      newContent += `${encodePublicKeyToNostrUrl(nurl.publicKeys[0])} `;
+    } else {
+      throw new Error(`Unsupported nurl type ${nurl.type}`);
     }
-
-    const publicKeysStr = content.publicKeys
-      .map((key) => `nostr:${key}`)
-      .join(" ");
-    return content.message
-      ? `${content.message} ${publicKeysStr}`
-      : publicKeysStr;
   }
+  return newContent.trim();
 }
 
 /**
@@ -113,9 +147,10 @@ export function isValidEventContent(
     return { isValid: false, error: "HTML tags are not allowed" };
   }
 
-  if (containsLineBreaks(content)) {
-    return { isValid: false, error: "Line breaks are not allowed" };
-  }
+  // TODO: Many users use line breaks to format their content.
+  // if (containsLineBreaks(content)) {
+  //   return { isValid: false, error: "Line breaks are not allowed" };
+  // }
 
   // If none of the negative conditions are met
   return { isValid: true };

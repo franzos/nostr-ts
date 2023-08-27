@@ -151,7 +151,7 @@ export function PrimaryLayout() {
         <Grid templateColumns={["1fr", "1fr 4fr"]} gap={20}>
           {Sidebar}
 
-          <Box maxHeight="80vh" overflowY="auto">
+          <Box>
             <Outlet />
           </Box>
         </Grid>

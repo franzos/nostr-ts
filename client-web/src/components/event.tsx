@@ -34,6 +34,7 @@ import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
+import { UserIcon } from "./user-icon";
 
 export interface EventProps extends NEventWithUserBase {
   userComponent?: JSX.Element;
@@ -44,6 +45,8 @@ export function Event({
   event,
   reactions,
   reposts,
+  mentions,
+  replies,
   eventRelayUrls,
 }: EventProps) {
   const [isReady] = useNClient((state) => [
@@ -60,17 +63,22 @@ export function Event({
   }>({});
 
   useEffect(() => {
-    setDownVotesCount(reactions?.filter((r) => r.content === "-").length || 0);
-    setUpVotesCount(reactions?.filter((r) => r.content === "+").length || 0);
+    setDownVotesCount(
+      reactions?.filter((r) => r.event.content === "-").length || 0
+    );
+    setUpVotesCount(
+      reactions?.filter((r) => r.event.content === "+").length || 0
+    );
     setRepostsCount(reposts?.length || 0);
     setReactionsWithCount(
       reactions
-        ?.filter((r) => r.content !== "+" && r.content !== "-")
+        ?.filter((r) => r.event.content !== "+" && r.event.content !== "-")
         .reduce((acc, r) => {
-          if (acc[r.content]) {
-            acc[r.content] += 1;
-          } else {
-            acc[r.content] = 1;
+          const content = r.event?.content ? r.event.content : undefined;
+          if (content && acc[content]) {
+            acc[content] += 1;
+          } else if (content) {
+            acc[content] = 1;
           }
           return acc;
         }, {} as { [key: string]: number }) || {}
@@ -287,56 +295,171 @@ export function Event({
     </Modal>
   );
 
+  function makeLinksClickable(text: string) {
+    if (!text) return "";
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(
+      urlRegex,
+      (url) =>
+        `<a href="${url}" target="_blank" class="is-inline">${excerpt(
+          url,
+          20
+        )}</a>`
+    );
+  }
+
+  const EventCard = (
+    <Card
+      border="1px solid #e1e1e1"
+      style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
+    >
+      <CardHeader p={0}>
+        <Box>
+          {images && images?.length > 0 && (
+            <Box className="image-container" marginBottom={4}>
+              {images.map((i, index) => (
+                <Image
+                  key={index}
+                  src={i}
+                  fallback={<Image src="/no-image.png" />}
+                  fallbackStrategy="onError"
+                  alt=""
+                  onClick={() => openImage(i)}
+                />
+              ))}
+            </Box>
+          )}
+          <Box p={4} paddingBottom={0}>
+            {userComponent && userComponent}
+          </Box>
+        </Box>
+      </CardHeader>
+      <CardBody p={4}>
+        <Box
+          style={{ overflowWrap: "anywhere" }}
+          dangerouslySetInnerHTML={{
+            __html: makeLinksClickable(event.content),
+          }}
+        />
+        <Text fontWeight="bold" fontSize={12} marginTop={2}>
+          {unixTimeToRelative(event.created_at)}
+        </Text>
+      </CardBody>
+      <CardFooter p={4}>
+        <HStack width="100%">
+          <ActionButtons />
+
+          <Spacer />
+          <Text>{eventRelayUrls[0]}</Text>
+
+          <Button
+            size={"sm"}
+            variant="outline"
+            onClick={() => {
+              onEventModalOpen();
+            }}
+          >
+            Details
+          </Button>
+        </HStack>
+      </CardFooter>
+    </Card>
+  );
+
   return (
     <>
-      <Card border="1px solid #e1e1e1" overflow="hidden">
-        <CardHeader p={0}>
-          <Box>
-            {images && images?.length > 0 && (
-              <Box className="image-container" marginBottom={4}>
-                {images.map((i, index) => (
-                  <Image
-                    key={index}
-                    src={i}
-                    fallback={<Image src="/no-image.png" />}
-                    fallbackStrategy="onError"
-                    alt=""
-                    onClick={() => openImage(i)}
+      {EventCard}
+      <HStack padding={2} flexWrap="wrap">
+        {reactions && (
+          <>
+            <Text>Reactions</Text>
+            {reactions.map((r, index) => {
+              const user = r.user || { pubkey: r.event.pubkey };
+              return (
+                <Box key={`${index}_${r.event.id}_${user.pubkey}_reactions`}>
+                  <UserIcon
+                    user={user}
+                    options={{
+                      title: "Reaction",
+                      showAbout: true,
+                      showBanner: true,
+                      relayUrls: eventRelayUrls,
+                      reaction: r.event.content,
+                      avatarSize: "xs",
+                    }}
                   />
-                ))}
-              </Box>
-            )}
-            <Box p={4} paddingBottom={0}>
-              {userComponent && userComponent}
+                </Box>
+              );
+            })}
+          </>
+        )}
+        {reposts && (
+          <>
+            <Text>Reposts</Text>
+            {reposts.map((r) => {
+              const user = r.user ? r.user : { pubkey: r.event.pubkey };
+              return (
+                <Box key={`${r.event.id}_${user.pubkey}_reposts`}>
+                  <UserIcon
+                    user={user}
+                    options={{
+                      title: "Repost",
+                      showAbout: true,
+                      showBanner: true,
+                      relayUrls: eventRelayUrls,
+                      avatarSize: "xs",
+                    }}
+                  />
+                  <Icon as={RepeatIcon} />
+                </Box>
+              );
+            })}
+          </>
+        )}
+        {
+          // TODO: Relay urls
+          mentions && (
+            <>
+              <Text>Mentions</Text>
+              {mentions.map((u) => (
+                <Box key={`${event.id}_${u.pubkey}_mention`}>
+                  <UserIcon
+                    user={u}
+                    options={{
+                      title: "Mentioned",
+                      showAbout: true,
+                      showBanner: true,
+                      relayUrls: eventRelayUrls,
+                    }}
+                  />
+                </Box>
+              ))}
+            </>
+          )
+        }
+      </HStack>
+
+      {replies &&
+        replies.map((r) => {
+          const user = r.user ? r.user : { pubkey: r.event.pubkey };
+          return (
+            <Box key={`${r.event.id}_${user.pubkey}_replies`} marginLeft={10}>
+              <Event
+                event={r.event}
+                userComponent={
+                  <UserIcon
+                    user={user}
+                    // TODO: More accurate
+                    options={{
+                      relayUrls: eventRelayUrls,
+                    }}
+                  />
+                }
+                eventRelayUrls={eventRelayUrls}
+              />
             </Box>
-          </Box>
-        </CardHeader>
-        <CardBody p={4}>
-          <Text>{event.content}</Text>
-          <Text fontWeight="bold" fontSize={12} marginTop={2}>
-            {unixTimeToRelative(event.created_at)}
-          </Text>
-        </CardBody>
-        <CardFooter p={4}>
-          <HStack width="100%">
-            <ActionButtons />
-
-            <Spacer />
-            <Text>Relay {eventRelayUrls[0]}</Text>
-
-            <Button
-              size={"sm"}
-              variant="outline"
-              onClick={() => {
-                onEventModalOpen();
-              }}
-            >
-              Details
-            </Button>
-          </HStack>
-        </CardFooter>
-      </Card>
-
+          );
+        })}
       {ImageModal}
       {EventModal}
     </>

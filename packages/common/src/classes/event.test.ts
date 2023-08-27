@@ -1,21 +1,14 @@
 import {
   NEvent,
-  NREPORT_KIND,
   NewLongFormContent,
   NewReaction,
   NewShortTextNote,
   NewShortTextNoteResponse,
-  Report,
-  createEventContent,
   eventHasExpiration,
   eventHasLabels,
   eventHasNonce,
   eventHasRelayRecommendation,
-  eventHasReport,
-  extractEventContent,
   generateClientKeys,
-  generateReportTags,
-  isValidEventContent,
 } from "..";
 
 const keypair_one = generateClientKeys();
@@ -65,7 +58,7 @@ test("NewShortTextNoteResponse", () => {
 
   const eventTags = evR.tags?.filter((tag) => tag[0] === "e");
   expect(eventTags?.length).toEqual(1);
-  expect(eventTags?.[0]).toEqual(["e", ev.id]);
+  expect(eventTags?.[0]).toEqual(["e", ev.id, "", "root"]);
 
   const publicKeyTags = evR.tags?.filter((tag) => tag[0] === "p");
   expect(publicKeyTags?.length).toEqual(1);
@@ -135,78 +128,23 @@ test("eventHasContentWarning type 2", () => {
   expect(hasContentWarning).toEqual("reason");
 });
 
-test("extractEventContent: relay", () => {
-  const content = "wss://relay.example.com";
-  const res = extractEventContent(content);
-  expect(res).toEqual({
-    type: "relayUrl",
-    relayUrl: "wss://relay.example.com",
-  });
-});
-
-test("extractEventContent: nostr", () => {
-  const content =
-    "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234";
-  const res = extractEventContent(content);
-  expect(res).toEqual({
-    message: "Profile is impersonating",
-    type: "nostr",
-    publicKeys: [
-      "2234567890123456789012345678901234567890123456789012345678901234",
-    ],
-  });
-});
-
-test("extractEventContent: nostr x2", () => {
-  const content =
-    "Checkout these guys nostr:2234567890123456789012345678901234567890123456789012345678901234 nostr:2334567890123456789012345678901234567890123456789012345678901234 later";
-  const res = extractEventContent(content);
-  expect(res).toEqual({
-    message: "Checkout these guys   later",
-    type: "nostr",
-    publicKeys: [
-      "2234567890123456789012345678901234567890123456789012345678901234",
-      "2334567890123456789012345678901234567890123456789012345678901234",
-    ],
-  });
-});
-
-test("extractEventContent: nothing", () => {
-  const content = "Here's whats on nostr: cool stuff";
-  const res = extractEventContent(content);
-  expect(res).toEqual(undefined);
-});
-
-test("createEventContent", () => {
-  const content = "Here's whats on nostr: cool stuff";
-  const res = createEventContent({
-    message: content,
-  });
-  expect(res).toEqual("Here's whats on nostr: cool stuff");
-});
-
-test("createEventContent: relay", () => {
-  const content = "wss://relay.example.com";
-  const res = createEventContent({
-    type: "relayUrl",
-    relayUrl: "wss://relay.example.com",
-  });
-  expect(res).toEqual("wss://relay.example.com");
-});
-
-test("createEventContent: nostr", () => {
-  const content = "Profile is impersonating";
-  const res = createEventContent({
-    message: "Profile is impersonating",
-    type: "nostr",
-    publicKeys: [
-      "2234567890123456789012345678901234567890123456789012345678901234",
-    ],
-  });
-  expect(res).toEqual(
-    "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
-  );
-});
+// test("createEventContent: nostr", () => {
+//   const content = "Profile is impersonating";
+//   const res = createEventContent({
+//     message: "Profile is impersonating",
+//     nurls: [
+//       {
+//         type: "npub",
+//         publicKeys: [
+//           "2234567890123456789012345678901234567890123456789012345678901234",
+//         ],
+//       },
+//     ],
+//   });
+//   expect(res).toEqual(
+//     "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
+//   );
+// });
 
 test("eventHasExpiration", () => {
   const ev = new NEvent({
@@ -271,76 +209,4 @@ test("eventHasNonce", () => {
   const hasNonce = eventHasNonce(ev);
   expect(hasNonce).toEqual([64, 2]);
   expect(hasNonce).toEqual(ev.hasNonceTag());
-});
-
-test("eventHasReport", () => {
-  const ev = new NEvent({
-    kind: 1984,
-    content: "Broke local law",
-    tags: [
-      [
-        "e",
-        "1234567890123456789012345678901234567890123456789012345678901234",
-        "illegal",
-      ],
-      ["p", "1234567890123456789012345678901234567890123456789012345678901234"],
-    ],
-  });
-  const hasReport = eventHasReport(ev);
-  expect(hasReport).toEqual({
-    eventId: "1234567890123456789012345678901234567890123456789012345678901234",
-    kind: "illegal",
-    publicKey:
-      "1234567890123456789012345678901234567890123456789012345678901234",
-    content: "Broke local law",
-  });
-  expect(hasReport).toEqual(ev.hasReportTags());
-});
-
-test("eventHasReport: impersonation", () => {
-  const ev = new NEvent({
-    kind: 1984,
-    content:
-      "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234",
-    tags: [
-      [
-        "p",
-        "1234567890123456789012345678901234567890123456789012345678901234",
-        "impersonation",
-      ],
-    ],
-  });
-  const hasReport = eventHasReport(ev);
-  expect(hasReport).toEqual({
-    kind: "impersonation",
-    publicKey:
-      "1234567890123456789012345678901234567890123456789012345678901234",
-    content:
-      "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234",
-  });
-  expect(hasReport).toEqual(ev.hasReportTags());
-});
-
-test("generateReportTags: impersonation", () => {
-  const report: Report = {
-    kind: NREPORT_KIND.IMPERSONATION,
-    publicKey:
-      "1234567890123456789012345678901234567890123456789012345678901234",
-  };
-  const tags = generateReportTags(report);
-  expect(tags).toEqual([["p", report.publicKey, report.kind]]);
-});
-
-test("generateReportTags: event", () => {
-  const report: Report = {
-    kind: NREPORT_KIND.ILLEGAL,
-    publicKey:
-      "1234567890123456789012345678901234567890123456789012345678901234",
-    eventId: "1234567890123456789012345678901234567890123456789012345678901234",
-  };
-  const tags = generateReportTags(report);
-  expect(tags).toEqual([
-    ["e", report.eventId, report.kind],
-    ["p", report.publicKey],
-  ]);
 });

@@ -5,6 +5,7 @@ export * from "./event-amount";
 export * from "./event-content-warning";
 export * from "./event-content";
 export * from "./event-coordinates";
+export * from "./event-event";
 export * from "./event-expiration";
 export * from "./event-identifier";
 export * from "./event-labels";

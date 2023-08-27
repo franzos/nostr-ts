@@ -30,55 +30,58 @@ export function UserProfileRoute() {
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
   });
 
+  const init = async () => {
+    if (!connected) return;
+
+    // USER
+
+    if (!userRecord || userRecord.user.pubkey !== pubkey) {
+      await useNClient.getState().clearEvents();
+      await useNClient.getState().setViewSubscription(view, defaultFilters);
+
+      const dbUser = await useNClient.getState().getUser(pubkey);
+      if (dbUser) {
+        setUserRecord(dbUser);
+        setrelayUrls(dbUser.relayUrls);
+      } else {
+        setUserRecord({
+          user: new NUser({
+            pubkey,
+          }),
+          relayUrls,
+        });
+
+        for (const params of searchParams.entries()) {
+          if (params[0] === "relays") {
+            setrelayUrls(params[1].split(","));
+          }
+        }
+      }
+    }
+
+    await useNClient.getState().count({
+      type: CLIENT_MESSAGE_TYPE.COUNT,
+      filters: new NFilters({
+        kinds: [3],
+        "#p": [pubkey],
+      }),
+      options: {
+        timeout: 10000,
+        timeoutAt: Date.now() + 10000,
+      },
+    });
+  };
+
   /**
    * Handle initial load
    */
   useEffect(() => {
-    const init = async () => {
-      if (!connected) return;
-
-      await useNClient.getState().clearEvents();
-      await useNClient.getState().setViewSubscription(view, defaultFilters);
-
-      // USER
-
-      if (!userRecord) {
-        const dbUser = await useNClient.getState().getUser(pubkey);
-        if (dbUser) {
-          setUserRecord(dbUser);
-          setrelayUrls(dbUser.relayUrls);
-        } else {
-          setUserRecord({
-            user: new NUser({
-              pubkey,
-            }),
-            relayUrls,
-          });
-
-          for (const params of searchParams.entries()) {
-            if (params[0] === "relays") {
-              setrelayUrls(params[1].split(","));
-            }
-          }
-        }
-      }
-
-      console.log(relayUrls);
-
-      await useNClient.getState().count({
-        type: CLIENT_MESSAGE_TYPE.COUNT,
-        filters: new NFilters({
-          kinds: [3],
-          "#p": [pubkey],
-        }),
-        options: {
-          timeout: 10000,
-          timeoutAt: Date.now() + 10000,
-        },
-      });
-    };
     init();
   }, []);
+
+  useEffect(() => {
+    init();
+  }, [pubkey]);
 
   /**
    * Remove subscription when we hit the limit
@@ -98,13 +101,15 @@ export function UserProfileRoute() {
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box maxHeight="80vh" overflowY="auto">
         <Box>
-          <Heading size="lg">Profile</Heading>
           {userRecord && (
             <User
               user={userRecord.user}
-              relayUrls={relayUrls}
-              showBanner={true}
-              showAbout={true}
+              options={{
+                showAbout: true,
+                showBanner: true,
+                showFollowing: true,
+                relayUrls: userRecord.relayUrls,
+              }}
             />
           )}
         </Box>

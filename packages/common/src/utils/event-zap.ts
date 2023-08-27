@@ -1,10 +1,8 @@
-import { EventBase, ZapTag } from "src/types";
+import { EventBase, ZapTag } from "../types";
 
 /**
  * Check if event has zap tags
  * https://github.com/nostr-protocol/nips/blob/master/57.md#appendix-g-zap-tag-on-other-events
- * @param event
- * @returns
  */
 export function eventHasZapTags(event: EventBase): ZapTag[] | undefined {
   if (!event.tags) {
@@ -26,6 +24,9 @@ export function eventHasZapTags(event: EventBase): ZapTag[] | undefined {
   return zapTags;
 }
 
+/**
+ * Generate a new zap tag
+ */
 export function createEventZapTag(opts: ZapTag) {
   return [
     "zap",

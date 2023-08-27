@@ -28,6 +28,7 @@ export function WelcomeRoute() {
       if (!connected || initDone.current) return;
       initDone.current = true;
       await useNClient.getState().clearEvents();
+      defaultFilters.until = Date.now() - 10000;
       await useNClient
         .getState()
         .setViewSubscription("welcome", defaultFilters);
@@ -42,6 +43,7 @@ export function WelcomeRoute() {
     const init = async () => {
       if (!connected || initDone.current) return;
       initDone.current = true;
+      defaultFilters.until = Math.round(Date.now() / 1000 - 120);
       await useNClient
         .getState()
         .setViewSubscription("welcome", defaultFilters);
@@ -65,38 +67,36 @@ export function WelcomeRoute() {
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
-      <Box maxHeight="80vh" overflowY="auto">
-        <Box>
-          {connected ? (
-            <Events
-              userComponent={User}
-              view="welcome"
-              filters={defaultFilters}
-              connected={connected}
-            />
-          ) : (
-            <Box maxWidth={600}>
-              <Heading size="lg">About Nostr</Heading>
-              <Text marginBottom={2} fontWeight="bold">
-                Tldr: Nostr is a decentralized social network.
-              </Text>
-              <Text marginBottom={4}>
-                Nostr is anything you can imagine. A new reddit, Twitter,
-                Facebook, Mastodon - Craigstslist or Ebay? It's only a matter of
-                what the interface looks like, the underlying network is the
-                same, and so is your identity - so you get to access it all,
-                without giving up yourself.
-              </Text>
-              <Heading size="md">Connect to get started</Heading>
-              <Text marginBottom={2}>
-                You don't need an account to browse or follow users. All data is
-                saved in your browser. To interact with events, generate or
-                supply a keypair.
-              </Text>
-              <Text>nos2x and nos2x-fox should be working too.</Text>
-            </Box>
-          )}
-        </Box>
+      <Box>
+        {connected ? (
+          <Events
+            userComponent={User}
+            view="welcome"
+            filters={defaultFilters}
+            connected={connected}
+          />
+        ) : (
+          <Box maxWidth={600}>
+            <Heading size="lg">About Nostr</Heading>
+            <Text marginBottom={2} fontWeight="bold">
+              Tldr: Nostr is a decentralized social network.
+            </Text>
+            <Text marginBottom={4}>
+              Nostr is anything you can imagine. A new reddit, Twitter,
+              Facebook, Mastodon - Craigstslist or Ebay? It's only a matter of
+              what the interface looks like, the underlying network is the same,
+              and so is your identity - so you get to access it all, without
+              giving up yourself.
+            </Text>
+            <Heading size="md">Connect to get started</Heading>
+            <Text marginBottom={2}>
+              You don't need an account to browse or follow users. All data is
+              saved in your browser. To interact with events, generate or supply
+              a keypair.
+            </Text>
+            <Text>nos2x and nos2x-fox should be working too.</Text>
+          </Box>
+        )}
       </Box>
       <Box display="flex" flexDirection="column">
         <Heading as="h2" size="md" marginBottom={4}>

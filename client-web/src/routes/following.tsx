@@ -36,7 +36,10 @@ export function FollowingRoute() {
               <User
                 user={item.user}
                 key={item.user.pubkey}
-                relayUrls={item.relayUrls}
+                options={{
+                  showFollowing: true,
+                  relayUrls: item.relayUrls,
+                }}
               />
             </Box>
           ))}

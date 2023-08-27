@@ -26,4 +26,7 @@
       aspect-ratio: auto;
     }
   }
-  
+
+  a.is-inline {
+    text-decoration: underline
+  }

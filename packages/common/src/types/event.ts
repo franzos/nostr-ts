@@ -1,4 +1,4 @@
-import { ExternalIdentityClaim } from "src/classes";
+import { ExternalIdentityClaim } from "../classes/identity-claim";
 import { NEVENT_KIND } from "./event-kind";
 import { UserMetadata } from "./user-metadata";
 import { Report } from "./report";
@@ -16,19 +16,24 @@ export interface EventBase {
   sig?: string;
 }
 
-export interface iNewShortTextNote {
+export interface iNewBase {
+  pow?: string;
+  relayUrls?: string[];
+}
+
+export interface iNewShortTextNote extends iNewBase {
   text: string;
   subject?: string;
 }
 
-export interface iNewLongFormContent {
+export interface iNewLongFormContent extends iNewBase {
   text: string;
   isDraft?: boolean;
   // d identifier to make it replaceable
   identifier?: string;
 }
 
-interface inResponse {
+interface inResponse extends iNewBase {
   /**
    * The event that this is in response to
    */
@@ -125,7 +130,7 @@ export interface iNewZAPReceipt {
   zapRequest?: EventBase;
 }
 
-export interface iNewEventDeletion {
+export interface iNewEventDeletion extends iNewBase {
   text: string;
   events: EventBase[];
 

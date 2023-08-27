@@ -17,6 +17,7 @@ import {
   iNewZAPReceipt,
   iNewEventDeletion,
   EventCoordinatesTag,
+  EventEventTag,
 } from "../types";
 import {
   hash,
@@ -49,6 +50,11 @@ import {
   eventHasAmountTags,
   makeEventCoordinatesTag,
   countLeadingZeroes,
+  eventAddNonceTag,
+  eventReplaceNonceTag,
+  eventHasEventTags,
+  eventHasPositionalEventTag,
+  eventHasPositionalEventTags,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -149,7 +155,12 @@ export class NEvent implements EventBase {
     if (!extracted) {
       this.content = createEventContent({
         message: this.content,
-        publicKeys,
+        nurls: [
+          {
+            type: "npub",
+            publicKeys,
+          },
+        ],
       });
     } else {
       throw new Error("Already has motified content");
@@ -162,14 +173,11 @@ export class NEvent implements EventBase {
    */
   public hasMentions(): string[] | undefined {
     const extracted = this.extractContent();
-    if (
-      !extracted ||
-      !extracted.publicKeys ||
-      extracted.publicKeys.length < 1
-    ) {
-      return;
+    if (!extracted) {
+      return undefined;
     }
-    return extracted.publicKeys;
+    const publicKeys = extracted?.nurls.filter((n) => n.type === "npub");
+    return publicKeys.length > 0 ? publicKeys[0].publicKeys : undefined;
   }
 
   /**
@@ -208,34 +216,24 @@ export class NEvent implements EventBase {
    * Standard tag
    * https://github.com/nostr-protocol/nips/blob/master/README.md#standardized-tags
    */
-  public addEventTag(eventId: string, relayUrl?: string) {
-    const tag = ["e", eventId];
-    if (relayUrl) {
-      tag[1] = `${tag[1]}, ${relayUrl}`;
+  public addEventTag(data: EventEventTag) {
+    const relayUrl = data.relayUrl ? data.relayUrl : "";
+    let tag = ["e", data.eventId];
+    if (data.marker) {
+      tag = [...tag, relayUrl, data.marker];
+    } else if (data.relayUrl) {
+      tag = [...tag, data.relayUrl];
     }
     this.addTag(tag);
   }
 
-  public hasEventTags():
-    | {
-        eventId: string;
-        relayUrl?: string;
-      }[]
-    | undefined {
-    const tags = this.tags.filter((tag) => tag[0] === "e");
-    if (tags.length === 0) {
-      return;
+  public hasEventTags(): EventEventTag[] | undefined {
+    const hasPositional = eventHasPositionalEventTag(this);
+    if (hasPositional) {
+      return eventHasPositionalEventTags(this);
+    } else {
+      return eventHasEventTags(this);
     }
-
-    return tags.map((tag) => {
-      const parts = tag[1].split(",");
-      const eventId = parts[0].trim();
-      const relayUrl = parts[1] ? parts[1].trim() : undefined;
-      return {
-        eventId,
-        relayUrl,
-      };
-    });
   }
 
   /**
@@ -383,18 +381,8 @@ export class NEvent implements EventBase {
    * https://github.com/nostr-protocol/nips/blob/master/13.md
    */
   public addNonceTag(nonce: number[]) {
-    if (this.hasNonceTag()) {
-      throw new Error("Event already has a nonce.");
-    }
-    if (nonce.length !== 2) {
-      throw new Error(
-        "Nonce must be an array of 2 numbers: [miningResult, difficulty]"
-      );
-    }
-    const miningResult = nonce[0].toString();
-    const difficulty = nonce[1].toString();
-
-    this.addTag(["nonce", miningResult, difficulty]);
+    const update = eventAddNonceTag(this, nonce);
+    this.tags = update.tags;
   }
 
   /**
@@ -409,11 +397,8 @@ export class NEvent implements EventBase {
    * @param nonce
    */
   public replaceNonceTag(nonce: number[]) {
-    const hasTag = this.hasNonceTag();
-    if (hasTag) {
-      this.tags = this.tags.filter((tag) => tag[0] !== "nonce");
-    }
-    this.addNonceTag(nonce);
+    const update = eventReplaceNonceTag(this, nonce);
+    this.tags = update.tags;
   }
 
   /**
@@ -585,7 +570,9 @@ export function NewLongFormContent(opts: iNewLongFormContent) {
       : NEVENT_KIND.LONG_FORM_CONTENT,
   });
   if (opts.identifier) {
-    newEvent.addEventTag(opts.identifier);
+    newEvent.addEventTag({
+      eventId: opts.identifier,
+    });
   }
   return newEvent;
 }
@@ -621,9 +608,46 @@ export function NewShortTextNoteResponse(
     console.log("Event you are responding to does not have a subject.");
   }
 
-  // Append tags
-  newEvent.addEventTag(inResponseToEvent.id, opts.relayUrl);
-  newEvent.addPublicKeyTag(inResponseToEvent.pubkey, opts.relayUrl);
+  /**
+   * Event tags
+   */
+  const origEventTags = inResponseToEvent.hasEventTags();
+  const rootTag = origEventTags
+    ? origEventTags.find((t) => t.marker === "root")
+    : undefined;
+  if (rootTag) {
+    // If the event we're responding to is a response itself, it should have a root tag
+    newEvent.addEventTag({
+      eventId: rootTag.eventId,
+      relayUrl: opts.relayUrl,
+      marker: "root",
+    });
+    newEvent.addEventTag({
+      eventId: opts.inResponseTo.id,
+      relayUrl: opts.relayUrl,
+      marker: "reply",
+    });
+  } else {
+    // If there's no root tag, this is a response, to the root event
+    newEvent.addEventTag({
+      eventId: opts.inResponseTo.id,
+      relayUrl: opts.relayUrl,
+      marker: "root",
+    });
+  }
+
+  /**
+   * Public key tags
+   */
+  const origPublicKeyTags = inResponseToEvent.hasPublicKeyTags();
+  const pubKeyTags = [];
+  if (origPublicKeyTags) {
+    pubKeyTags.push(origPublicKeyTags);
+  }
+  pubKeyTags.push([inResponseToEvent.pubkey, opts.relayUrl]);
+  for (const tag of pubKeyTags) {
+    newEvent.addPublicKeyTag(tag[0], tag[1]);
+  }
 
   return newEvent;
 }
@@ -649,7 +673,10 @@ export function NewReaction(opts: iNewReaction) {
     tags: [],
   });
 
-  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addEventTag({
+    eventId: opts.inResponseTo.id,
+    relayUrl: opts.relayUrl,
+  });
   nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
 
   return nEv;
@@ -675,7 +702,10 @@ export function NewQuoteRepost(opts: iNewQuoteRepost) {
     kind: NEVENT_KIND.REPOST,
   });
 
-  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addEventTag({
+    eventId: opts.inResponseTo.id,
+    relayUrl: opts.relayUrl,
+  });
   nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
 
   return nEv;
@@ -696,7 +726,10 @@ export function NewGenericRepost(opts: iNewGenericRepost) {
     kind: NEVENT_KIND.GENERIC_REPOST,
   });
 
-  nEv.addEventTag(opts.inResponseTo.id, opts.relayUrl);
+  nEv.addEventTag({
+    eventId: opts.inResponseTo.id,
+    relayUrl: opts.relayUrl,
+  });
   nEv.addPublicKeyTag(opts.inResponseTo.pubkey, opts.relayUrl);
   nEv.addKindTag(opts.inResponseTo.kind);
 
@@ -791,7 +824,9 @@ export function NewZapRequest(opts: iNewZAPRequest) {
   nEv.addPublicKeyTag(opts.recipientPubkey);
 
   if (opts.eventId) {
-    nEv.addEventTag(opts.eventId);
+    nEv.addEventTag({
+      eventId: opts.eventId,
+    });
   }
   return nEv;
 }
@@ -857,7 +892,9 @@ export function NewZapReceipt(opts: iNewZAPReceipt) {
   });
 
   if (eTag) {
-    nEv.addEventTag(eTag[1]);
+    nEv.addEventTag({
+      eventId: eTag[1],
+    });
   }
 
   if (opts.preimage) {
@@ -893,7 +930,9 @@ export function NewEventDeletion(opts: iNewEventDeletion) {
     }
   } else {
     for (const ev of opts.events) {
-      nEv.addEventTag(ev.id);
+      nEv.addEventTag({
+        eventId: ev.id,
+      });
     }
   }
 

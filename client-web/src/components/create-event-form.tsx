@@ -224,7 +224,13 @@ export const CreateEventForm = () => {
         <FormLabel>Type: {translateNameToLabel(newEventName)}</FormLabel>
 
         {users.map((user) => (
-          <User user={user} key={user.pubkey} relayUrls={[userrelayUrl]} />
+          <User
+            user={user}
+            key={user.pubkey}
+            options={{
+              relayUrls: [userrelayUrl],
+            }}
+          />
         ))}
       </FormControl>
       <FormControl marginBottom={4}>

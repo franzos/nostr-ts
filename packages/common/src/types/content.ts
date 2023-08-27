@@ -5,7 +5,10 @@
  */
 export interface NEventContent {
   message?: string;
-  type?: "nostr" | "relayUrl";
-  publicKeys?: string[];
   relayUrl?: string;
+  nurls?: {
+    type?: "npub" | "nsec" | "note" | "lnurl" | "nprofile" | "nevent";
+    // TODO: Not really accurate
+    publicKeys?: string[];
+  }[];
 }

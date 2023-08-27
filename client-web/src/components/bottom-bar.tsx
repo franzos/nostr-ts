@@ -51,7 +51,7 @@ export function BottomBar() {
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
             // Ignore for now
             return;
-            description = `Loaded all requested events for subscription ${event.data[1]}`;
+            // description = `Loaded all requested events for subscription ${event.data[1]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
             description = `Relay ${event.data[1]}: ${JSON.stringify(
               event.data[2]
@@ -73,15 +73,7 @@ export function BottomBar() {
   }, [relayEvents]);
 
   return (
-    <Box
-      position="fixed"
-      bottom={0}
-      left={0}
-      right={0}
-      bg="white"
-      boxShadow="md"
-      p={3}
-    >
+    <Box position="fixed" bottom={0} left={0} right={0} p={3}>
       <HStack spacing={4}>
         <>
           <HStack spacing={2}>

@@ -1,22 +1,34 @@
-import { NEvent } from "../classes";
-import { EventBase } from "./event";
+import { NEvent } from "../classes/event";
+import { NUserBase } from "../classes/user";
 import { UserBase } from "./user";
+
+export interface EventWithUser {
+  user?: UserBase;
+  event: NEvent;
+}
 
 export interface EventBaseWithUserBase {
   user?: UserBase;
-  event: EventBase;
-  eventRelayIds: string[];
+  event: NEvent;
+  eventRelayUrls: string[];
   // 7
-  reactions?: NEvent[];
-  reactionsCount?: number;
+  reactions?: EventWithUser[];
   // 6
-  reposts?: NEvent[];
-  repostsCount?: number;
+  reposts?: EventWithUser[];
   // 8
   badgeAwards?: NEvent[];
-  badgeAwardsCount?: number;
 
-  mentions?: UserBase[];
+  // Mentions and replies
+  mentions?: NUserBase[];
+
+  // Mentions and replies
+  replies?: EventWithUser[];
+
+  // TODO: Implement
+  // In Response to
+  // inResponseTo?: EventWithUser[];
+
+  lightningReceipts?: EventWithUser[];
 }
 
 export interface NEventWithUserBase extends EventBaseWithUserBase {
@@ -25,18 +37,18 @@ export interface NEventWithUserBase extends EventBaseWithUserBase {
 }
 
 export interface idOrKey {
-  source: "events" | "users";
+  source: "events" | "events:related" | "users";
   idOrKey: string;
 }
 
-export interface idOrKeyWithRelayIds {
-  source: "events" | "users";
+export interface idOrKeyWithrelayUrls {
+  source: "events" | "events:related" | "users";
   idOrKey: string;
-  relayIds: string[];
+  relayUrls: string[];
 }
 
 export interface RelaysWithIdsOrKeys {
-  source: "events" | "users";
-  relayId: string;
+  source: "events" | "events:related" | "users";
+  relayUrl: string;
   idsOrKeys: string[];
 }

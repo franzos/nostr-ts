@@ -86,7 +86,14 @@ export function UserMentionsRoute() {
       <Box maxHeight="80vh" overflowY="auto">
         <Box>
           <Heading size="lg">Profile</Heading>
-          {userRecord && <User user={userRecord.user} relayUrls={relayUrls} />}
+          {userRecord && (
+            <User
+              user={userRecord.user}
+              options={{
+                relayUrls: userRecord.relayUrls,
+              }}
+            />
+          )}
         </Box>
         <Box>
           {connected ? (

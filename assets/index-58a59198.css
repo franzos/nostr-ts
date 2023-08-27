@@ -1,1 +1,0 @@
-.image-container{display:flex;gap:10px;width:100%;aspect-ratio:1 / 1;overflow:hidden}.image-container img{width:100%;height:auto;object-fit:cover}.image-container img:nth-child(2):nth-last-child(2),.image-container img:nth-child(2):nth-last-child(2)~img{flex:1}@media (max-aspect-ratio: 1/1){.image-container{aspect-ratio:auto}}

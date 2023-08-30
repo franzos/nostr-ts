@@ -34,3 +34,9 @@ curl --insecure -H "Accept: application/nostr+json" https://nostr-ts.relay
 ```
 
 Usage in Browser: Open [https://nostr-ts.relay](https://nostr-ts.relay) and approve the self-signed certificate, then connect with `client-web`.
+
+If you want to use `client` instead, you might need to start it like this (self-signed certificate):
+
+```bash
+NODE_TLS_REJECT_UNAUTHORIZED=0 node dist/index.js
+```

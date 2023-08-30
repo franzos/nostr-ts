@@ -20,7 +20,6 @@ WORKDIR /
 
 COPY --from=builder /go/bin/gnost-relay /gnost-relay
 COPY entrypoint.sh /entrypoint.sh
-COPY config.json /config.json
 
 RUN chmod +x /entrypoint.sh
 

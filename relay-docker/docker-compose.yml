@@ -21,6 +21,8 @@ services:
       DATABASE_URL: postgres://barkyq:super_secret_password@postgres:5432/nostrdb
     depends_on:
       - postgres
+    volumes:
+      - ./config.json:/config.json
     container_name: gnost_relay_service
 
   nginx:

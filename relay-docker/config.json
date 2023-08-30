@@ -1,9 +1,9 @@
 {
-  "relay_url": "ws://nostr-ts.relay",
+  "relay_url": "wss://nostr-ts.relay",
   "nip11_info_document": {
     "name": "GNOST Relay",
     "description": "GNOST Relay",
-    "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
+    "pubkey": "6c1a8060cbdf0e9628958b259e43112b9e94b4a07e8a858cf12a3ae8a7c76285",
     "contact": "barkyq",
     "supported_nips": [1, 9, 11, 12, 15, 16, 20, 22, 26, 28, 33, 40, 42],
     "software": "git+https://github.com/barkyq/gnost-relay",

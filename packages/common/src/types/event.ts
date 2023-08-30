@@ -138,3 +138,13 @@ export interface iNewEventDeletion {
    */
   relayUrl?: string;
 }
+
+export interface iNewAuthEvent {
+  relayUrl: string;
+  challenge: string;
+}
+
+export interface iNewEncryptedPrivateMessage {
+  text: string;
+  recipientPubkey: string;
+}

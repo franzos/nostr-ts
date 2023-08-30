@@ -30,7 +30,12 @@ export interface WebSocketClientBase {
   /**
    * Actually make the connection
    */
-  connect: (url: string) => void;
+  connect: (
+    url: string,
+    options?: {
+      rejectUnauthorized?: boolean;
+    }
+  ) => void;
 
   /**
    * Check if WS is connected
@@ -79,7 +84,6 @@ export interface WebSocketClientInfo extends WebSocketClientConfig {
 }
 
 export interface WebSocketClientConnection extends WebSocketClientConfig {
-  id: string;
   url: string;
   ws?: WebSocketClientBase;
 

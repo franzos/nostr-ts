@@ -158,13 +158,13 @@ export function logRelayMessage(
   const [type, ...rest] = data;
   switch (type) {
     case RELAY_MESSAGE_TYPE.AUTH:
-      console.log(`RECEIVED AUTH CHALLENGE: ${data[1]}`, ...rest);
+      console.log(`RECEIVED AUTH CHALLENGE: ${data[1]}`);
       break;
     case RELAY_MESSAGE_TYPE.COUNT:
       console.log(`RECEIVED COUNT: ${data[2].count}`, ...rest);
       break;
     case RELAY_MESSAGE_TYPE.EOSE:
-      console.log(`RECEIVED EOSE: ${data[1]}`, ...rest);
+      console.log(`RECEIVED EOSE: ${data[1]}`);
       break;
     case RELAY_MESSAGE_TYPE.EVENT:
       console.log(`RECEIVED EVENT: ${data[2].id}`, ...rest);
@@ -174,7 +174,7 @@ export function logRelayMessage(
       }
       break;
     case RELAY_MESSAGE_TYPE.NOTICE:
-      console.log(`RECEIVED NOTICE: ${data[1]}`, ...rest);
+      console.log(`RECEIVED NOTICE: ${data[1]}`);
       break;
     case RELAY_MESSAGE_TYPE.OK:
       console.log(`RECEIVED OK: ${data[1]}`, ...rest);

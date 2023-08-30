@@ -18,6 +18,8 @@ import {
   iNewEventDeletion,
   EventCoordinatesTag,
   EventEventTag,
+  iNewAuthEvent,
+  iNewEncryptedPrivateMessage,
 } from "../types";
 import {
   hash,
@@ -112,6 +114,7 @@ export class NEvent implements EventBase {
       throw new Error("Cannot sign event without an ID. Generate ID first.");
     }
     this.pubkey = keyPair.publicKey;
+    console.log(`Signing event ${this.id} with ${keyPair.publicKey}`);
     this.sig = sign(this.id, keyPair.privateKey);
   }
 
@@ -262,7 +265,7 @@ export class NEvent implements EventBase {
   public addPublicKeyTag(pubkey: string, relayUrl?: string) {
     const tag = ["p", pubkey];
     if (relayUrl) {
-      tag[1] = `${tag[1]}, ${relayUrl}`;
+      tag.push(relayUrl);
     }
     this.addTag(tag);
   }
@@ -972,6 +975,33 @@ export function NewEventDeletion(opts: iNewEventDeletion) {
   if (nEv.tags.length === 0) {
     throw new Error("No tags added to event deletion");
   }
+
+  return nEv;
+}
+
+export function NewAuthEvent(opts: iNewAuthEvent) {
+  const nEv = new NEvent({
+    content: "",
+    kind: NEVENT_KIND.CLIENT_AUTHENTICATION,
+    tags: [
+      ["relay", opts.relayUrl],
+      ["challenge", opts.challenge],
+    ],
+  });
+
+  return nEv;
+}
+
+/**
+ * You need to encrypt the message yourself
+ * https://github.com/nostr-protocol/nips/blob/master/04.md
+ */
+export function NewEncryptedPrivateMessage(opts: iNewEncryptedPrivateMessage) {
+  const nEv = new NEvent({
+    content: "",
+    kind: NEVENT_KIND.ENCRYPTED_DIRECT_MESSAGES,
+  });
+  nEv.addPublicKeyTag(opts.recipientPubkey);
 
   return nEv;
 }

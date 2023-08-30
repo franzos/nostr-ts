@@ -1,16 +1,20 @@
 import { nanoid } from "nanoid";
 import {
+  AuthRequest,
   CLIENT_MESSAGE_TYPE,
+  ClientAuth,
   ClientClose,
   ClientCount,
   ClientEvent,
   ClientRequest,
+  CloseRequest,
   CountRequest,
+  EventsRequest,
   PublishingQueueItem,
   PublishingRequest,
+  RELAY_MESSAGE_TYPE,
   Relay,
   RelaySubscription,
-  SubscriptionRequest,
   WebSocketEvent,
 } from "../types/index";
 import { RelayConnection } from "./relay-connection";
@@ -18,22 +22,31 @@ import { RelayConnection } from "./relay-connection";
 export class RelayClientBase {
   public relays: RelayConnection[] = [];
 
-  constructor(seedRelays?: Relay[]) {
-    this.addInitialRelays(seedRelays);
+  options?: {
+    /**
+     * Use websocket with self-signed cert for development (disable verification)
+     */
+    rejectUnauthorized?: boolean;
+  };
+
+  constructor(initRelays?: Relay[]) {
+    this.addInitialRelays(initRelays);
   }
 
   /**
    * Only to be used if you want to initialize Relay Client manually
    */
-  public addInitialRelays(seedRelays?: Relay[]) {
-    if (seedRelays && (!this.relays || this.relays.length === 0)) {
-      for (const relay of seedRelays) {
+  public addInitialRelays(initRelays?: Relay[]) {
+    if (initRelays && (!this.relays || this.relays.length === 0)) {
+      for (const relay of initRelays) {
         this.relays.push(new RelayConnection(relay));
       }
     }
   }
 
-  private sendSubscribe(request: SubscriptionRequest): RelaySubscription[] {
+  private sendSubscribe(
+    request: CountRequest | AuthRequest | EventsRequest | CloseRequest
+  ): RelaySubscription[] {
     const newSubscriptions: RelaySubscription[] = [];
     const relays = request?.relayUrls
       ? this.relays.filter((r) => request.relayUrls.includes(r.url))
@@ -48,12 +61,12 @@ export class RelayClientBase {
           ...restOfRequest,
           id: nanoid(),
           relayUrl: relay.url,
-          connectionId: relay.id,
           created: Date.now(),
           isActive: true,
         };
 
-        let message: ClientRequest | ClientCount;
+        let data;
+        let message: ClientRequest | ClientCount | ClientAuth;
 
         if (request.type === CLIENT_MESSAGE_TYPE.REQ) {
           message = {
@@ -61,11 +74,16 @@ export class RelayClientBase {
             subscriptionId: subscription.id,
             filters: JSON.parse(JSON.stringify(subscription.filters)),
           };
+          data = JSON.stringify([
+            message.type,
+            message.subscriptionId,
+            message.filters,
+          ]);
         } else if (request.type === CLIENT_MESSAGE_TYPE.COUNT) {
           const nips = relay.info?.supported_nips;
           if (nips && !nips.includes(45)) {
-            console.warn(`Relay ${relay.id} does not support count command.`);
-            subscription.error = `Relay ${relay.id} does not support count command.`;
+            console.warn(`Relay ${relay.url} does not support count command.`);
+            subscription.error = `Relay ${relay.url} does not support count command.`;
             continue;
           }
           message = {
@@ -73,15 +91,20 @@ export class RelayClientBase {
             subscriptionId: subscription.id,
             filters: JSON.parse(JSON.stringify(subscription.filters)),
           };
+          data = JSON.stringify([
+            message.type,
+            message.subscriptionId,
+            message.filters,
+          ]);
+        } else if (request.type === CLIENT_MESSAGE_TYPE.AUTH) {
+          message = {
+            type: CLIENT_MESSAGE_TYPE.AUTH,
+            signedEvent: request.signedEvent,
+          };
+          data = JSON.stringify([message.type, message.signedEvent]);
         } else {
           throw new Error("Invalid subscription type.");
         }
-
-        const data = JSON.stringify([
-          message.type,
-          message.subscriptionId,
-          message.filters,
-        ]);
 
         try {
           relay.ws.sendMessage(data);
@@ -91,7 +114,7 @@ export class RelayClientBase {
         }
       } else {
         console.warn(
-          `Relay ${relay.id} is not ready for ${opt} operations. Skipping...`
+          `Relay ${relay.url} is not ready for ${opt} operations. Skipping...`
         );
       }
     }
@@ -106,14 +129,15 @@ export class RelayClientBase {
    * @returns
    */
 
-  subscribe(payload: SubscriptionRequest): RelaySubscription[] {
-    if (payload.type !== CLIENT_MESSAGE_TYPE.REQ) {
-      throw new Error("Invalid subscription type. Expected REQ.");
-    }
-
+  subscribe(
+    payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
+  ): RelaySubscription[] {
     return this.sendSubscribe(payload);
   }
 
+  /**
+   * @deprecated
+   */
   count(payload: CountRequest) {
     if (payload.type !== CLIENT_MESSAGE_TYPE.COUNT) {
       throw new Error("Invalid subscription type. Expected COUNT.");
@@ -211,6 +235,16 @@ export class RelayClientBase {
     return total;
   }
 
+  getAuthChallenge(relayUrls: string[]) {
+    const relays = this.relays.filter((r) => relayUrls.includes(r.url));
+    return relays.map((r) => {
+      return {
+        relayUrl: r.url,
+        challenge: r.authChallenge,
+      };
+    });
+  }
+
   /**
    * Send an event to the relay network
    * @param event
@@ -234,7 +268,7 @@ export class RelayClientBase {
         const publish = {
           id: nanoid(),
           ...restOfRequest,
-          relayUrl: relay.id,
+          relayUrl: relay.url,
           send: true,
           error: undefined,
         };
@@ -256,7 +290,7 @@ export class RelayClientBase {
         published.push(publish);
       } else {
         console.warn(
-          `Relay ${relay.id} is not ready for write operations. Skipping...`
+          `Relay ${relay.url} is not ready for write operations. Skipping...`
         );
       }
     }
@@ -271,7 +305,6 @@ export class RelayClientBase {
     };
     const data = JSON.stringify([message.type, message.data]);
 
-    console.log("Sending queue items", items);
     for (const item of items) {
       const relay = this.relays.find((r) => r.url === item.relayUrl);
       if (relay) {
@@ -292,6 +325,12 @@ export class RelayClientBase {
     for (const relay of this.relays) {
       if (relay.isEnabled) {
         relay.ws.listen((data) => {
+          if (data[0] === RELAY_MESSAGE_TYPE.AUTH) {
+            console.log(
+              `Received auth challenge ${data[1]} from ${relay.url}.`
+            );
+            relay.authChallenge = data[1];
+          }
           onMessage({
             data: data,
             meta: relay.getInfo("default"),

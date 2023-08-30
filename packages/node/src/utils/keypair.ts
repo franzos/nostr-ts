@@ -47,7 +47,7 @@ export async function loadOrCreateKeypair(privateKeyPath?: string) {
     return { privateKey, publicKey };
   } else {
     const keypair = generateClientKeys();
-    await saveKeyPair(keypair);
+    await saveKeyPair(keypair, keypath);
     return keypair;
   }
 }

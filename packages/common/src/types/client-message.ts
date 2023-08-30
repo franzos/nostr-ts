@@ -54,3 +54,8 @@ export interface ClientRequest extends ClientMessageBase {
   subscriptionId: string;
   filters: FiltersBase;
 }
+
+export interface ClientAuth extends ClientMessageBase {
+  type: CLIENT_MESSAGE_TYPE.AUTH;
+  signedEvent: string;
+}

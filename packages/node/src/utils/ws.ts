@@ -19,27 +19,15 @@ export class WebSocketClient implements WebSocketClientBase {
 
   constructor() {}
 
-  connect(url: string) {
-    this.connection = new WebSocket(url);
-
-    this.connection.onopen = () => {
-      console.log(`Websocket connected to ${url}`);
-    };
-    this.connection.onclose = (event: CloseEvent) => {
-      console.log(
-        `WebSocket disconnected from ${url}`,
-        event.code,
-        event.reason
-      );
-    };
-    this.connection.onerror = (event: ErrorEvent) => {
-      console.log(`WebSocket error: ${event.message}`);
-      this.error = {
-        error: event.error,
-        message: event.message,
-        type: event.type,
-      };
-    };
+  connect(
+    url: string,
+    options?: {
+      rejectUnauthorized?: boolean;
+    }
+  ) {
+    this.connection = new WebSocket(url, {
+      rejectUnauthorized: options && options.rejectUnauthorized ? true : false,
+    });
   }
 
   isConnected() {

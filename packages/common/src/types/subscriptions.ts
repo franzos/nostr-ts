@@ -23,13 +23,28 @@ export interface SubscriptionOptions {
  */
 export interface SubscriptionRequest {
   type: CLIENT_MESSAGE_TYPE;
+  options?: SubscriptionOptions;
+  relayUrls?: string[];
+}
+
+export interface EventsRequest extends SubscriptionRequest {
+  type: CLIENT_MESSAGE_TYPE.REQ;
   filters: FiltersBase;
   options: SubscriptionOptions;
-  relayUrls?: string[];
 }
 
 export interface CountRequest extends SubscriptionRequest {
   type: CLIENT_MESSAGE_TYPE.COUNT;
+}
+
+export interface AuthRequest extends SubscriptionRequest {
+  type: CLIENT_MESSAGE_TYPE.AUTH;
+  signedEvent: string;
+}
+
+export interface CloseRequest extends SubscriptionRequest {
+  type: CLIENT_MESSAGE_TYPE.CLOSE;
+  subscriptionId: string;
 }
 
 /**
@@ -38,8 +53,8 @@ export interface CountRequest extends SubscriptionRequest {
 export interface Subscription extends Omit<SubscriptionRequest, "relayUrls"> {
   id: string;
   type: CLIENT_MESSAGE_TYPE;
-  filters: FiltersBase;
-  options: SubscriptionOptions;
+  filters?: FiltersBase;
+  options?: SubscriptionOptions;
   created: number;
   eose?: boolean;
   isActive: boolean;
@@ -49,5 +64,4 @@ export interface Subscription extends Omit<SubscriptionRequest, "relayUrls"> {
 
 export interface RelaySubscription extends Subscription {
   relayUrl: string;
-  connectionId: string;
 }

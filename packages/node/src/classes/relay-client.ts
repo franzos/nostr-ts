@@ -19,6 +19,10 @@ export class RelayClient extends RelayClientBase {
        * then use connectRelays
        */
       connectManually?: boolean;
+      /**
+       * Use websocket with self-signed cert for development (disable verification)
+       */
+      rejectUnauthorized?: boolean;
     }
   ) {
     super(initRelays);
@@ -28,6 +32,7 @@ export class RelayClient extends RelayClientBase {
     ) {
       this.connectRelays();
     }
+    this.options = options;
   }
 
   /**
@@ -40,18 +45,25 @@ export class RelayClient extends RelayClientBase {
         console.log(`=> Connecting to ${relay.url} ...`);
         try {
           relay.ws = new WebSocketClient();
-          relay.ws.connect(relay.url);
-          relay.ws.connection.onopen = () => {
-            `Websocket ID ${relay.id} connected to ${relay.url}`;
+          relay.ws.connect(relay.url, {
+            rejectUnauthorized: this.options?.rejectUnauthorized
+              ? this.options.rejectUnauthorized
+              : undefined,
+          });
+          relay.ws.connection.onopen = (ev: {
+            type: string;
+            target: WebSocket;
+          }) => {
+            console.log(`Websocket connected to ${relay.url}`);
           };
-          relay.ws.connection.onclose = (event: Event) => {
-            console.log(`WebSocket ID ${relay.id} error: `, event);
+          relay.ws.connection.onclose = (event: CloseEvent) => {
+            console.log(`WebSocket ${relay.url} error: `, event);
           };
-          relay.ws.connection.onerror = (event: CloseEvent) => {
+          relay.ws.connection.onerror = (event: ErrorEvent) => {
             console.log(
-              `WebSocket ID ${relay.id} disconnected from ${relay.url}`,
-              event.code,
-              event.reason
+              `WebSocket disconnected from ${relay.url}`,
+              event.error,
+              event.message
             );
           };
         } catch (e) {
@@ -88,12 +100,14 @@ export class RelayClient extends RelayClientBase {
    * - You won't know which relays are active, their limits, and whether they require payment
    * @returns
    */
-  public async getRelayInformation(): Promise<WebSocketClientInfo[]> {
+  public async getRelayInformation(options?: {
+    rejectUnauthorized?: boolean;
+  }): Promise<WebSocketClientInfo[]> {
     const info: WebSocketClientInfo[] = [];
     for (const relay of this.relays) {
       if (!relay.info) {
         try {
-          relay.info = await getRelayInformationDocument(relay.url);
+          relay.info = await getRelayInformationDocument(relay.url, options);
           console.log(`Relay ${relay.url} information`, relay.info);
           info.push(relay.getInfo("withInfo"));
         } catch (e) {

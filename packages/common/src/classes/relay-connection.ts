@@ -10,12 +10,16 @@ import {
 import { NEvent } from "./event";
 
 export class RelayConnection implements WebSocketClientConnection {
-  id: string;
   url: string;
 
   read: boolean;
   write: boolean;
   isEnabled: boolean;
+
+  /**
+   * Latest auth challenge received from the relay (if any)
+   */
+  authChallenge?: string;
 
   /**
    * Set to true if relay requires POW
@@ -79,7 +83,9 @@ export class RelayConnection implements WebSocketClientConnection {
 
   public supportsEventOrThrow(event: NEvent) {
     if (!this.supportsEvent(event)) {
-      throw new Error(`Event ${event.id} is not supported by relay ${this.id}`);
+      throw new Error(
+        `Event ${event.id} is not supported by relay ${this.url}`
+      );
     }
   }
 
@@ -114,7 +120,6 @@ export class RelayConnection implements WebSocketClientConnection {
       ? {
           ...sub,
           relayUrl: this.url,
-          connectionId: this.id,
         }
       : null;
   }
@@ -123,7 +128,6 @@ export class RelayConnection implements WebSocketClientConnection {
     return this.subscriptions.map((sub) => ({
       ...sub,
       relayUrl: this.url,
-      connectionId: this.id,
     }));
   }
 

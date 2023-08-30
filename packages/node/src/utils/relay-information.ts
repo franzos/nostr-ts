@@ -10,7 +10,10 @@ import { makeRequest } from "./make-request";
  * @returns
  */
 export async function getRelayInformationDocument(
-  webSocketUrl: string
+  webSocketUrl: string,
+  options?: {
+    rejectUnauthorized?: boolean;
+  }
 ): Promise<RelayInformationDocument> {
   // Replace "wss://" with "https://"
   let httpsUrl = webSocketUrl.replace(/^wss:\/\//i, "https://");
@@ -24,5 +27,5 @@ export async function getRelayInformationDocument(
   };
 
   // Use inline import for 'node-fetch'
-  return makeRequest(httpsUrl, headers);
+  return makeRequest(httpsUrl, headers, options);
 }

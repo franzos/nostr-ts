@@ -4,9 +4,12 @@ I wanted to learn more about Nostr, so I decided to implement libraries and clie
 
 - `./client`: node client example
 - `./client-web`: react client example (`NUserStoreMemory`, React, Chakra, Zustand)
+- `./relay-docker`: high-performance gnost-relay docker image for local testing
 - `@nostr-ts/common`: `./packages/common`: common types and functions
 - `@nostr-ts/node`: `./packages/node`: client for usage with node `ws` library
 - `@nostr-ts/web`: `./packages/web`: client for usage with browser `WebSocket` API
+
+If you want to know what I think about Nostr and how it compares to Mastodon, Matrix and others, checkout [this article](https://f-a.nz/gist/hello-nostr/).
 
 ### Preview of the web client
 
@@ -23,7 +26,7 @@ A new, live version builds from master on every commit: [https://franzos.github.
 
 ## Highlights
 
-- Supported NIP: 1, 10, 11, 13, 14, 18, 23, 25, 36, 39, 40, 45, 56
+- Supported NIP: 1, 4, 10, 11, 13, 14, 18, 23, 25, 36, 39, 40, 42, 45, 56
 - Partial NIP: 19, 32, 57
 - `RelayClient` to handle websocket connection and message sending (node, web)
 - `RelayDiscovery` to make it easy to pickup new relays (node)
@@ -111,9 +114,9 @@ await client.getRelayInformation();
 **Send a message**:
 
 ```js
-const ev = NewShortTextNote({ text: 'Hello nostr!' })
-ev.signAndGenerateId(keypair)
-client.sendEvent(ev)
+const event = NewShortTextNote({ text: 'Hello nostr!' })
+event.signAndGenerateId(keypair)
+client.sendEvent({event})
 ```
 
 **Receive messages**:
@@ -135,11 +138,11 @@ client.listen((payload) => {
 **Recommend a relay**
 
 ```js
-const ev = NewRecommendRelay({
+const event = NewRecommendRelay({
     relayUrl: 'wss://nostr.rocks',
 })
-ev.signAndGenerateId(keypair)
-client.sendEvent(ev)
+event.signAndGenerateId(keypair)
+client.sendEvent({event})
 ```
 
 **Supported messages (events)**
@@ -163,7 +166,7 @@ client.sendEvent(ev)
 You can manually assemble an event:
 
 ```js
-const ev = new NEvent({
+const event = new NEvent({
    kind: NEVENT_KIND_SHORT_TEXT_NOTE,
    tags: [],
    content: 'Hello nostr!',
@@ -171,52 +174,106 @@ const ev = new NEvent({
 
 // These are all the options; you do not (and usually should not) use all of them
 // If something doesn't add-up, these sometimes throw an error
-ev.addEventTag(...)
-ev.addPublicKeyTag(...)
-ev.addRelaysTag(...)
-ev.addEventCoordinatesTag(...)
-ev.addIdentifierTag(...)
-ev.addLnurlTag(...)
-ev.addAmountTag(...)
-ev.addKindTag(...)
-ev.addExpirationTag(...)
-ev.addSubjectTag(...)
-ev.addSubjectTag(makeSubjectResponse(subject));
-ev.addNonceTag(...)
-ev.addContentWarningTag(...)
-ev.addExternalIdentityClaimTag(...)
-ev.addReportTags(...)
+event.addEventTag(...)
+event.addPublicKeyTag(...)
+event.addRelaysTag(...)
+event.addEventCoordinatesTag(...)
+event.addIdentifierTag(...)
+event.addLnurlTag(...)
+event.addAmountTag(...)
+event.addKindTag(...)
+event.addExpirationTag(...)
+event.addSubjectTag(...)
+event.addSubjectTag(makeSubjectResponse(subject));
+event.addNonceTag(...)
+event.addContentWarningTag(...)
+event.addExternalIdentityClaimTag(...)
+event.addReportTags(...)
 
 // Add custom tags
-ev.addTag(['p', 'myvalue'])
+event.addTag(['p', 'myvalue'])
 
 // Mentions in event content; for ex. Checkout nostr:e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466
-ev.mentionUsers([pubkey1, pubkey2])
-ev.hasMentions()
+event.mentionUsers([pubkey1, pubkey2])
+event.hasMentions()
 
 // Sign
-ev.signAndGenerateId(keypair)
+event.signAndGenerateId(keypair)
 
 // Ready to publish?
-const ready = ev.isReadyToPublish()
+const ready = event.isReadyToPublish()
 
 // Required NIP? [13, 39, 40]
-const nip = ev.determineRequiredNIP()
+const nip = event.determineRequiredNIP()
 
 // Properties
-ev.hasPublicKeyTags()
-ev.hasRelaysTag()
-ev.hasEventCoordinatesTags()
-ev.hasIdentifierTags()
-ev.hasLnurlTags()
-ev.hasAmountTags()
-ev.hasExpirationTag()
-ev.hasSubjectTag()
-ev.hasNonceTag()
-ev.hasContentWarningTag()
-ev.hasExternalIdentityClaimTag()
-ev.hasReportTags()
+event.hasPublicKeyTags()
+event.hasRelaysTag()
+event.hasEventCoordinatesTags()
+event.hasIdentifierTags()
+event.hasLnurlTags()
+event.hasAmountTags()
+event.hasExpirationTag()
+event.hasSubjectTag()
+event.hasNonceTag()
+event.hasContentWarningTag()
+event.hasExternalIdentityClaimTag()
+event.hasReportTags()
 ```
+
+- [ ] NIP-4 [Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)
+
+```js
+const event = NewEncryptedPrivateMessage({
+    text: "Let's make this secret plan happen!",
+    recipientPubkey: "...",
+});
+const encEv = await encryptEvent(event, keypair);
+event.content = encEv.content as string;
+event.signAndGenerateId(keypair);
+```
+
+This is a bit ugly, as I did not want to include the encryption library in the common package.
+
+Here's what it might looks like:
+
+```js
+import crypto from 'crypto'
+import { getSharedSecret } from '@noble/secp256k1'
+
+export async function encryptEvent(
+  event: EventBase,
+  keyPair: {
+    privateKey: string;
+    publicKey: string;
+  }
+) {
+  const recipientPublicKey = event.tags ? event.tags[0][1] : undefined;
+  if (!recipientPublicKey) {
+    throw new Error(
+      "No recipient public key set. Did you use NewEncryptedPrivateMessage?"
+    );
+  }
+
+  let sharedPoint = await getSharedSecret(
+    keyPair.privateKey,
+    "02" + recipientPublicKey
+  );
+  let sharedX = sharedPoint.slice(1, 33);
+
+  let iv = crypto.randomFillSync(new Uint8Array(16));
+  var cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(sharedX), iv);
+  let encryptedMessage = cipher.update(event.content || "", "utf8", "base64");
+  encryptedMessage += cipher.final("base64");
+  let ivBase64 = Buffer.from(iv.buffer).toString("base64");
+
+  event.content = encryptedMessage + "?iv=" + ivBase64;
+
+  return event;
+}
+```
+
+_Adapted from this example: [github.com/nostr-protocol/nips/blob/master/04](https://github.com/nostr-protocol/nips/blob/master/04.md)._
 
 - [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
@@ -240,10 +297,10 @@ Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not publi
 
 ```js
 const difficulty = 28
-const ev = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
-ev.pubkey = keypair.pub
-ev.proofOfWork(difficulty);
-ev.sign()
+const event = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
+event.pubkey = keypair.pub
+event.proofOfWork(difficulty);
+event.sign()
 ```
 
 If you need anything above ~20 bits and work in the browser, there's a helper function for web worker (`proofOfWork(event, bits)`):
@@ -282,8 +339,8 @@ return new Promise((resolve, reject) => {
 - [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
 
 ```js
-const ev = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
-ev.addSubjectTag("All things Bitcoin");
+const event = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
+event.addSubjectTag("All things Bitcoin");
 ```
 
 If you want to respond to a note, keeping the subject:
@@ -299,7 +356,7 @@ const inResponseTo = {
     sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
 }
 const relayUrl = "wss://nostr.rocks"
-const ev = NewShortTextNoteResponse({
+const event = NewShortTextNoteResponse({
     text: "Sounds like a great idea. What do you think about the Lightning Network?",
     inResponseTo,
     relayUrl
@@ -311,9 +368,7 @@ If this is the first response, we prepend the subject with `Re: ` automatically.
 - [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js
-const ev = NewQuoteRepost({
-    relayUrl: 'https://nostr.rocks',
-    inResponseTo: {
+const inReponseTo = {
         id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
         pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
         created_at: 1690881792,
@@ -322,9 +377,12 @@ const ev = NewQuoteRepost({
         content: "Hello everyone! I am working on a new ts library for nostr. This is just a test.",
         sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
     }
+const event = NewQuoteRepost({
+    relayUrl: 'https://nostr.rocks',
+    inReponseTo
 })
-ev.signAndGenerateId(keypair)
-client.sendEvent(ev)
+event.signAndGenerateId(keypair)
+client.sendEvent({event})
 ```
 
 You can also utilize `NewGenericRepost` to repost any kind of event.
@@ -340,7 +398,7 @@ There are some utilities to get you started (WIP):
 - [ ] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
 
 ```js
-const ev = NewLongFormContent({
+const event = NewLongFormContent({
   text: "This is a really long one. Like I mean, not your usual short note. This is a long one. I mean, really long. Like, really really long. Like, really really really long. Like, really really really really long. Like, really really really really really long. Like, really really really really really really long."
   isDraft: false,
   identifier: "really-really-really-long"
@@ -350,7 +408,7 @@ const ev = NewLongFormContent({
 - [ ] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
 
 ```js
-const ev = NewReaction({
+const event = NewReaction({
     text: '+', 
     inResponseTo: {
         id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
@@ -358,15 +416,15 @@ const ev = NewReaction({
     }
 })
 
-ev.signAndGenerateId(keypair)
-client.sendEvent(ev)
+event.signAndGenerateId(keypair)
+client.sendEvent({event})
 ```
 
 - [ ] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
 
 ```js
-const ev = NewShortTextNote({ text: "This is a test note with explicit language.", });
-ev.addContentWarningTag("explicit language");
+const event = NewShortTextNote({ text: "This is a test note with explicit language.", });
+event.addContentWarningTag("explicit language");
 ```
 
 - [ ] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
@@ -378,22 +436,42 @@ const githubClaim = new ExternalIdentityClaim({
     proof: "9721ce4ee4fceb91c9711ca2a6c9a5ab",
 });
 
-const ev = NewUpdateUserMetadata({
+const event = NewUpdateUserMetadata({
     claims: [githubClaim],
     userMetadata: {
         name: "Semisol",
     },
 });
 
-ev.signAndGenerateId(keypair);
-client.sendEvent(ev);
+event.signAndGenerateId(keypair);
+client.sendEvent({event});
 ```
 
 - [ ] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
 
 ```js
-const ev = NewShortTextNote({ text: "Meeting starts in 10 minutes ..." });
-ev.addExpirationTag(1690990889);
+const event = NewShortTextNote({ text: "Meeting starts in 10 minutes ..." });
+event.addExpirationTag(1690990889);
+```
+
+- [ ] NIP-42 [Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)
+
+As far as I understand, relays should send the auth challenge either on connection, or when required. 
+The relay I'm testing with (gnost-relay) sends it on connection.
+
+Here's how you can respond to the challenge:
+
+```js
+const challenge = "abc"
+const event = NewAuthEvent({
+    relayUrl: "wss://nostr-ts.relay",
+    challenge: challenge,
+});
+event.signAndGenerateId(keypair);
+client.subscribe({
+    type: CLIENT_MESSAGE_TYPE.AUTH,
+    signedEvent: JSON.stringify(event.ToObj()),
+});
 ```
 
 - [ ] NIP-56 [Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)
@@ -404,7 +482,7 @@ If the report refers to another event, use the `eventId` too (for ex. spam, ille
 Impersonation:
 
 ```js
-const ev = NewReport({
+const event = NewReport({
   publicKey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
   kind: NREPORT_KIND.IMPERSONATION,
 })
@@ -413,7 +491,7 @@ const ev = NewReport({
 Spam:
 
 ```js
-const ev = NewReport({
+const event = NewReport({
   publicKey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
   eventId: "e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466",
   kind: NREPORT_KIND.SPAM,
@@ -487,7 +565,7 @@ client.listen(async (payload) => {
                 description: 'Keep stacking sats!'
             })
             receipt.signAndGenerateId(keypair)
-            client.sendEvent(receipt)
+            client.sendEvent({receipt})
       }
     }
 })

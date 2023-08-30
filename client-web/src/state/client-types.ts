@@ -85,4 +85,12 @@ export interface NClient extends NClientBase {
     overwrite?: boolean
   ) => Promise<void>;
   removeViewSubscription: (view: string) => Promise<void>;
+
+  /**
+   * Set to disconnect state
+   * - Clears all subscriptions
+   * - Clears all events
+   * @returns
+   */
+  disconnect: () => Promise<void>;
 }

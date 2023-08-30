@@ -40,13 +40,6 @@ export interface NClientBase {
       autoLoadInfo?: boolean;
     }
   ) => Promise<void>;
-  /**
-   * Set to disconnect state
-   * - Clears all subscriptions
-   * - Clears all events
-   * @returns
-   */
-  disconnect: () => void;
   subscribe: (
     payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
   ) => Promise<Subscription[] | undefined>;

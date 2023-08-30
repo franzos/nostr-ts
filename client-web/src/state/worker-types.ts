@@ -33,6 +33,14 @@ export interface NClientWorker extends NClientBase {
       write?: boolean;
     }
   ) => void;
+
+  /**
+   * Set to disconnect state
+   * - Clears all subscriptions
+   * - Clears all events
+   * @returns
+   */
+  disconnect: () => void;
 }
 
 export interface NClientDB {

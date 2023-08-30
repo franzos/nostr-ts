@@ -154,7 +154,7 @@ export class RelayClientBase {
    */
   unsubscribe(subscriptionIds: string[]) {
     for (const relay of this.relays) {
-      if (!relay.isReady("read")) {
+      if (!relay.isReady("any")) {
         continue;
       }
 

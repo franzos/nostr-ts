@@ -8,10 +8,12 @@ import { PrimaryLayout } from "./layouts/primary.tsx";
 import { WelcomeRoute } from "./routes/welcome.js";
 import { FollowingRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
-import { UserProfileRoute } from "./routes/profile.tsx";
+import { ProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
 import { RelaysRoute } from "./routes/relays.tsx";
 import { PublishingQueueRoute } from "./routes/queue.tsx";
+import { UserMentionsRoute } from "./routes/mentions.tsx";
+import { UserProfileRoute } from "./routes/user-profile.tsx";
 import "./index.css";
 
 const init = async () => {
@@ -30,12 +32,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route element={<PrimaryLayout />}>
             <Route path="/" element={<WelcomeRoute />} />
             <Route path="/account" element={<AccountRoute />} />
+            <Route path="/profile" element={<UserProfileRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
-            {/* <Route path="/mentions/:pubkey" element={<UserMentionsRoute />} /> */}
+            <Route path="/mentions/:pubkey" element={<UserMentionsRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />
-            <Route path="/p/:pubkey" element={<UserProfileRoute />} />
+            <Route path="/p/:pubkey" element={<ProfileRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

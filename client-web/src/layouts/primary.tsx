@@ -18,26 +18,26 @@ import LanConnectIcon from "mdi-react/LanConnectIcon";
 import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
 import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
-import PlaylistCheckIcon from "mdi-react/PlaylistCheckIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
-import ConnectionIcon from "mdi-react/ConnectionIcon";
 import TrayFullIcon from "mdi-react/TrayFullIcon";
+import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
-  const [connected, keystore, eventsQueueCount] = useNClient((state) => [
-    state.connected,
-    state.keystore,
-    state.eventsPublishingQueue.length,
-  ]);
-  const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
+  const [connected, keystore, eventsQueueCount, publicKey] = useNClient(
+    (state) => [
+      state.connected,
+      state.keystore,
+      state.eventsPublishingQueue.length,
+      state.keypair?.publicKey || "",
+    ]
+  );
   const [followingUsers, setFollowingUsers] = useState<
     {
       user: NUserBase;
       relayUrls: string[];
     }[]
   >([]);
-  const [relaysCount, setRelaysCount] = useState<number>(0);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -46,14 +46,6 @@ export function PrimaryLayout() {
     const following = await useNClient.getState().getAllUsersFollowing();
     if (following) {
       setFollowingUsers(following);
-    }
-    const subs = await useNClient.getState().getSubscriptions();
-    if (subs) {
-      setSubscriptionsCount(subs.length);
-    }
-    const relays = await useNClient.getState().getRelays();
-    if (relays) {
-      setRelaysCount(relays.length);
     }
   };
 
@@ -88,25 +80,19 @@ export function PrimaryLayout() {
           />
 
           <MenuItem
-            label="Subscriptions"
-            value={subscriptionsCount}
-            to="/subscriptions"
-            leftIcon={<Icon as={PlaylistCheckIcon} marginRight={1} />}
-          />
-
-          <MenuItem
-            label="Relays"
-            value={relaysCount}
-            to="/relays"
-            leftIcon={<Icon as={ConnectionIcon} marginRight={1} />}
-          />
-
-          <MenuItem
             label="Queue"
             value={eventsQueueCount}
             to="/queue"
             leftIcon={<Icon as={TrayFullIcon} marginRight={1} />}
           />
+
+          {publicKey && publicKey !== "" && (
+            <MenuItem
+              label="Profile"
+              to="/profile"
+              leftIcon={<Icon as={AccountEditIcon} marginRight={1} />}
+            />
+          )}
         </>
       )}
 
@@ -140,28 +126,30 @@ export function PrimaryLayout() {
   );
 
   return (
-    <Container maxW="8xl" p={5}>
-      <VStack spacing={5} align="stretch">
-        <VStack spacing={1} align="start">
-          <Heading as="h1" size="lg">
-            Nostr Client
-          </Heading>
+    <>
+      <Container maxW="8xl" p={5} marginBottom={14}>
+        <VStack spacing={5} align="stretch">
+          <VStack spacing={1} align="start">
+            <Heading as="h1" size="lg">
+              Nostr Client
+            </Heading>
+          </VStack>
+
+          <Grid templateColumns={["1fr", "1fr 4fr"]} gap={20}>
+            {Sidebar}
+
+            <Box>
+              <Outlet />
+            </Box>
+          </Grid>
         </VStack>
-
-        <Grid templateColumns={["1fr", "1fr 4fr"]} gap={20}>
-          {Sidebar}
-
-          <Box>
-            <Outlet />
-          </Box>
-        </Grid>
-      </VStack>
-      {<BottomBar />}
-      {ConnectModal({
-        isOpen,
-        onOpen,
-        onClose,
-      })}
-    </Container>
+        {ConnectModal({
+          isOpen,
+          onOpen,
+          onClose,
+        })}
+      </Container>
+      <BottomBar />
+    </>
   );
 }

@@ -10,11 +10,14 @@ import {
   RelayOK,
   WebSocketClientInfo,
   NEVENT_KIND,
-  SubscriptionRequest,
   Subscription,
   PublishingQueueItem,
   RelaysWithIdsOrKeys,
   SubscriptionOptions,
+  AuthRequest,
+  CloseRequest,
+  CountRequest,
+  EventsRequest,
 } from "@nostr-ts/common";
 import { NUser } from "@nostr-ts/web";
 
@@ -45,7 +48,7 @@ export interface NClientBase {
    */
   disconnect: () => void;
   subscribe: (
-    payload: SubscriptionRequest
+    payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
   ) => Promise<Subscription[] | undefined>;
   eventsMap?: Map<string, ProcessedEvent>;
   /**

@@ -1,8 +1,9 @@
-import { Box, HStack, Text, useToast } from "@chakra-ui/react";
+import { Box, HStack, Link, Text, useToast } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
 import { excerpt } from "../lib/excerpt";
+import { NavLink } from "react-router-dom";
 
 export function BottomBar() {
   const [userCount, setUserCount] = useState(0);
@@ -12,6 +13,8 @@ export function BottomBar() {
     state.relayEvents,
   ]);
   const [lastCount, setLastCount] = useState(0);
+  const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
+  const [relaysCount, setRelaysCount] = useState<number>(0);
 
   const toast = useToast();
 
@@ -19,6 +22,14 @@ export function BottomBar() {
     const count = await useNClient.getState().countUsers();
     if (count) {
       setUserCount(count);
+    }
+    const subs = await useNClient.getState().getSubscriptions();
+    if (subs) {
+      setSubscriptionsCount(subs.length);
+    }
+    const relays = await useNClient.getState().getRelays();
+    if (relays) {
+      setRelaysCount(relays.length);
     }
   };
 
@@ -73,7 +84,14 @@ export function BottomBar() {
   }, [relayEvents]);
 
   return (
-    <Box position="fixed" bottom={0} left={0} right={0} p={3}>
+    <Box
+      position="fixed"
+      bottom={0}
+      left={0}
+      right={0}
+      p={3}
+      backgroundColor="gray.100"
+    >
       <HStack spacing={4}>
         <>
           <HStack spacing={2}>
@@ -86,6 +104,18 @@ export function BottomBar() {
             <Text fontSize="sm">Users:</Text>
             <Text fontSize="xl">{userCount}</Text>
           </HStack>
+          <Link as={NavLink} to="/relays">
+            <HStack spacing={2}>
+              <Text fontSize="sm">Relays:</Text>
+              <Text fontSize="xl">{relaysCount}</Text>
+            </HStack>
+          </Link>
+          <Link as={NavLink} to="/subscriptions">
+            <HStack spacing={2}>
+              <Text fontSize="sm">Subscriptions:</Text>
+              <Text fontSize="xl">{subscriptionsCount}</Text>
+            </HStack>
+          </Link>
         </>
       </HStack>
     </Box>

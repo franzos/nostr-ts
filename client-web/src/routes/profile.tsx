@@ -10,7 +10,7 @@ import { MAX_EVENTS } from "../defaults";
 import { CreateEventForm } from "../components/create-event-form";
 import { UserRecord } from "../state/base-types";
 
-export function UserProfileRoute() {
+export function ProfileRoute() {
   const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
     state.connected,
     state.events.length >= state.maxEvents,

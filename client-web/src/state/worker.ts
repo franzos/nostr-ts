@@ -9,13 +9,15 @@ import {
   Relay,
   WebSocketEvent,
   PublishingQueueItem,
-  SubscriptionRequest,
   CountRequest,
   PublishingRequest,
   RelaySubscription,
   SubscriptionOptions,
   CLIENT_MESSAGE_TYPE,
   RelaysWithIdsOrKeys,
+  AuthRequest,
+  EventsRequest,
+  CloseRequest,
 } from "@nostr-ts/common";
 import { NUser, RelayClient } from "@nostr-ts/web";
 import { IDBPDatabase, openDB } from "idb";
@@ -128,7 +130,9 @@ class WorkerClass implements NClientWorker {
     });
   }
 
-  async subscribe(payload: SubscriptionRequest) {
+  async subscribe(
+    payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
+  ) {
     return this.client?.subscribe(payload);
   }
 
@@ -843,6 +847,7 @@ class WorkerClass implements NClientWorker {
       for (const id of eventIds) {
         const subscription = subscriptions.find(
           (sub) =>
+            sub.filters &&
             sub.filters["#e"]?.includes(id) &&
             sub.filters.kinds?.some((kind) => kinds.includes(kind))
         );
@@ -852,8 +857,8 @@ class WorkerClass implements NClientWorker {
       }
     } else {
       for (const id of eventIds) {
-        const subscription = subscriptions.find((sub) =>
-          sub.filters["#e"]?.includes(id)
+        const subscription = subscriptions.find(
+          (sub) => sub.filters && sub.filters["#e"]?.includes(id)
         );
         if (subscription) {
           subIds.push(subscription.id);

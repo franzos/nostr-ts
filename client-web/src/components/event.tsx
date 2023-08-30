@@ -462,15 +462,7 @@ export function Event({
             <Box key={`${r.event.id}_${user.pubkey}_replies`} marginLeft={10}>
               <Event
                 event={r.event}
-                userComponent={
-                  <UserIcon
-                    user={user}
-                    // TODO: More accurate
-                    options={{
-                      relayUrls: eventRelayUrls,
-                    }}
-                  />
-                }
+                userComponent={userComponent}
                 eventRelayUrls={eventRelayUrls}
               />
             </Box>

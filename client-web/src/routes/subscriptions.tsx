@@ -97,7 +97,7 @@ export function SubscriptionsRoute() {
         </Td>
         <Td>
           <Text fontSize="sm">
-            {sub.filters.kinds && kindsToName(sub.filters.kinds)}
+            {sub.filters && sub.filters.kinds && kindsToName(sub.filters.kinds)}
           </Text>
         </Td>
         <Td>

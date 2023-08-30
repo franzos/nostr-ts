@@ -8,12 +8,14 @@ import {
   NUserBase,
   NFilters,
   PublishingQueueItem,
-  SubscriptionRequest,
   CountRequest,
   PublishingRequest,
   WebSocketClientInfo,
   CLIENT_MESSAGE_TYPE,
   RelaysWithIdsOrKeys,
+  AuthRequest,
+  CloseRequest,
+  EventsRequest,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -135,7 +137,9 @@ export const useNClient = create<NClient>((set, get) => ({
   getSubscriptions: async () => {
     return get().store.getSubscriptions();
   },
-  subscribe: async (payload: SubscriptionRequest) => {
+  subscribe: async (
+    payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
+  ) => {
     return get().store.subscribe(payload);
   },
   unsubscribe: async (ids: string[]) => {

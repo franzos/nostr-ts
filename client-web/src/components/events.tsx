@@ -81,12 +81,7 @@ export function Events(props: {
         <Text>Waiting for fresh content ... hold on.</Text>
       )}
       {events.length >= maxEvents && (
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          padding={2}
-          marginBottom={8}
-        >
+        <Box display="flex" justifyContent="space-between" padding={2}>
           <Button flex="1" marginRight={2} onClick={moreEvents}>
             Load {MAX_EVENTS} more
           </Button>

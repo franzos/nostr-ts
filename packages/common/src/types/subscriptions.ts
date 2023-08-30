@@ -35,6 +35,7 @@ export interface EventsRequest extends SubscriptionRequest {
 
 export interface CountRequest extends SubscriptionRequest {
   type: CLIENT_MESSAGE_TYPE.COUNT;
+  filters: FiltersBase;
 }
 
 export interface AuthRequest extends SubscriptionRequest {

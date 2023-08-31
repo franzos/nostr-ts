@@ -37,11 +37,12 @@ export class RelayClient extends RelayClientBase {
     console.log(`=> Connecting to ${this.relays.length} relay(s) ...`);
     for (const relay of this.relays) {
       if (!relay.isConnected()) {
+        console.log(`=> Connecting to ${relay.url} ...`);
         try {
           relay.ws = new WebSocketClient();
           relay.ws.connect(relay.url);
           relay.ws.connection.onopen = () => {
-            `Websocket connected to ${relay.url}`;
+            console.log(`Websocket connected to ${relay.url}`);
           };
           relay.ws.connection.onclose = (event: CloseEvent) => {
             console.log(

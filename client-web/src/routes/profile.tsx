@@ -66,8 +66,7 @@ export function ProfileRoute() {
         "#p": [pubkey],
       }),
       options: {
-        timeout: 10000,
-        timeoutAt: Date.now() + 10000,
+        timeoutIn: 10000,
       },
     });
   };

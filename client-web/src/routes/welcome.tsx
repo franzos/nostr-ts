@@ -19,20 +19,17 @@ export function WelcomeRoute() {
   });
 
   const initDone = useRef<boolean>(false);
+  const init = async () => {
+    if (!connected || initDone.current) return;
+    initDone.current = true;
+    await useNClient.getState().clearEvents();
+    await useNClient.getState().setViewSubscription("welcome", defaultFilters);
+  };
 
   /**
    * Handle initial load
    */
   useEffect(() => {
-    const init = async () => {
-      if (!connected || initDone.current) return;
-      initDone.current = true;
-      await useNClient.getState().clearEvents();
-      defaultFilters.until = Math.round(Date.now() / 1000 - 120);
-      await useNClient
-        .getState()
-        .setViewSubscription("welcome", defaultFilters);
-    };
     init();
   }, []);
 
@@ -40,15 +37,9 @@ export function WelcomeRoute() {
    * Handle the connection status change
    */
   useEffect(() => {
-    const init = async () => {
-      if (!connected || initDone.current) return;
-      initDone.current = true;
-      defaultFilters.until = Math.round(Date.now() / 1000 - 120);
-      await useNClient
-        .getState()
-        .setViewSubscription("welcome", defaultFilters);
-    };
-    init();
+    setTimeout(() => {
+      init();
+    }, 500);
   }, [connected]);
 
   /**

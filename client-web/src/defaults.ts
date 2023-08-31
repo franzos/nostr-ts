@@ -1,18 +1,14 @@
 export const MAX_EVENTS = 25;
 export const DEFAULT_RELAYS = {
-  "wss://nos.lol": {
+  "wss://relay.shitforce.one": {
     read: true,
-    write: false,
+    write: true,
   },
-  "wss://nostr.wine": {
+  "wss://relay.nostr.band": {
     read: true,
-    write: false,
+    write: true,
   },
-  // "wss://nostr.plebchain.org": {
-  //   read: true,
-  //   write: false,
-  // },
-  // "wss://nostr.einundzwanzig.space": {
+  // "wss://soloco.nl": {
   //   read: true,
   //   write: false,
   // },

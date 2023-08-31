@@ -559,7 +559,6 @@ export const useNClient = create<NClient>((set, get) => ({
    */
   setViewSubscription: async (view: string, filters: NFilters) => {
     const subs = await get().getSubscriptions();
-
     const subIds = [];
     for (const sub of subs) {
       if (sub.options && sub.options.view) {
@@ -582,8 +581,7 @@ export const useNClient = create<NClient>((set, get) => ({
       },
       options: {
         view,
-        timeout: 10000,
-        timeoutAt: Date.now() + 10000,
+        timeoutIn: 15000,
       },
     });
 
@@ -700,8 +698,7 @@ export const useNClient = create<NClient>((set, get) => ({
       for (const item of [...reqUsers, ...reqRelEvents]) {
         infoRequestPromises.push(
           await get().requestInformation(item, {
-            timeout: 10000,
-            timeoutAt: Date.now() + 10000,
+            timeoutIn: 60000,
             view,
           })
         );
@@ -709,8 +706,8 @@ export const useNClient = create<NClient>((set, get) => ({
     };
 
     // TODO: This is not accurate
-    setTimeout(process, 3000);
-    setTimeout(process, 8000);
+    setTimeout(process, 1000);
+    setTimeout(process, 6000);
   },
 
   /**

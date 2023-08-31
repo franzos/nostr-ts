@@ -48,8 +48,7 @@ export function UserProfileRoute() {
         kinds: [NEVENT_KIND.METADATA],
       }),
       options: {
-        timeout: 10000,
-        timeoutAt: Date.now() + 10000,
+        timeoutIn: 10000,
       },
     });
     toast({

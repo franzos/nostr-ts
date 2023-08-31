@@ -75,7 +75,6 @@ class WorkerClass implements NClientWorker {
   }
 
   disconnect() {
-    this.client?.unsubscribeAll();
     this.client?.disconnect();
     this.eventsMap.clear();
     this.connected = false;
@@ -432,8 +431,6 @@ class WorkerClass implements NClientWorker {
                 }, 1000);
               }
               return;
-            } else {
-              console.log(`No root tag found for event ${event.id}`);
             }
           }
 
@@ -690,8 +687,7 @@ class WorkerClass implements NClientWorker {
             relayUrl,
           },
           {
-            timeout: 10000,
-            timeoutAt: Date.now() + 10000,
+            timeoutIn: 10000,
           }
         );
       }
@@ -754,7 +750,6 @@ class WorkerClass implements NClientWorker {
       return;
     }
 
-    const timeout = options?.timeout || 10000;
     let filtered: string[] = [];
 
     if (payload.source === "events" || payload.source === "events:related") {
@@ -823,12 +818,6 @@ class WorkerClass implements NClientWorker {
       if (subs) {
         subscriptions.push(...subs);
       }
-    }
-
-    if (subscriptions.length > 0) {
-      setTimeout(() => {
-        this.unsubscribe(subscriptions.map((sub) => sub.id));
-      }, timeout);
     }
   }
 

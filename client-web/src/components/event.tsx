@@ -27,6 +27,7 @@ import {
   NewQuoteRepost,
   NewReaction,
   NewShortTextNoteResponse,
+  eventHasContentWarning,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
@@ -84,6 +85,11 @@ export function Event({
         }, {} as { [key: string]: number }) || {}
     );
   }, [reactions]);
+
+  const hasContentWarning = eventHasContentWarning(event);
+  const [showContent, setShowContent] = useState(
+    hasContentWarning == undefined ? true : false
+  );
 
   const images = event?.content?.match(
     /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif)\b/gi
@@ -190,8 +196,7 @@ export function Event({
             relayUrl: eventRelayUrls[0],
           },
           {
-            timeout: 10000,
-            timeoutAt: Date.now() + 10000,
+            timeoutIn: 10000,
           }
         );
       }
@@ -253,11 +258,13 @@ export function Event({
           {repostsCount}
         </Button>
         {reactionsWithCount &&
-          Object.keys(reactionsWithCount).map((r) => (
-            <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
-              {r} {reactionsWithCount[r]}
-            </Button>
-          ))}
+          Object.keys(reactionsWithCount)
+            .slice(0, 2)
+            .map((r) => (
+              <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
+                {r} {reactionsWithCount[r]}
+              </Button>
+            ))}
       </HStack>
     );
   };
@@ -330,19 +337,26 @@ export function Event({
     >
       <CardHeader p={0}>
         <Box>
-          {images && images?.length > 0 && (
-            <Box className="image-container" marginBottom={4}>
-              {images.map((i, index) => (
-                <Image
-                  key={index}
-                  src={i}
-                  fallback={<Image src="/no-image.png" />}
-                  fallbackStrategy="onError"
-                  alt=""
-                  onClick={() => openImage(i)}
-                />
-              ))}
-            </Box>
+          {showContent ? (
+            images &&
+            images.length > 0 && (
+              <Box className="image-container" marginBottom={4}>
+                {images.map((i, index) => (
+                  <Image
+                    key={index}
+                    src={i}
+                    fallback={<Image src="/no-image.png" />}
+                    fallbackStrategy="onError"
+                    alt=""
+                    onClick={() => openImage(i)}
+                  />
+                ))}
+              </Box>
+            )
+          ) : (
+            <Button size="sm" width="100%" onClick={() => setShowContent(true)}>
+              Show Content ({hasContentWarning})
+            </Button>
           )}
           <Box p={4} paddingBottom={0}>
             {userComponent && userComponent}

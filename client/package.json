@@ -12,6 +12,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@noble/secp256k1": "^2.0.0",
     "@nostr-ts/common": "workspace:*",
     "@nostr-ts/node": "workspace:*"
   },

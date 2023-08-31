@@ -109,6 +109,19 @@ export class RelayClientBase {
         try {
           relay.ws.sendMessage(data);
           relay.addSubscription(subscription);
+
+          if (request.type === CLIENT_MESSAGE_TYPE.REQ && request.options) {
+            const timeoutIn = request.options.timeoutIn;
+            if (timeoutIn) {
+              subscription.options = {
+                timeoutIn,
+                timeoutAt: Date.now() + timeoutIn,
+                timeout: setTimeout(() => {
+                  this.unsubscribe([subscription.id]);
+                }, timeoutIn),
+              };
+            }
+          }
         } catch (e) {
           console.error(e);
         }
@@ -154,7 +167,7 @@ export class RelayClientBase {
    */
   unsubscribe(subscriptionIds: string[]) {
     for (const relay of this.relays) {
-      if (!relay.isReady("any")) {
+      if (!relay.isConnected()) {
         continue;
       }
 
@@ -188,9 +201,6 @@ export class RelayClientBase {
 
   unsubscribeAll() {
     for (const relay of this.relays) {
-      if (relay.isReady("read")) {
-        continue;
-      }
       const subs = relay.getSubscriptions();
       if (subs && subs.length > 0) {
         this.unsubscribe(subs.map((s) => s.id));
@@ -341,19 +351,24 @@ export class RelayClientBase {
   }
 
   disconnect() {
-    const stats = {
-      subscriptions: this.countSubscriptions(),
-      connections: this.countConnections(),
-    };
+    this.unsubscribeAll();
 
-    console.log(`
-Stats:
-- Subscriptions: ${stats.subscriptions}
-- Connections: ${stats.connections}
-    `);
+    setTimeout(() => {
+      const stats = {
+        subscriptions: this.countSubscriptions(),
+        connections: this.countConnections(),
+      };
 
-    for (const relay of this.relays) {
-      relay.ws?.disconnect();
-    }
+      console.log(`
+  Stats:
+  - Subscriptions: ${stats.subscriptions}
+  - Connections: ${stats.connections}
+      `);
+
+      for (const relay of this.relays) {
+        relay.ws?.disconnect();
+      }
+      this.relays = [];
+    }, 1000);
   }
 }

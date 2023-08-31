@@ -2,14 +2,17 @@ import { CLIENT_MESSAGE_TYPE } from "./client-message";
 import { FiltersBase } from "./filter";
 
 export interface SubscriptionOptions {
+  timeoutIn: number;
   /**
    * Set when the subscription is supposed to timeout
+   * Set 0 to disable
    */
-  timeoutAt: number;
+  timeoutAt?: number;
   /**
    * Set an associated timeout
+   * SET the result of setTimeout
    */
-  timeout: number;
+  timeout?: number | any;
   /**
    * If the subscription is associated with a view
    * for ex. `welcome` or `profile:<uuid>

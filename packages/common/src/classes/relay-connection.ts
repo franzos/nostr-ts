@@ -91,7 +91,6 @@ export class RelayConnection implements WebSocketClientConnection {
 
   /**
    * This only adds a new subscription
-   * To unsubscribe, use relay client
    */
   public addSubscription(subscription: Subscription) {
     this.subscriptions.push(subscription);

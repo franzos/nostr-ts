@@ -55,66 +55,34 @@ export const CreateEventForm = () => {
     ]
   );
 
+  const [eventContent, setEventContent] = useState<string>("");
   const [relayUrls, setRelayUrls] = useState<string[]>([]);
+  const publicKey = useRef<string | undefined>(undefined);
 
   const toast = useToast();
-
-  const currentPubkey = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const loadUser = async () => {
       if (
-        newEventName !== "NewShortTextNoteResponse"
-        // newEventName !== "NewQuoteRepost"
+        !publicKeyTags ||
+        newEventName !== "NewShortTextNoteResponse" ||
+        publicKeyTags[0][1] === publicKey.current
       ) {
         return;
       }
 
-      const publicKey = useNClient.getState().newEvent?.pubkey;
-      if (!publicKey) {
-        return;
-      }
-      if (currentPubkey.current === publicKey) {
-        return;
-      }
-      currentPubkey.current = publicKey;
-
-      const foundUsers: {
-        user: NUser;
-        relayUrls: string[];
-      }[] = [];
       const foundRelayUrls = [];
       if (publicKeyTags) {
+        publicKey.current = publicKeyTags[0][1] || undefined;
         for (const tags of publicKeyTags) {
-          let relayUrl;
+          // let relayUrl;
           /**
            * Get the relay url from the tags [p, pubkey, relayUrl]
            */
           if (tags.length === 2) {
-            relayUrl = tags[1];
             foundRelayUrls.push(tags[1]);
           }
-          const key = tags[0];
-          const record = await useNClient.getState().getUser(key);
-          if (record) {
-            foundUsers.push({
-              user: record.user,
-              relayUrls: record.relayUrls
-                ? record.relayUrls
-                : relayUrl
-                ? [relayUrl]
-                : [],
-            });
-          } else {
-            foundUsers.push({
-              user: new NUser({ pubkey: key }),
-              relayUrls: relayUrl ? [relayUrl] : [],
-            });
-          }
         }
-      }
-      if (foundUsers.length > 0) {
-        setUsers(foundUsers);
       }
       if (foundRelayUrls.length > 0) {
         setRelayUrls(foundRelayUrls);
@@ -163,7 +131,7 @@ export const CreateEventForm = () => {
       return;
     }
 
-    if (!newEvent.content) {
+    if (eventContent === "") {
       setErrors(["Event content is required"]);
       toast({
         title: "Error",
@@ -176,6 +144,7 @@ export const CreateEventForm = () => {
     }
 
     try {
+      useNClient.getState().setNewEventContent(eventContent);
       const evId = await useNClient.getState().signAndSendEvent({
         event: newEvent,
         relayUrls,
@@ -299,10 +268,8 @@ export const CreateEventForm = () => {
         <Input
           type="text"
           as={eventKind === NEVENT_KIND.LONG_FORM_CONTENT ? Textarea : Input}
-          value={useNClient.getState().newEvent?.content || ""}
-          onChange={(e) =>
-            useNClient.getState().setNewEventContent(e.target.value)
-          }
+          value={eventContent}
+          onChange={(e) => setEventContent(e.target.value)}
           placeholder="Enter event content"
         />
       </FormControl>

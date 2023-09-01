@@ -34,6 +34,8 @@ export interface NClientWorker extends NClientBase {
     }
   ) => void;
 
+  processActiveEvents: (view: string) => void;
+
   /**
    * Set to disconnect state
    * - Clears all subscriptions

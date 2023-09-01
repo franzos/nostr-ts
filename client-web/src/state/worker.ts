@@ -375,7 +375,7 @@ class WorkerClass implements NClientWorker {
 
           const mentions = newEvent.event.hasMentions();
           if (mentions) {
-            for (const mention of mentions) {
+            mentions.map(async (mention) => {
               const user = await this.getUser(mention);
               if (user) {
                 if (newEvent.mentions) {
@@ -390,7 +390,7 @@ class WorkerClass implements NClientWorker {
                   newEvent.mentions = [new NUserBase({ pubkey: mention })];
                 }
               }
-            }
+            });
           }
 
           // Check if event is a response to another event
@@ -501,8 +501,37 @@ class WorkerClass implements NClientWorker {
           }
 
           for (const item of this.eventsMap.values()) {
+            let changed = false;
             if (item.event.pubkey === newUser.pubkey) {
               item.user = newUser;
+              changed = true;
+            }
+            if (item.reactions) {
+              item.reactions.map((reaction) => {
+                if (reaction.event.pubkey === newUser.pubkey) {
+                  reaction.user = newUser;
+                  changed = true;
+                }
+              });
+            }
+            if (item.replies) {
+              item.replies.map((reply) => {
+                if (reply.event.pubkey === newUser.pubkey) {
+                  reply.user = newUser;
+                  changed = true;
+                }
+              });
+            }
+            if (item.mentions) {
+              item.mentions.map((mention) => {
+                if (mention.pubkey === newUser.pubkey) {
+                  mention = newUser;
+                  changed = true;
+                }
+              });
+            }
+
+            if (changed) {
               this.updateEvent(item);
             }
           }
@@ -560,7 +589,7 @@ class WorkerClass implements NClientWorker {
             .filter((tag) => tag.eventId)
             .map((tag) => tag.eventId);
 
-          for (const id of eventIds) {
+          eventIds.map((id) => {
             const event = this.eventsMap.get(id);
             if (event) {
               if (event.reposts) {
@@ -579,7 +608,7 @@ class WorkerClass implements NClientWorker {
               console.log(`Repost event added to event ${event.event.id}`);
               this.updateEvent(event);
             }
-          }
+          });
         });
       }
     }
@@ -620,11 +649,11 @@ class WorkerClass implements NClientWorker {
       // TODO: This is bad
       this.addQueueItems(result);
 
-      for (const item of result) {
+      result.map((item) => {
         this.updateQueueItem({
           ...item,
         });
-      }
+      });
       return result;
     } else {
       throw new Error("Failed to send event");
@@ -638,11 +667,11 @@ class WorkerClass implements NClientWorker {
     this.addQueueItems(payload);
     const result = this.client.sendQueueItems(payload);
     if (result) {
-      for (const item of result) {
+      result.map((item) => {
         this.updateQueueItem({
           ...item,
         });
-      }
+      });
       return result;
     } else {
       throw new Error("Failed to send event");
@@ -679,8 +708,8 @@ class WorkerClass implements NClientWorker {
         user: newFollowing,
         relayUrls,
       });
-      for (const relayUrl of relayUrls) {
-        await this.requestInformation(
+      relayUrls.map((relayUrl) => {
+        this.requestInformation(
           {
             source: "users",
             idsOrKeys: [pubkey],
@@ -690,7 +719,7 @@ class WorkerClass implements NClientWorker {
             timeoutIn: 10000,
           }
         );
-      }
+      });
     }
     this.followingUserIds.push(pubkey);
   }
@@ -740,6 +769,135 @@ class WorkerClass implements NClientWorker {
         relayUrls: payload.relayUrls ? payload.relayUrls : following.relayUrls,
       });
     }
+  }
+
+  async processActiveEvents(view: string) {
+    const eventUserPubkeys: {
+      pubkey: string;
+      relayUrls: string[];
+    }[] = [];
+
+    // const eventIds: {
+    //   id: string;
+    //   relayUrls: string[];
+    // }[] = [];
+
+    const relEventIds: {
+      id: string;
+      relayUrls: string[];
+    }[] = [];
+
+    for (const entry of this.eventsMap.entries()) {
+      const ev = entry[1];
+      // TODO: Check if user is stale
+      if (ev.event?.pubkey && !ev.user?.pubkey) {
+        eventUserPubkeys.push({
+          pubkey: ev.event.pubkey,
+          relayUrls: ev.eventRelayUrls,
+        });
+      }
+      // if (!ev.inResponseTo) {
+      //   const tags = eventHasEventTags(ev.event);
+      //   if (tags) {
+      //     for (const tag of tags) {
+      //       if (tag.marker === "root") {
+      //         eventIds.push({
+      //           id: tag.eventId,
+      //           relayUrls: tag.relayUrl ? [tag.relayUrl] : ev.eventRelayUrls,
+      //         });
+      //       }
+      //     }
+      //   }
+      // }
+      if (!ev.reactions) {
+        relEventIds.push({
+          id: ev.event.id,
+          relayUrls: ev.eventRelayUrls,
+        });
+      } else {
+        ev.reactions.map((reaction) => {
+          if (!reaction.user?.data) {
+            eventUserPubkeys.push({
+              pubkey: reaction.event.pubkey,
+              relayUrls: ev.eventRelayUrls,
+            });
+          }
+        });
+      }
+      if (ev.replies) {
+        ev.replies.map((reply) => {
+          if (!reply.user?.data) {
+            eventUserPubkeys.push({
+              pubkey: reply.event.pubkey,
+              relayUrls: ev.eventRelayUrls,
+            });
+          }
+        });
+      }
+      if (ev.mentions) {
+        ev.mentions.map((mention) => {
+          if (!mention.data) {
+            eventUserPubkeys.push({
+              pubkey: mention.pubkey,
+              relayUrls: ev.eventRelayUrls,
+            });
+          }
+        });
+      }
+    }
+
+    const relayUrlToPubkeysMap: Record<string, Set<string>> = {};
+
+    eventUserPubkeys.map((ev) => {
+      for (const relayUrl of ev.relayUrls) {
+        if (!relayUrlToPubkeysMap[relayUrl]) {
+          relayUrlToPubkeysMap[relayUrl] = new Set();
+        }
+        relayUrlToPubkeysMap[relayUrl].add(ev.pubkey);
+      }
+    });
+
+    const reqUsers: RelaysWithIdsOrKeys[] = Object.entries(
+      relayUrlToPubkeysMap
+    ).map(([relayUrl, pubkeysSet]) => {
+      return {
+        source: "users",
+        relayUrl,
+        idsOrKeys: [...pubkeysSet],
+      };
+    });
+
+    // This map will keep track of relayUrls and their associated eventIds.
+    const relayUrlToRelEventIdsMap: Record<string, Set<string>> = {};
+
+    relEventIds.map((ev) => {
+      for (const relayUrl of ev.relayUrls) {
+        if (!relayUrlToRelEventIdsMap[relayUrl]) {
+          relayUrlToRelEventIdsMap[relayUrl] = new Set();
+        }
+        relayUrlToRelEventIdsMap[relayUrl].add(ev.id);
+      }
+    });
+
+    const reqRelEvents: RelaysWithIdsOrKeys[] = Object.entries(
+      relayUrlToRelEventIdsMap
+    ).map(([relayUrl, eventIdsSet]) => {
+      return {
+        source: "events:related",
+        relayUrl,
+        idsOrKeys: [...eventIdsSet],
+      };
+    });
+
+    const infoRequestPromises = [];
+    [...reqUsers, ...reqRelEvents].map((item) => {
+      infoRequestPromises.push(
+        this.requestInformation(item, {
+          timeoutIn: 60000,
+          view,
+        })
+      );
+    });
   }
 
   async requestInformation(
@@ -830,10 +988,10 @@ class WorkerClass implements NClientWorker {
       return undefined;
     }
 
-    const subIds = [];
+    const subIds: string[] = [];
 
     if (kinds) {
-      for (const id of eventIds) {
+      eventIds.map((id) => {
         const subscription = subscriptions.find(
           (sub) =>
             sub.filters &&
@@ -843,16 +1001,16 @@ class WorkerClass implements NClientWorker {
         if (subscription) {
           subIds.push(subscription.id);
         }
-      }
+      });
     } else {
-      for (const id of eventIds) {
+      eventIds.map((id) => {
         const subscription = subscriptions.find(
           (sub) => sub.filters && sub.filters["#e"]?.includes(id)
         );
         if (subscription) {
           subIds.push(subscription.id);
         }
-      }
+      });
     }
 
     return subIds.length > 0 ? subIds : undefined;

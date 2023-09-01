@@ -70,7 +70,7 @@ export const useNClient = create<NClient>((set, get) => ({
     await get().store.init(config);
 
     const processEvents = (events: Event[]) => {
-      events.forEach((event) => {
+      events.map((event) => {
         const payload = event.data;
 
         if (payload.type === "event:new" || payload.type === "event:update") {
@@ -585,129 +585,16 @@ export const useNClient = create<NClient>((set, get) => ({
       },
     });
 
-    const process = async () => {
-      const eventUserPubkeys: {
-        pubkey: string;
-        relayUrls: string[];
-      }[] = [];
-
-      // const eventIds: {
-      //   id: string;
-      //   relayUrls: string[];
-      // }[] = [];
-
-      const relEventIds: {
-        id: string;
-        relayUrls: string[];
-      }[] = [];
-
-      for (const ev of get().events) {
-        // TODO: Check if user is stale
-        if (ev.event?.pubkey && !ev.user?.pubkey) {
-          eventUserPubkeys.push({
-            pubkey: ev.event.pubkey,
-            relayUrls: ev.eventRelayUrls,
-          });
-        }
-        // if (!ev.inResponseTo) {
-        //   const tags = eventHasEventTags(ev.event);
-        //   if (tags) {
-        //     for (const tag of tags) {
-        //       if (tag.marker === "root") {
-        //         eventIds.push({
-        //           id: tag.eventId,
-        //           relayUrls: tag.relayUrl ? [tag.relayUrl] : ev.eventRelayUrls,
-        //         });
-        //       }
-        //     }
-        //   }
-        // }
-        if (!ev.reactions) {
-          relEventIds.push({
-            id: ev.event.id,
-            relayUrls: ev.eventRelayUrls,
-          });
-        }
-      }
-
-      const relayUrlToPubkeysMap: Record<string, Set<string>> = {};
-
-      for (const ev of eventUserPubkeys) {
-        for (const relayUrl of ev.relayUrls) {
-          if (!relayUrlToPubkeysMap[relayUrl]) {
-            relayUrlToPubkeysMap[relayUrl] = new Set();
-          }
-          relayUrlToPubkeysMap[relayUrl].add(ev.pubkey);
-        }
-      }
-
-      const reqUsers: RelaysWithIdsOrKeys[] = Object.entries(
-        relayUrlToPubkeysMap
-      ).map(([relayUrl, pubkeysSet]) => {
-        return {
-          source: "users",
-          relayUrl,
-          idsOrKeys: [...pubkeysSet],
-        };
-      });
-
-      // const relayUrlToEventIdsMap: Record<string, Set<string>> = {};
-
-      // for (const ev of eventIds) {
-      //   for (const relayUrl of ev.relayUrls) {
-      //     if (!relayUrlToEventIdsMap[relayUrl]) {
-      //       relayUrlToEventIdsMap[relayUrl] = new Set();
-      //     }
-      //     relayUrlToEventIdsMap[relayUrl].add(ev.id);
-      //   }
-      // }
-
-      // const reqEvents: RelaysWithIdsOrKeys[] = Object.entries(
-      //   relayUrlToEventIdsMap
-      // ).map(([relayUrl, eventIdsSet]) => {
-      //   return {
-      //     source: "events",
-      //     relayUrl,
-      //     idsOrKeys: [...eventIdsSet],
-      //   };
-      // });
-
-      // This map will keep track of relayUrls and their associated eventIds.
-      const relayUrlToRelEventIdsMap: Record<string, Set<string>> = {};
-
-      for (const ev of relEventIds) {
-        for (const relayUrl of ev.relayUrls) {
-          if (!relayUrlToRelEventIdsMap[relayUrl]) {
-            relayUrlToRelEventIdsMap[relayUrl] = new Set();
-          }
-          relayUrlToRelEventIdsMap[relayUrl].add(ev.id);
-        }
-      }
-
-      const reqRelEvents: RelaysWithIdsOrKeys[] = Object.entries(
-        relayUrlToRelEventIdsMap
-      ).map(([relayUrl, eventIdsSet]) => {
-        return {
-          source: "events:related",
-          relayUrl,
-          idsOrKeys: [...eventIdsSet],
-        };
-      });
-
-      const infoRequestPromises = [];
-      for (const item of [...reqUsers, ...reqRelEvents]) {
-        infoRequestPromises.push(
-          await get().requestInformation(item, {
-            timeoutIn: 60000,
-            view,
-          })
-        );
-      }
-    };
-
     // TODO: This is not accurate
-    setTimeout(process, 1000);
-    setTimeout(process, 6000);
+    setTimeout(async () => {
+      await get().store.processActiveEvents(view);
+    }, 1500);
+    setTimeout(async () => {
+      await get().store.processActiveEvents(view);
+    }, 6000);
+    setTimeout(async () => {
+      await get().store.processActiveEvents(view);
+    }, 12000);
   },
 
   /**

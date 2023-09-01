@@ -20,6 +20,7 @@ import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import TrayFullIcon from "mdi-react/TrayFullIcon";
+import PlaylistStarIcon from "mdi-react/PlaylistStarIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 
@@ -71,6 +72,12 @@ export function PrimaryLayout() {
             to={`/mentions/${publicKey}`}
             leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
           /> */}
+
+          <MenuItem
+            label="Following feed"
+            to="/following-feed"
+            leftIcon={<Icon as={PlaylistStarIcon} marginRight={1} />}
+          />
 
           <MenuItem
             label="Following"

@@ -36,6 +36,7 @@ export function ProfileRoute() {
     // USER
 
     if (!userRecord || userRecord.user.pubkey !== pubkey) {
+      await useNClient.getState().setMaxEvents(MAX_EVENTS);
       await useNClient.getState().clearEvents();
       await useNClient.getState().setViewSubscription(view, defaultFilters);
 

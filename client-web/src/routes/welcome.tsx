@@ -22,6 +22,7 @@ export function WelcomeRoute() {
   const init = async () => {
     if (!connected || initDone.current) return;
     initDone.current = true;
+    await useNClient.getState().setMaxEvents(MAX_EVENTS);
     await useNClient.getState().clearEvents();
     await useNClient.getState().setViewSubscription("welcome", defaultFilters);
   };
@@ -60,12 +61,14 @@ export function WelcomeRoute() {
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
         {connected ? (
-          <Events
-            userComponent={User}
-            view="welcome"
-            filters={defaultFilters}
-            connected={connected}
-          />
+          <Box maxHeight="80vh" overflowY="auto">
+            <Events
+              userComponent={User}
+              view="welcome"
+              filters={defaultFilters}
+              connected={connected}
+            />
+          </Box>
         ) : (
           <Box maxWidth={600}>
             <Heading size="lg">About Nostr</Heading>

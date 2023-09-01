@@ -14,6 +14,7 @@ import { RelaysRoute } from "./routes/relays.tsx";
 import { PublishingQueueRoute } from "./routes/queue.tsx";
 import { UserMentionsRoute } from "./routes/mentions.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
+import { FollowingFeedRoute } from "./routes/following-feed.tsx";
 import "./index.css";
 
 const init = async () => {
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/profile" element={<UserProfileRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
+            <Route path="/following-feed" element={<FollowingFeedRoute />} />
             <Route path="/mentions/:pubkey" element={<UserMentionsRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />

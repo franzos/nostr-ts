@@ -425,10 +425,10 @@ export function Event({
         {reposts && (
           <>
             <Text>Reposts</Text>
-            {reposts.map((r) => {
+            {reposts.map((r, index) => {
               const user = r.user ? r.user : { pubkey: r.event.pubkey };
               return (
-                <Box key={`${r.event.id}_${user.pubkey}_reposts`}>
+                <Box key={`${index}_${r.event.id}_${user.pubkey}_reposts`}>
                   <UserIcon
                     user={user}
                     options={{
@@ -450,8 +450,8 @@ export function Event({
           mentions && (
             <>
               <Text>Mentions</Text>
-              {mentions.map((u) => (
-                <Box key={`${event.id}_${u.pubkey}_mention`}>
+              {mentions.map((u, index) => (
+                <Box key={`${index}_${event.id}_${u.pubkey}_mention`}>
                   <UserIcon
                     user={u}
                     options={{

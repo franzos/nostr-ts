@@ -26,7 +26,6 @@ import {
   ProcessedEvent,
   NewQuoteRepost,
   NewReaction,
-  NewShortTextNoteResponse,
   eventHasContentWarning,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
@@ -36,6 +35,7 @@ import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
 import { UserIcon } from "./user-icon";
+import { CreateEventForm } from "./create-event-form";
 
 export interface EventProps extends ProcessedEvent {
   userComponent?: JSX.Element;
@@ -102,6 +102,11 @@ export function Event({
     onOpen: onEventModalOpen,
     onClose: onEventModalClose,
   } = useDisclosure();
+  const {
+    isOpen: isReplyOpen,
+    onOpen: onReplyOpen,
+    onClose: onReplyClose,
+  } = useDisclosure();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const openImage = (imageSrc: string) => {
@@ -124,23 +129,6 @@ export function Event({
       isClosable: true,
     });
     return;
-  };
-
-  const newReply = async () => {
-    const relay = await relatedRelay();
-    if (!relay) {
-      return;
-    }
-    const ev = NewShortTextNoteResponse({
-      text: "",
-      inResponseTo: {
-        id: event.id,
-        pubkey: event.pubkey,
-      },
-      relayUrl: relay.url,
-    });
-    useNClient.getState().setNewEvent(ev);
-    useNClient.getState().setNewEventName("NewShortTextNoteResponse");
   };
 
   /**
@@ -200,6 +188,7 @@ export function Event({
           }
         );
       }
+      onReplyClose();
     } catch (e) {
       let error = "";
       if (e instanceof Error) {
@@ -225,7 +214,7 @@ export function Event({
           size="sm"
           variant="solid"
           colorScheme="blue"
-          onClick={() => newReply()}
+          onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
           isDisabled={!isReady}
         >
           Reply
@@ -484,6 +473,16 @@ export function Event({
         })}
       {ImageModal}
       {EventModal}
+      {isReplyOpen && (
+        <Box padding={4} background="#fcfcfc" borderRadius={4}>
+          <CreateEventForm
+            isResponse={true}
+            inResponseTo={event}
+            relayUrls={eventRelayUrls}
+            kind="NewShortTextNoteResponse"
+          />
+        </Box>
+      )}
     </>
   );
 }

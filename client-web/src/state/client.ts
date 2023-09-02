@@ -224,19 +224,6 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
-  newEvent: new NEvent({
-    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
-  }),
-  setNewEvent: (event: NEvent) => {
-    set({ newEvent: event });
-  },
-  newEventName: "NewShortTextNote",
-  setNewEventName: (name: string) => {
-    set({ newEventName: name });
-  },
-  setNewEventContent: (content: string) => {
-    set({ newEvent: get().newEvent.setContentWithoutChecks(content) });
-  },
   count: async (payload: CountRequest) => {
     return get().store.count(payload);
   },

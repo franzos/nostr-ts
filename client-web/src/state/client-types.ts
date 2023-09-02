@@ -43,26 +43,12 @@ export interface NClient extends NClientBase {
   keypair: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;
 
-  /**
-   * New event being created
-   * wire up to UI
-   */
-  newEvent: NEvent;
   eventProofOfWork: (event: NEvent, bits: number) => Promise<NEvent>;
   count: (payload: CountRequest) => Promise<Subscription[] | undefined>;
   sendEvent: (events: PublishingRequest) => Promise<void>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
   eventsPublishingQueue: PublishingQueueItem[];
   clearEvents: () => Promise<void>;
-
-  setNewEvent: (event: NEvent) => void;
-
-  /**
-   * Track kind name like NewShortTextNote
-   */
-  newEventName: string;
-  setNewEventName: (name: string) => void;
-  setNewEventContent: (content: string) => void;
 
   setMaxEvents: (max: number) => Promise<void>;
   determineApplicableRelays: (request: PublishingRequest) => Promise<{

@@ -17,6 +17,12 @@ export interface ProcessedEventBase {
   event: NEvent;
 }
 
+export interface ProcessedEventWithReactionsAndReplies
+  extends ProcessedEventBase {
+  reactions?: ProcessedEventBase[];
+  replies?: ProcessedEventWithReactionsAndReplies[];
+}
+
 /**
  * Processed-side event properties
  * - user: Author of the event
@@ -29,7 +35,7 @@ export interface ProcessedEventBase {
  * - replies: Replies to the event
  * - zapReceipt: Lightning receipts for the event
  */
-export interface ProcessedEvent extends ProcessedEventBase {
+export interface ProcessedEvent extends ProcessedEventWithReactionsAndReplies {
   eventRelayUrls: string[];
 
   /**
@@ -50,7 +56,7 @@ export interface ProcessedEvent extends ProcessedEventBase {
   /**
    * Kind 1, 2, ..
    */
-  replies?: ProcessedEventBase[];
+  replies?: ProcessedEventWithReactionsAndReplies[];
 
   /**
    * from event content

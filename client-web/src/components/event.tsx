@@ -39,6 +39,7 @@ import { CreateEventForm } from "./create-event-form";
 
 export interface EventProps extends ProcessedEvent {
   userComponent?: JSX.Element;
+  level: number;
 }
 
 export function Event({
@@ -49,6 +50,7 @@ export function Event({
   mentions,
   replies,
   eventRelayUrls,
+  level,
 }: EventProps) {
   const [isReady] = useNClient((state) => [
     state.connected && state.keystore !== "none",
@@ -177,16 +179,18 @@ export function Event({
           duration: 5000,
           isClosable: true,
         });
-        useNClient.getState().requestInformation(
-          {
-            source: "events",
-            idsOrKeys: [evId],
-            relayUrl: eventRelayUrls[0],
-          },
-          {
-            timeoutIn: 10000,
-          }
-        );
+        setTimeout(() => {
+          useNClient.getState().requestInformation(
+            {
+              source: "events",
+              idsOrKeys: [evId],
+              relayUrl: eventRelayUrls[0],
+            },
+            {
+              timeoutIn: 10000,
+            }
+          );
+        }, 1000);
       }
       onReplyClose();
     } catch (e) {
@@ -215,7 +219,7 @@ export function Event({
           variant="solid"
           colorScheme="blue"
           onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
-          isDisabled={!isReady}
+          isDisabled={!isReady || level >= 1}
         >
           Reply
         </Button>
@@ -465,8 +469,10 @@ export function Event({
             <Box key={`${r.event.id}_${user.pubkey}_replies`} marginLeft={10}>
               <Event
                 event={r.event}
+                reactions={r.reactions}
                 userComponent={userComponent}
                 eventRelayUrls={eventRelayUrls}
+                level={level + 1}
               />
             </Box>
           );

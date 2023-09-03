@@ -424,6 +424,21 @@ class WorkerClass implements NClientWorker {
                 console.log(`Reply event added to event ${origEvent.event.id}`);
                 return;
               }
+              for (const ev of this.eventsMap.values()) {
+                if (ev.replies) {
+                  const exist = ev.replies.find(
+                    (reply) => reply.event.id === newEvent.event.id
+                  );
+                  if (!exist) {
+                    ev.replies.push({
+                      ...newEvent,
+                    });
+                    this.updateEvent(ev);
+                    console.log(`Reply event added to event ${ev.event.id}`);
+                    return;
+                  }
+                }
+              }
               // If we cannot find the root event, skip the reply for now
               if (count < 3) {
                 setTimeout(() => {
@@ -568,10 +583,42 @@ class WorkerClass implements NClientWorker {
                   },
                 ];
               }
-              console.log(`Reaction event added to event ${event.event.id}`);
+              console.log(`Reaction event added to L1 event ${event.event.id}`);
               this.updateEvent(event);
+              return;
             }
           }
+
+          for (const event of this.eventsMap.values()) {
+            if (event.replies) {
+              for (const eventId of eventIds) {
+                const reply = event.replies.find(
+                  (reply) => reply.event.id === eventId
+                );
+                if (reply) {
+                  if (reply.reactions) {
+                    reply.reactions.push({
+                      event: ev,
+                      user: data?.user,
+                    });
+                  } else {
+                    reply.reactions = [
+                      {
+                        event: ev,
+                        user: data?.user,
+                      },
+                    ];
+                  }
+                  console.log(
+                    `Reaction event added to L2 event ${event.event.id}`
+                  );
+                  this.updateEvent(event);
+                  return;
+                }
+              }
+            }
+          }
+          return;
         });
       } else if (kind === NEVENT_KIND.REPOST) {
         incomingQueue.enqueueBackground(async () => {
@@ -607,6 +654,7 @@ class WorkerClass implements NClientWorker {
               }
               console.log(`Repost event added to event ${event.event.id}`);
               this.updateEvent(event);
+              return;
             }
           });
         });
@@ -829,6 +877,12 @@ class WorkerClass implements NClientWorker {
           if (!reply.user?.data) {
             eventUserPubkeys.push({
               pubkey: reply.event.pubkey,
+              relayUrls: ev.eventRelayUrls,
+            });
+          }
+          if (!reply.reactions) {
+            relEventIds.push({
+              id: reply.event.id,
               relayUrls: ev.eventRelayUrls,
             });
           }

@@ -35,7 +35,9 @@ export function Events(props: {
     if (moreEventsCount === 0) {
       setMoreEventsCount(moreEventsCount + 1);
     }
-    await useNClient.getState().setMaxEvents(maxEvents + MAX_EVENTS);
+    if (events.length >= maxEvents) {
+      await useNClient.getState().setMaxEvents(maxEvents + MAX_EVENTS);
+    }
     if (props) {
       await useNClient.getState().setViewSubscription(props.view, filters);
     }
@@ -88,6 +90,7 @@ export function Events(props: {
                   )
                 ) : undefined
               }
+              level={0}
             />
           </Box>
         );
@@ -98,10 +101,10 @@ export function Events(props: {
       {showButtons && (
         <Box display="flex" justifyContent="space-between" padding={2}>
           <Button flex="1" marginRight={2} onClick={moreEvents}>
-            Load {MAX_EVENTS} more
+            Load more
           </Button>
           <Button flex="1" marginLeft={2} onClick={newEvents}>
-            Reset and load new (performance)
+            Clear and load new
           </Button>
         </Box>
       )}

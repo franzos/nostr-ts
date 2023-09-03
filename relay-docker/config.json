@@ -1,4 +1,5 @@
 {
+  "host": "0.0.0.0:8080",
   "relay_url": "wss://nostr-ts.relay",
   "nip11_info_document": {
     "name": "GNOST Relay",

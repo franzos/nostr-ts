@@ -6,9 +6,6 @@ WORKDIR /go/src/github.com/barkyq/gnost-relay
 
 RUN git clone https://github.com/barkyq/gnost-relay.git .
 
-# Update main.go to listen on 0.0.0.0 for Docker
-RUN sed -i 's/localhost:8080/0.0.0.0:8080/g' main.go
-
 RUN go mod download
 
 RUN go build -o /go/bin/gnost-relay

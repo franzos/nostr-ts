@@ -79,6 +79,14 @@ export function PrimaryLayout() {
             leftIcon={<Icon as={PlaylistStarIcon} marginRight={1} />}
           />
 
+          {/* {publicKey && publicKey !== "" && (
+            <MenuItem
+              label="Mentions feed"
+              to={`/mentions/${publicKey}`}
+              leftIcon={<Icon as={PlaylistStarIcon} marginRight={1} />}
+            />
+          )} */}
+
           <MenuItem
             label="Following"
             value={followingUsers.length}
@@ -113,7 +121,7 @@ export function PrimaryLayout() {
       {connected ? (
         <Button
           w="100%"
-          colorScheme="red"
+          variant={"outline"}
           onClick={useNClient.getState().disconnect}
         >
           <Icon as={LanDisconnectIcon} marginRight={1} />
@@ -122,7 +130,8 @@ export function PrimaryLayout() {
       ) : (
         <Button
           w="100%"
-          colorScheme="green"
+          // colorScheme="gre
+          variant={"solid"}
           onClick={onOpen}
           leftIcon={<Icon as={LanConnectIcon} />}
         >

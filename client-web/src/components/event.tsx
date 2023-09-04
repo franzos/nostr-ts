@@ -324,10 +324,7 @@ export function Event({
   }
 
   const EventCard = (
-    <Card
-      border="1px solid #e1e1e1"
-      style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
-    >
+    <Card style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
       <CardHeader p={0}>
         <Box>
           {showContent ? (
@@ -480,7 +477,7 @@ export function Event({
       {ImageModal}
       {EventModal}
       {isReplyOpen && (
-        <Box padding={4} background="#fcfcfc" borderRadius={4}>
+        <Box padding={4} background="background" borderRadius={4}>
           <CreateEventForm
             isResponse={true}
             inResponseTo={event}

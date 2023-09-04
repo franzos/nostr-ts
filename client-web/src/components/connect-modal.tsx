@@ -142,14 +142,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           <VStack spacing={3} width="100%">
             {initialRelayUrls &&
               initialRelayUrls.map((relay) => (
-                <Flex
-                  key={relay.url}
-                  width="100%"
-                  alignItems="center"
-                  borderBottom="1px solid"
-                  borderColor="gray.200"
-                  py={2}
-                >
+                <Flex key={relay.url} width="100%" alignItems="center" py={2}>
                   <Text flex="1" marginLeft="2">
                     {relay.url}
                   </Text>
@@ -169,7 +162,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
           </VStack>
 
           {/* Input for Adding New Relays */}
-          <Flex direction="row" alignItems="center">
+          <Flex direction="row" alignItems="center" pt={4}>
             <Input
               flex="1"
               value={newRelayUrl}
@@ -207,7 +200,7 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
         </ModalBody>
         <ModalFooter>
           <Button
-            colorScheme="green"
+            variant="outline"
             isDisabled={initialRelayUrls.length === 0}
             isLoading={isBusy}
             onClick={connect}

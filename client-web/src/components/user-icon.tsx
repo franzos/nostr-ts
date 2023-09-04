@@ -50,6 +50,7 @@ export function UserIcon({
                 right="0"
                 bottom="0"
                 backgroundColor="rgba(255, 255, 255, 0.5)"
+                borderRadius={10}
               />
               <Text
                 position="absolute"

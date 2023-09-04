@@ -1,4 +1,12 @@
-import { Box, HStack, Link, Text, useToast } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  HStack,
+  Link,
+  Text,
+  useColorMode,
+  useToast,
+} from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
@@ -6,6 +14,7 @@ import { excerpt } from "../lib/excerpt";
 import { NavLink } from "react-router-dom";
 
 export function BottomBar() {
+  const { colorMode, toggleColorMode } = useColorMode();
   const [userCount, setUserCount] = useState(0);
   const [eventsCount, maxEvents, relayEvents] = useNClient((state) => [
     state.events.length,
@@ -90,7 +99,7 @@ export function BottomBar() {
       left={0}
       right={0}
       p={3}
-      backgroundColor="gray.100"
+      backgroundColor="background"
     >
       <HStack spacing={4}>
         <>
@@ -116,6 +125,9 @@ export function BottomBar() {
               <Text fontSize="xl">{subscriptionsCount}</Text>
             </HStack>
           </Link>
+          <Button variant={"outline"} onClick={toggleColorMode}>
+            Toggle {colorMode === "light" ? "Dark" : "Light"}
+          </Button>
         </>
       </HStack>
     </Box>

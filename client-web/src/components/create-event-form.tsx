@@ -287,6 +287,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
       <HStack marginBottom={4}>
         {options.map((option) => (
           <IconButton
+            variant={"outline"}
             key={option.label}
             aria-label={option.label}
             icon={option.icon}
@@ -303,7 +304,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
       ))}
       <Button
         type="submit"
-        colorScheme="blue"
+        variant={"solid"}
         onClick={submit}
         leftIcon={<Icon as={SendIcon} />}
         isDisabled={!isReady}

@@ -1,6 +1,6 @@
-import { LinkBox, HStack, Text } from "@chakra-ui/react";
-import { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { HStack, Text, Link as ChakraLink } from "@chakra-ui/react";
+import { ReactElement } from "react";
+import { NavLink as ReactRouterLink } from "react-router-dom";
 
 export function MenuItem({
   label,
@@ -11,23 +11,23 @@ export function MenuItem({
   label: string;
   value?: string | number;
   to: string;
-  leftIcon?: ReactNode;
+  leftIcon?: ReactElement;
 }) {
   return (
-    <LinkBox
-      as={NavLink}
+    <ChakraLink
+      as={ReactRouterLink}
       to={to}
       w="100%"
       padding={2}
-      border="1px solid"
-      borderColor={"gray.200"}
-      borderRadius={2}
-      backgroundColor={"gray.100"}
+      borderRadius={3}
+      bg={"blackAlpha.50"}
+      border={"1px solid"}
+      borderColor={"whiteAlpha.100"}
       _hover={{
-        backgroundColor: "gray.300",
+        backgroundColor: "blackAlpha.400",
       }}
       _activeLink={{
-        backgroundColor: "gray.300",
+        backgroundColor: "blackAlpha.300",
       }}
     >
       <HStack>
@@ -37,6 +37,6 @@ export function MenuItem({
         </Text>
         {value && <Text fontSize="md">{value}</Text>}
       </HStack>
-    </LinkBox>
+    </ChakraLink>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { ChakraProvider } from "@chakra-ui/react";
+import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import ReactDOM from "react-dom/client";
 import { Route, BrowserRouter, Routes } from "react-router-dom";
 import { useNClient } from "./state/client.ts";
@@ -16,6 +16,7 @@ import { UserMentionsRoute } from "./routes/mentions.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
 import { FollowingFeedRoute } from "./routes/following-feed.tsx";
 import "./index.css";
+import theme from "./theme.ts";
 
 const init = async () => {
   await useNClient.getState().init({
@@ -27,7 +28,8 @@ init();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ChakraProvider>
+    <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+    <ChakraProvider theme={theme}>
       <BrowserRouter basename={import.meta.env.VITE_CLIENT_WEB_BASE_URL}>
         <Routes>
           <Route element={<PrimaryLayout />}>

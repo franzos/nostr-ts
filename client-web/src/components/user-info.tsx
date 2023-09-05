@@ -1,5 +1,4 @@
 import {
-  Flex,
   Avatar,
   Heading,
   Spacer,
@@ -7,6 +6,7 @@ import {
   Box,
   Image,
   Text,
+  HStack,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
@@ -33,7 +33,7 @@ export function UserInfo({
           <Image src={banner} alt="banner" />
         </Box>
       )}
-      <Flex>
+      <HStack>
         <Box mr="3">
           <Link to={profileLink}>
             <Avatar size="sm" src={picture} />
@@ -63,7 +63,7 @@ export function UserInfo({
             {following ? "Unfollow" : "Follow"}
           </Button>
         )}
-      </Flex>
+      </HStack>
     </>
   );
 }

@@ -269,9 +269,12 @@ export function Event({
         <ModalHeader>Event</ModalHeader>
         <ModalCloseButton />
         <ModalBody overflowY="auto">
-          <pre>
-            <code>{JSON.stringify(event, null, 2)}</code>
-          </pre>
+          <Text>Relay: {eventRelayUrls[0]}</Text>
+          <Box m={4}>
+            <pre>
+              <code>{JSON.stringify(event, null, 2)}</code>
+            </pre>
+          </Box>
         </ModalBody>
       </ModalContent>
     </Modal>
@@ -330,9 +333,10 @@ export function Event({
           {showContent ? (
             images &&
             images.length > 0 && (
-              <Box className="image-container" marginBottom={4}>
+              <Box marginBottom={4}>
                 {images.map((i, index) => (
                   <Image
+                    width={"100%"}
                     key={index}
                     src={i}
                     fallback={<Image src="/no-image.png" />}
@@ -369,7 +373,6 @@ export function Event({
           <ActionButtons />
 
           <Spacer />
-          <Text>{eventRelayUrls[0]}</Text>
 
           <Button
             size={"sm"}

@@ -7,6 +7,9 @@ const config: ThemeConfig = {
 
 const theme = extendTheme({
   config,
+  breakpoints: {
+    sm: "500px",
+  },
 });
 
 export default theme;

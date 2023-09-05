@@ -61,7 +61,7 @@ export function WelcomeRoute() {
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
         {connected ? (
-          <Box maxHeight="80vh" overflowY="auto">
+          <Box overflowY="auto">
             <Events
               userComponent={User}
               view="welcome"

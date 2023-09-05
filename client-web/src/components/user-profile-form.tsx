@@ -86,6 +86,7 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
         }),
         options: {
           timeoutIn: 10000,
+          view: "user-profile",
         },
       });
     } catch (e) {

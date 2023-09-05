@@ -114,6 +114,10 @@ export class RelayClientBase {
             const timeoutIn = request.options.timeoutIn;
             if (timeoutIn) {
               subscription.options = {
+                view:
+                  request.options && request.options.view
+                    ? request.options.view
+                    : "",
                 timeoutIn,
                 timeoutAt: Date.now() + timeoutIn,
                 timeout: setTimeout(() => {

@@ -6,6 +6,7 @@ import {
   PublishingQueueItem,
   CountRequest,
   RelaySubscription,
+  NFilters,
 } from "@nostr-ts/common";
 import { NClientBase } from "./base-types";
 
@@ -34,6 +35,8 @@ export interface NClientWorker extends NClientBase {
     }
   ) => void;
 
+  setViewSubscription: (view: string, filters: NFilters) => void;
+  removeViewSubscription: (view: string) => void;
   processActiveEvents: (view: string) => void;
 
   /**

@@ -1,7 +1,7 @@
 {
   "name": "client-web",
   "version": "0.0.4",
-  "description": "Nostr react playground",
+  "description": "Nostr react client",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",
   "type": "module",

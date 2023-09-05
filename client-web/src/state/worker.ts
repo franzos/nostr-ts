@@ -727,7 +727,6 @@ class WorkerClass implements NClientWorker {
   }
 
   clearEvents() {
-    console.log(`WORKER: CLEAR EVENTS`);
     incomingQueue.clearPriority();
     this.eventsMap.clear();
     this.checkedEvents = [];
@@ -816,6 +815,59 @@ class WorkerClass implements NClientWorker {
         user: payload.user,
         relayUrls: payload.relayUrls ? payload.relayUrls : following.relayUrls,
       });
+    }
+  }
+
+  async setViewSubscription(view: string, filters: NFilters) {
+    const subs = this.getSubscriptions();
+    const subIds = [];
+    for (const sub of subs) {
+      if (sub.options && sub.options.view) {
+        subIds.push(sub.id);
+      }
+    }
+    if (subIds.length > 0) {
+      this.unsubscribe(subIds);
+    }
+
+    const relays = this.getRelays();
+
+    await this.subscribe({
+      type: CLIENT_MESSAGE_TYPE.REQ,
+      filters: {
+        ...filters,
+        limit: filters.limit
+          ? Math.round(filters.limit / relays.length)
+          : undefined,
+      },
+      options: {
+        view,
+        timeoutIn: 15000,
+      },
+    });
+
+    // TODO: This is not accurate
+    setTimeout(async () => {
+      await this.processActiveEvents(view);
+    }, 1500);
+    setTimeout(async () => {
+      await this.processActiveEvents(view);
+    }, 6000);
+    setTimeout(async () => {
+      await this.processActiveEvents(view);
+    }, 12000);
+  }
+
+  removeViewSubscription(view: string) {
+    const subs = this.getSubscriptions();
+    const subIds = [];
+    for (const sub of subs) {
+      if (sub.options && sub.options.view === view) {
+        subIds.push(sub.id);
+      }
+    }
+    if (subIds.length > 0) {
+      this.unsubscribe(subIds);
     }
   }
 

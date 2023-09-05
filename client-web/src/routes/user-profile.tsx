@@ -49,6 +49,7 @@ export function UserProfileRoute() {
       }),
       options: {
         timeoutIn: 10000,
+        view: "user-profile",
       },
     });
     toast({

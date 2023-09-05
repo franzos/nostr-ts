@@ -11,7 +11,6 @@ import {
   CountRequest,
   PublishingRequest,
   WebSocketClientInfo,
-  CLIENT_MESSAGE_TYPE,
   RelaysWithIdsOrKeys,
   AuthRequest,
   CloseRequest,
@@ -96,7 +95,7 @@ export const useNClient = create<NClient>((set, get) => ({
       });
     };
 
-    const throttledEvents = throttle(processEvents, 100);
+    const throttledEvents = throttle(processEvents, 500);
     worker.addEventListener("message", throttledEvents);
 
     const following = await get().store.getAllUsersFollowing();
@@ -234,15 +233,14 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   updateEvent: (payload: ProcessedEvent) => {
-    const eventIndex = get().events.findIndex(
-      (event) => event.event.id === payload.event.id
-    );
-
-    if (eventIndex !== -1) {
-      const updatedEvents = [...get().events];
-      updatedEvents[eventIndex] = payload;
-      set({ events: updatedEvents });
-    }
+    set({
+      events: get().events.map((event) => {
+        if (event.event.id === payload.event.id) {
+          return payload;
+        }
+        return event;
+      }),
+    });
   },
   maxEvents: MAX_EVENTS,
   setMaxEvents: async (max: number) => {
@@ -319,13 +317,14 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   updateQueueItem: async (item: PublishingQueueItem) => {
-    const queue = get().eventsPublishingQueue;
-    const index = queue.findIndex((e) => e.event.id === item.event.id);
-    if (index !== -1) {
-      const updatedQueue = [...queue];
-      updatedQueue[index] = item;
-      set({ eventsPublishingQueue: updatedQueue });
-    }
+    set({
+      eventsPublishingQueue: get().eventsPublishingQueue.map((e) => {
+        if (e.id === item.id) {
+          return item;
+        }
+        return e;
+      }),
+    });
   },
   getUser: async (pubkey: string) => {
     return get().store.getUser(pubkey);
@@ -545,43 +544,7 @@ export const useNClient = create<NClient>((set, get) => ({
    * @returns
    */
   setViewSubscription: async (view: string, filters: NFilters) => {
-    const subs = await get().getSubscriptions();
-    const subIds = [];
-    for (const sub of subs) {
-      if (sub.options && sub.options.view) {
-        subIds.push(sub.id);
-      }
-    }
-    if (subIds.length > 0) {
-      await get().unsubscribe(subIds);
-    }
-
-    const relays = await get().getRelays();
-
-    await get().subscribe({
-      type: CLIENT_MESSAGE_TYPE.REQ,
-      filters: {
-        ...filters,
-        limit: filters.limit
-          ? Math.round(filters.limit / relays.length)
-          : undefined,
-      },
-      options: {
-        view,
-        timeoutIn: 15000,
-      },
-    });
-
-    // TODO: This is not accurate
-    setTimeout(async () => {
-      await get().store.processActiveEvents(view);
-    }, 1500);
-    setTimeout(async () => {
-      await get().store.processActiveEvents(view);
-    }, 6000);
-    setTimeout(async () => {
-      await get().store.processActiveEvents(view);
-    }, 12000);
+    await get().store.setViewSubscription(view, filters);
   },
 
   /**
@@ -590,16 +553,6 @@ export const useNClient = create<NClient>((set, get) => ({
    * @returns
    */
   removeViewSubscription: async (view: string) => {
-    const subs = await get().getSubscriptions();
-
-    console.log(`Remove view subscription ${view}`);
-
-    const filteredSubs = subs.filter(
-      (sub) => sub.options && sub.options.view === view
-    );
-
-    if (filteredSubs.length === 0) {
-      await get().unsubscribe(filteredSubs.map((sub) => sub.id));
-    }
+    await get().store.removeViewSubscription(view);
   },
 }));

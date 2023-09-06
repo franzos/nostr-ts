@@ -38,7 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />
-            <Route path="/p/:pubkey" element={<ProfileRoute />} />
+            <Route path="/p/:nprofile" element={<ProfileRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

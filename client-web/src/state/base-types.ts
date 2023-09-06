@@ -9,7 +9,6 @@ import {
   RelayNotice,
   RelayOK,
   WebSocketClientInfo,
-  NEVENT_KIND,
   Subscription,
   PublishingQueueItem,
   RelaysWithIdsOrKeys,
@@ -18,6 +17,7 @@ import {
   CloseRequest,
   CountRequest,
   EventsRequest,
+  WebSocketEvent,
 } from "@nostr-ts/common";
 import { NUser } from "@nostr-ts/web";
 
@@ -55,11 +55,6 @@ export interface NClientBase {
    */
   updateEvent: (payload: ProcessedEvent) => void;
 
-  eventsPublishingQueue: PublishingQueueItem[];
-
-  addQueueItems?: (payload: PublishingQueueItem[]) => void;
-  updateQueueItem: (payload: PublishingQueueItem) => void;
-
   maxEvents: number;
   getUser: (pubkey: string) => Promise<UserRecord | undefined>;
   addUser: (payload: UpdateUserRecord) => Promise<void>;
@@ -95,10 +90,6 @@ export interface NClientBase {
     user: NUserBase;
     relayUrls?: string[];
   }): Promise<void>;
-  hasSubscriptionForEventIds(
-    eventIds: string[],
-    kinds: NEVENT_KIND[]
-  ): Promise<string[] | undefined>;
   requestInformation(
     payload: RelaysWithIdsOrKeys,
     options: SubscriptionOptions
@@ -113,4 +104,16 @@ export interface UpdateUserRecord {
 export interface UserRecord {
   user: NUser;
   relayUrls: string[];
+}
+
+export interface WorkerEvent {
+  data: {
+    type:
+      | "event:new"
+      | "event:update"
+      | "relay:message"
+      | "event:queue:new"
+      | "event:queue:update";
+    data: ProcessedEvent | WebSocketEvent | PublishingQueueItem;
+  };
 }

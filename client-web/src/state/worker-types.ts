@@ -15,6 +15,9 @@ export interface NClientWorker extends NClientBase {
   checkedEvents: string[];
 
   eventsPublishingQueue: PublishingQueueItem[];
+  addQueueItems: (payload: PublishingQueueItem[]) => void;
+  updateQueueItem: (payload: PublishingQueueItem) => void;
+  getQueueItems: () => PublishingQueueItem[];
 
   getSubscriptions: () => RelaySubscription[];
   unsubscribe: (ids: string[]) => void;
@@ -35,7 +38,13 @@ export interface NClientWorker extends NClientBase {
     }
   ) => void;
 
-  setViewSubscription: (view: string, filters: NFilters) => void;
+  setViewSubscription: (
+    view: string,
+    filters: NFilters,
+    options?: {
+      reset?: boolean;
+    }
+  ) => void;
   removeViewSubscription: (view: string) => void;
   processActiveEvents: (view: string) => void;
 

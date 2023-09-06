@@ -185,17 +185,18 @@ class WorkerClass implements NClientWorker {
    * - Post message to main thread
    */
   updateQueueItem(payload: PublishingQueueItem) {
-    const index = this.eventsPublishingQueue.findIndex(
-      (item) => item.event.id === payload.event.id
-    );
-    if (index !== -1) {
-      this.eventsPublishingQueue[index] = payload;
-      postMessage({
-        type: "event:queue:update",
-        data: payload,
-      });
-    }
+    this.eventsPublishingQueue = this.eventsPublishingQueue.map((item) => {
+      if (item.event.id === payload.event.id) {
+        return payload;
+      }
+      return item;
+    });
   }
+
+  getQueueItems() {
+    return this.eventsPublishingQueue;
+  }
+
   async getUser(pubkey: string) {
     if (!this.db) {
       throw new Error("DB not initialized");
@@ -818,7 +819,13 @@ class WorkerClass implements NClientWorker {
     }
   }
 
-  async setViewSubscription(view: string, filters: NFilters) {
+  async setViewSubscription(
+    view: string,
+    filters: NFilters,
+    options?: {
+      reset?: boolean;
+    }
+  ) {
     const subs = this.getSubscriptions();
     const subIds = [];
     for (const sub of subs) {
@@ -828,6 +835,13 @@ class WorkerClass implements NClientWorker {
     }
     if (subIds.length > 0) {
       this.unsubscribe(subIds);
+    }
+
+    if (options && options.reset) {
+      /**
+       * Cleanup previous subscription
+       */
+      this.clearEvents();
     }
 
     const relays = this.getRelays();
@@ -1083,43 +1097,6 @@ class WorkerClass implements NClientWorker {
         subscriptions.push(...subs);
       }
     }
-  }
-
-  async hasSubscriptionForEventIds(eventIds: string[], kinds?: NEVENT_KIND[]) {
-    if (!this.client) {
-      throw new Error("Client not initialized");
-    }
-    const subscriptions = this.client?.getSubscriptions();
-    if (!subscriptions) {
-      return undefined;
-    }
-
-    const subIds: string[] = [];
-
-    if (kinds) {
-      eventIds.map((id) => {
-        const subscription = subscriptions.find(
-          (sub) =>
-            sub.filters &&
-            sub.filters["#e"]?.includes(id) &&
-            sub.filters.kinds?.some((kind) => kinds.includes(kind))
-        );
-        if (subscription) {
-          subIds.push(subscription.id);
-        }
-      });
-    } else {
-      eventIds.map((id) => {
-        const subscription = subscriptions.find(
-          (sub) => sub.filters && sub.filters["#e"]?.includes(id)
-        );
-        if (subscription) {
-          subIds.push(subscription.id);
-        }
-      });
-    }
-
-    return subIds.length > 0 ? subIds : undefined;
   }
 }
 

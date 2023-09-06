@@ -35,6 +35,8 @@ export interface NClient extends NClientBase {
   unsubscribe: (ids: string[]) => Promise<void>;
   unsubscribeAll: () => Promise<void>;
 
+  getQueueItems: () => Promise<PublishingQueueItem[]>;
+
   keystore: "none" | "localstore" | "nos2x" | "download";
   loadKeyStore: () => void;
   saveKeyStore: () => void;
@@ -47,8 +49,6 @@ export interface NClient extends NClientBase {
   count: (payload: CountRequest) => Promise<Subscription[] | undefined>;
   sendEvent: (events: PublishingRequest) => Promise<void>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
-  eventsPublishingQueue: PublishingQueueItem[];
-  clearEvents: () => Promise<void>;
 
   setMaxEvents: (max: number) => Promise<void>;
   determineApplicableRelays: (request: PublishingRequest) => Promise<{
@@ -60,23 +60,28 @@ export interface NClient extends NClientBase {
   ) => Promise<PublishingQueueItem[] | undefined>;
   events: ProcessedEvent[];
 
-  viewerSubscription?: {
-    page: string;
-    subscription?: Subscription;
-  };
-  hasViewSubscription: (view: string) => Promise<boolean>;
+  changingView: boolean;
+
+  /**
+   * Set subscription related to view
+   */
   setViewSubscription: (
     view: string,
     filters: NFilters,
-    overwrite?: boolean
+    options?: {
+      reset?: boolean;
+    }
   ) => Promise<void>;
+
+  /**
+   * Remove subscription related to view
+   */
   removeViewSubscription: (view: string) => Promise<void>;
 
   /**
    * Set to disconnect state
    * - Clears all subscriptions
    * - Clears all events
-   * @returns
    */
   disconnect: () => Promise<void>;
 }

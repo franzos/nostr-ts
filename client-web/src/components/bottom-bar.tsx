@@ -3,6 +3,7 @@ import {
   Button,
   HStack,
   Link,
+  Spacer,
   Text,
   useColorMode,
   useToast,
@@ -12,6 +13,7 @@ import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
 import { excerpt } from "../lib/excerpt";
 import { NavLink } from "react-router-dom";
+import { EventFormModal } from "./event-form-modal";
 
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -24,6 +26,7 @@ export function BottomBar() {
   const [lastCount, setLastCount] = useState(0);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [relaysCount, setRelaysCount] = useState<number>(0);
+  const [queueItemsCount, setQueueItemsCount] = useState<number>(0);
 
   const toast = useToast();
 
@@ -39,6 +42,10 @@ export function BottomBar() {
     const relays = await useNClient.getState().getRelays();
     if (relays) {
       setRelaysCount(relays.length);
+    }
+    const queue = await useNClient.getState().getQueueItems();
+    if (queue) {
+      setQueueItemsCount(queue.length);
     }
   };
 
@@ -103,6 +110,11 @@ export function BottomBar() {
     >
       <HStack spacing={4}>
         <>
+          <Button variant={"outline"} size="sm" onClick={toggleColorMode}>
+            Toggle {colorMode === "light" ? "Dark" : "Light"}
+          </Button>
+          <EventFormModal buttonSize="sm" />
+          <Spacer />
           <HStack spacing={2}>
             <Text fontSize="sm">Events:</Text>
             <Text fontSize="xl" marginLeft={1}>
@@ -119,15 +131,18 @@ export function BottomBar() {
               <Text fontSize="xl">{relaysCount}</Text>
             </HStack>
           </Link>
+          <Link as={NavLink} to="/queue">
+            <HStack spacing={2}>
+              <Text fontSize="sm">Queue:</Text>
+              <Text fontSize="xl">{queueItemsCount}</Text>
+            </HStack>
+          </Link>
           <Link as={NavLink} to="/subscriptions">
             <HStack spacing={2}>
               <Text fontSize="sm">Subscriptions:</Text>
               <Text fontSize="xl">{subscriptionsCount}</Text>
             </HStack>
           </Link>
-          <Button variant={"outline"} onClick={toggleColorMode}>
-            Toggle {colorMode === "light" ? "Dark" : "Light"}
-          </Button>
         </>
       </HStack>
     </Box>

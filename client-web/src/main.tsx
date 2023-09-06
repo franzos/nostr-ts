@@ -12,9 +12,7 @@ import { ProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
 import { RelaysRoute } from "./routes/relays.tsx";
 import { PublishingQueueRoute } from "./routes/queue.tsx";
-import { UserMentionsRoute } from "./routes/mentions.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
-import { FollowingFeedRoute } from "./routes/following-feed.tsx";
 import "./index.css";
 import theme from "./theme.ts";
 
@@ -37,8 +35,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/profile" element={<UserProfileRoute />} />
             <Route path="/following" element={<FollowingRoute />} />
-            <Route path="/following-feed" element={<FollowingFeedRoute />} />
-            <Route path="/mentions/:pubkey" element={<UserMentionsRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />

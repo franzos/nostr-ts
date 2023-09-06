@@ -42,11 +42,13 @@ interface CreateEventFormProps {
   inResponseTo?: NEvent | undefined;
   relayUrls?: string[];
   kind?: NKIND;
+  sendCallback?: (eventId: string) => void;
 }
 
 export const CreateEventForm = (props: CreateEventFormProps) => {
-  const [isReady] = useNClient((state) => [
+  const [isReady, keypairIsLoaded] = useNClient((state) => [
     state.connected && state.keystore !== "none",
+    state.keypairIsLoaded,
   ]);
   const [isBusy, setBusy] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -55,6 +57,11 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     state.keystore,
     state.keypair,
   ]);
+
+  const message =
+    isReady || keypairIsLoaded
+      ? undefined
+      : "Login and connect to send events.";
 
   /**
    * Event data
@@ -98,7 +105,9 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
 
   const toast = useToast();
 
-  const relayUrls = props.relayUrls ? props.relayUrls : [];
+  const relayUrls = props.relayUrls ? props.relayUrls : undefined;
+
+  const relayUrl = relayUrls && relayUrls.length > 0 ? relayUrls[0] : "";
 
   /**
    * Create event from inputs
@@ -135,7 +144,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
       case "NewRecommendRelay":
         return {
           event: NewRecommendRelay({
-            relayUrl: relayUrls[0],
+            relayUrl: relayUrl,
           }),
         };
       case "NewQuoteRepost":
@@ -147,7 +156,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         return {
           event: NewQuoteRepost({
             inResponseTo: props.inResponseTo,
-            relayUrl: relayUrls[0],
+            relayUrl: relayUrl,
           }),
         };
       default:
@@ -230,6 +239,9 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
 
         reset();
         setBusy(false);
+        if (props.sendCallback) {
+          props.sendCallback(evId);
+        }
       }
     } catch (e) {
       let error = "";
@@ -302,6 +314,11 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
           {error}
         </Box>
       ))}
+      {message && (
+        <Box color="red.500" paddingBottom={2}>
+          {message}
+        </Box>
+      )}
       <Button
         type="submit"
         variant={"solid"}

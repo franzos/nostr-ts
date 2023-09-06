@@ -1,10 +1,10 @@
 import { Box, Button, Text } from "@chakra-ui/react";
+import { NFilters } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useState } from "react";
 import { MAX_EVENTS } from "../defaults";
 import { User } from "./user";
-import { NFilters } from "@nostr-ts/common";
 
 export function Events(props: {
   userComponent?: typeof User;
@@ -46,9 +46,9 @@ export function Events(props: {
   const newEvents = async () => {
     setMoreEventsCount(0);
     setFilters(props.filters);
-    await useNClient.getState().setMaxEvents(MAX_EVENTS);
-    await useNClient.getState().clearEvents();
-    await useNClient.getState().setViewSubscription(props.view, filters);
+    await useNClient.getState().setViewSubscription(props.view, filters, {
+      reset: true,
+    });
     setShowButtonsAnyway(false);
   };
 
@@ -56,9 +56,9 @@ export function Events(props: {
 
   return (
     <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
-      {events.map((event) => {
+      {events.map((event, index) => {
         return (
-          <Box padding={2} key={event.event.id}>
+          <Box padding={2} key={`${event.event.id}-${index}`}>
             <Event
               event={event.event}
               user={event.user}
@@ -67,7 +67,6 @@ export function Events(props: {
               mentions={event.mentions}
               replies={event.replies}
               eventRelayUrls={event.eventRelayUrls}
-              key={event.event.id}
               userComponent={
                 props && props.userComponent ? (
                   event.user && event.user.pubkey ? (
@@ -96,7 +95,9 @@ export function Events(props: {
         );
       })}
       {events.length === 0 && (
-        <Text>Waiting for fresh content ... hold on.</Text>
+        <Box marginTop={5} marginBottom={5} textAlign={"center"}>
+          <Text>Waiting for fresh content ... hold on.</Text>
+        </Box>
       )}
       {showButtons && (
         <Box display="flex" justifyContent="space-between" padding={2}>

@@ -4,7 +4,6 @@ import {
   WebSocketEvent,
   Relay,
   NEvent,
-  NEVENT_KIND,
   NUserBase,
   NFilters,
   PublishingQueueItem,
@@ -27,29 +26,19 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { UpdateUserRecord } from "./base-types";
+import { UpdateUserRecord, WorkerEvent } from "./base-types";
 
-interface Event {
-  data: {
-    type:
-      | "event:new"
-      | "event:update"
-      | "relay:message"
-      | "event:queue:new"
-      | "event:queue:update";
-    data: ProcessedEvent | WebSocketEvent | PublishingQueueItem;
-  };
-}
+const throttleDelayInMs = 250;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
 
-function throttle(fn: (events: Event[]) => void, delay: number) {
+function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
   let timeout: number | null = null;
-  let eventsBatch: Event[] = [];
+  let eventsBatch: WorkerEvent[] = [];
 
-  return function (event: Event) {
+  return function (event: WorkerEvent) {
     eventsBatch.push(event);
 
     if (!timeout) {
@@ -68,7 +57,8 @@ export const useNClient = create<NClient>((set, get) => ({
     await get().loadKeyStore();
     await get().store.init(config);
 
-    const processEvents = (events: Event[]) => {
+    const processEvents = (events: WorkerEvent[]) => {
+      if (get().changingView) return;
       events.map((event) => {
         const payload = event.data;
 
@@ -84,18 +74,11 @@ export const useNClient = create<NClient>((set, get) => ({
           set({
             relayEvents: [...get().relayEvents, data],
           });
-          // } else if (payload.type === "event:queue:new") {
-          //   const data = payload.data as PublishingQueueItem;
-          //   set({
-          //     eventsPublishingQueue: [...get().eventsPublishingQueue, data],
-          //   });
-        } else if (payload.type === "event:queue:update") {
-          get().updateQueueItem(payload.data as PublishingQueueItem);
         }
       });
     };
 
-    const throttledEvents = throttle(processEvents, 500);
+    const throttledEvents = throttle(processEvents, throttleDelayInMs);
     worker.addEventListener("message", throttledEvents);
 
     const following = await get().store.getAllUsersFollowing();
@@ -216,6 +199,7 @@ export const useNClient = create<NClient>((set, get) => ({
         keypair: {
           publicKey: config.publicKey || "",
         },
+        keypairIsLoaded: true,
       });
     } else {
       console.error(`Unknown keystore ${config.keystore}`);
@@ -247,7 +231,6 @@ export const useNClient = create<NClient>((set, get) => ({
     await get().store.setMaxEvents(max);
     set({ maxEvents: max });
   },
-  // skippedEvents: 0,
 
   /**
    * Check which of the given relays are available
@@ -259,6 +242,7 @@ export const useNClient = create<NClient>((set, get) => ({
     relays: WebSocketClientInfo[];
     pow: number;
   }> => {
+    console.log(`Determining applicable relays`, request);
     // TODO: RELAY check if supported (supportsEvent)
     const allRelays = await get().getRelays();
     const relays =
@@ -308,24 +292,12 @@ export const useNClient = create<NClient>((set, get) => ({
     }
     return newSubs;
   },
+  getQueueItems: async () => {
+    return get().store.getQueueItems();
+  },
   /**
    * Add items to publishing queue
    */
-  addQueueItems: (items: PublishingQueueItem[]) => {
-    set({
-      eventsPublishingQueue: [...get().eventsPublishingQueue, ...items],
-    });
-  },
-  updateQueueItem: async (item: PublishingQueueItem) => {
-    set({
-      eventsPublishingQueue: get().eventsPublishingQueue.map((e) => {
-        if (e.id === item.id) {
-          return item;
-        }
-        return e;
-      }),
-    });
-  },
   getUser: async (pubkey: string) => {
     return get().store.getUser(pubkey);
   },
@@ -338,7 +310,7 @@ export const useNClient = create<NClient>((set, get) => ({
   countUsers: async () => {
     return get().store.countUsers();
   },
-  getEventById: (id: string) => {
+  getEventById: async (id: string) => {
     return get().store.getEventById(id);
   },
   eventProofOfWork: async (event: NEvent, bits: number) => {
@@ -419,7 +391,7 @@ export const useNClient = create<NClient>((set, get) => ({
       if (items) {
         queueItems = items;
       }
-      get().addQueueItems?.(queueItems);
+      await get().store.addQueueItems(queueItems);
       const result = await get().eventProofOfWork(payload.event, requestedPOW);
       ev = new NEvent(result);
 
@@ -428,8 +400,6 @@ export const useNClient = create<NClient>((set, get) => ({
         item.powDone = Date.now();
       }
     }
-
-    //   event = new NEvent(result);
 
     if (keystore === "localstore") {
       ev.sign({
@@ -463,25 +433,18 @@ export const useNClient = create<NClient>((set, get) => ({
       if (items) {
         queueItems = items;
       }
-      get().addQueueItems?.(queueItems);
+      await get().store.addQueueItems(queueItems);
+      // get().addQueueItems?.(queueItems);
     } else {
       for (const item of queueItems) {
         item.event = ev;
-        get().updateQueueItem(item);
+        await get().store.updateQueueItem(item);
       }
     }
 
     await get().store.sendQueueItems(queueItems);
     return ev.id;
   },
-  eventsPublishingQueue: [],
-  clearEvents: async () => {
-    await get().store.clearEvents();
-    set({ events: [] });
-  },
-  /**
-   * Follow a user
-   */
   followUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
     await get().store.followUser(payload);
     const folowing = await get().store.getAllUsersFollowing();
@@ -489,9 +452,6 @@ export const useNClient = create<NClient>((set, get) => ({
       set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
     }
   },
-  /**
-   * Unfollow a user
-   */
   unfollowUser: async (pubkey: string) => {
     await get().store.unfollowUser(pubkey);
     const folowing = await get().store.getAllUsersFollowing();
@@ -499,9 +459,6 @@ export const useNClient = create<NClient>((set, get) => ({
       set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
     }
   },
-  /**
-   * Check if following user
-   */
   followingUser: async (pubkey: string) => {
     return get().store.followingUser(pubkey);
   },
@@ -509,10 +466,6 @@ export const useNClient = create<NClient>((set, get) => ({
   getAllUsersFollowing: async () => {
     return get().store.getAllUsersFollowing();
   },
-  /**
-   * Update information of user we are following
-   * @param user
-   */
   updateUserFollowing: async (payload: {
     user: NUserBase;
     relayUrls?: string[];
@@ -525,17 +478,8 @@ export const useNClient = create<NClient>((set, get) => ({
   ) => {
     return get().store.requestInformation(payload, options);
   },
-  hasSubscriptionForEventIds: async (
-    eventIds: string[],
-    kinds: NEVENT_KIND[]
-  ) => {
-    return get().store.hasSubscriptionForEventIds(eventIds, kinds);
-  },
 
-  hasViewSubscription: async (view: string) => {
-    const subs = await get().getSubscriptions();
-    return subs.some((s) => s.options && s.options.view === view);
-  },
+  changingView: false,
 
   /**
    * Setup a subscription related to a view
@@ -543,8 +487,23 @@ export const useNClient = create<NClient>((set, get) => ({
    * @param filters
    * @returns
    */
-  setViewSubscription: async (view: string, filters: NFilters) => {
-    await get().store.setViewSubscription(view, filters);
+  setViewSubscription: async (
+    view: string,
+    filters: NFilters,
+    options?: {
+      reset?: boolean;
+    }
+  ) => {
+    set({ changingView: true });
+    await get().store.setViewSubscription(view, filters, options);
+    if (options && options.reset) {
+      /**
+       * Cleanup previous subscription
+       */
+      set({ maxEvents: MAX_EVENTS });
+      set({ events: [] });
+    }
+    set({ changingView: false });
   },
 
   /**

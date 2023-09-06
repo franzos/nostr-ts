@@ -1,74 +1,16 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
-import { Events } from "../components/events";
-import { useEffect, useRef } from "react";
-import { NFilters, NEVENT_KIND } from "@nostr-ts/common";
-import { User } from "../components/user";
 import { CreateEventForm } from "../components/create-event-form";
-import { MAX_EVENTS } from "../defaults";
+import { EventsFeeds } from "../components/feeds";
 
 export function WelcomeRoute() {
-  const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
-    state.connected,
-    state.events.length >= state.maxEvents,
-  ]);
-
-  const defaultFilters = new NFilters({
-    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-    limit: MAX_EVENTS,
-  });
-
-  const initDone = useRef<boolean>(false);
-  const init = async () => {
-    if (!connected || initDone.current) return;
-    initDone.current = true;
-    await useNClient.getState().setMaxEvents(MAX_EVENTS);
-    await useNClient.getState().clearEvents();
-    await useNClient.getState().setViewSubscription("welcome", defaultFilters);
-  };
-
-  /**
-   * Handle initial load
-   */
-  useEffect(() => {
-    init();
-  }, []);
-
-  /**
-   * Handle the connection status change
-   */
-  useEffect(() => {
-    setTimeout(() => {
-      init();
-    }, 500);
-  }, [connected]);
-
-  /**
-   * Remove subscription when we hit the limit
-   */
-  useEffect(() => {
-    const remove = async () => {
-      if (!connected) return;
-      await useNClient.getState().removeViewSubscription("welcome");
-    };
-
-    if (eventsEqualOrMoreThanMax) {
-      remove();
-    }
-  }, [eventsEqualOrMoreThanMax]);
+  const [connected] = useNClient((state) => [state.connected]);
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
         {connected ? (
-          <Box overflowY="auto">
-            <Events
-              userComponent={User}
-              view="welcome"
-              filters={defaultFilters}
-              connected={connected}
-            />
-          </Box>
+          <EventsFeeds />
         ) : (
           <Box maxWidth={600}>
             <Heading size="lg">About Nostr</Heading>

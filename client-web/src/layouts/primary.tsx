@@ -19,20 +19,15 @@ import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
 import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
-import TrayFullIcon from "mdi-react/TrayFullIcon";
-import PlaylistStarIcon from "mdi-react/PlaylistStarIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 
 export function PrimaryLayout() {
-  const [connected, keystore, eventsQueueCount, publicKey] = useNClient(
-    (state) => [
-      state.connected,
-      state.keystore,
-      state.eventsPublishingQueue.length,
-      state.keypair?.publicKey || "",
-    ]
-  );
+  const [connected, keystore, publicKey] = useNClient((state) => [
+    state.connected,
+    state.keystore,
+    state.keypair?.publicKey || "",
+  ]);
   const [followingUsers, setFollowingUsers] = useState<
     {
       user: NUserBase;
@@ -66,39 +61,11 @@ export function PrimaryLayout() {
 
       {connected && (
         <>
-          {/* <MenuItem
-            label="Mentions"
-            value={0}
-            to={`/mentions/${publicKey}`}
-            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
-          /> */}
-
-          <MenuItem
-            label="Following feed"
-            to="/following-feed"
-            leftIcon={<Icon as={PlaylistStarIcon} marginRight={1} />}
-          />
-
-          {/* {publicKey && publicKey !== "" && (
-            <MenuItem
-              label="Mentions feed"
-              to={`/mentions/${publicKey}`}
-              leftIcon={<Icon as={PlaylistStarIcon} marginRight={1} />}
-            />
-          )} */}
-
           <MenuItem
             label="Following"
             value={followingUsers.length}
             to="/following"
             leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
-          />
-
-          <MenuItem
-            label="Queue"
-            value={eventsQueueCount}
-            to="/queue"
-            leftIcon={<Icon as={TrayFullIcon} marginRight={1} />}
           />
 
           {publicKey && publicKey !== "" && (

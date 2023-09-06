@@ -27,24 +27,17 @@ export function RelaysRoute() {
     useState<null | WebSocketClientInfo>(null);
   const [isBusy, setIsBusy] = useState(false);
 
-  const {
-    isOpen: isRelayModalOpen,
-    onOpen: onRelayModalOpen,
-    onClose: onRelayModalClose,
-  } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const update = async () => {
-    const rls = await useNClient.getState().getRelays();
-    if (rls) {
-      setRelays(rls);
-    }
+    await useNClient
+      .getState()
+      .getRelays()
+      .then((r) => setRelays(r));
   };
 
   useEffect(() => {
-    const init = async () => {
-      await update();
-    };
-    init();
+    update();
     const updateInterval = setInterval(update, 2000);
 
     return () => clearInterval(updateInterval);
@@ -71,7 +64,7 @@ export function RelaysRoute() {
   };
 
   const RelayModal = (
-    <Modal isOpen={isRelayModalOpen} onClose={onRelayModalClose} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
       <ModalContent maxHeight="80vh" maxWidth="80vw">
         <ModalHeader>Relay</ModalHeader>
@@ -97,7 +90,7 @@ export function RelaysRoute() {
             size={"sm"}
             onClick={() => {
               setSelectedRelay(rl);
-              onRelayModalOpen();
+              onOpen();
             }}
           >
             Show

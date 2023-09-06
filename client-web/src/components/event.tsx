@@ -116,6 +116,10 @@ export function Event({
     onOpen();
   };
 
+  const sendCallback = () => {
+    onReplyClose();
+  };
+
   const relatedRelay = async () => {
     const relays = await useNClient.getState().getRelays();
     const relay = relays.find((r) => eventRelayUrls.includes(r.url));
@@ -391,6 +395,23 @@ export function Event({
   return (
     <>
       {EventCard}
+      {isReplyOpen && (
+        <Box
+          padding={4}
+          marginBottom={2}
+          marginTop={2}
+          background="background"
+          borderRadius={4}
+        >
+          <CreateEventForm
+            isResponse={true}
+            inResponseTo={event}
+            relayUrls={eventRelayUrls}
+            kind="NewShortTextNoteResponse"
+            sendCallback={sendCallback}
+          />
+        </Box>
+      )}
       <HStack padding={2} flexWrap="wrap">
         {reactions && (
           <>
@@ -479,16 +500,6 @@ export function Event({
         })}
       {ImageModal}
       {EventModal}
-      {isReplyOpen && (
-        <Box padding={4} background="background" borderRadius={4}>
-          <CreateEventForm
-            isResponse={true}
-            inResponseTo={event}
-            relayUrls={eventRelayUrls}
-            kind="NewShortTextNoteResponse"
-          />
-        </Box>
-      )}
     </>
   );
 }

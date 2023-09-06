@@ -1,6 +1,5 @@
 import {
   Avatar,
-  Heading,
   Spacer,
   Button,
   Box,
@@ -17,8 +16,7 @@ export function UserInfo({
   opts: { showAbout, showBanner, following, showFollowing, relayUrls },
 }: UserInfoProps) {
   const name = data && data.name ? data.name : "Anonymous";
-  const displayName =
-    data && data.display_name ? data.display_name : "Anonymous";
+  const displayName = data && data.display_name ? data.display_name : "";
   const picture = data && data.picture ? data.picture : "";
   const banner = data && data.banner ? data.banner : undefined;
   const about = data && data.about ? data.about : undefined;
@@ -34,16 +32,17 @@ export function UserInfo({
         </Box>
       )}
       <HStack>
-        <Box mr="3">
+        <Box mr="2">
           <Link to={profileLink}>
-            <Avatar size="sm" src={picture} />
+            <Avatar size="xs" src={picture} />
           </Link>
         </Box>
+
+        <Link to={profileLink}>
+          <Text size="sm">{name}</Text>
+        </Link>
+        <Text size="xs">{displayName}</Text>
         <Box overflowWrap="anywhere">
-          <Link to={profileLink}>
-            <Heading size="sm">{displayName}</Heading>
-            <Text fontSize="sm">{name}</Text>
-          </Link>
           {showAbout && about && <Text fontSize="sm">{about}</Text>}
         </Box>
         <Spacer />

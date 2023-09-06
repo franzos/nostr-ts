@@ -1,5 +1,5 @@
 import { useNClient } from "../state/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useDisclosure,
   Modal,
@@ -28,10 +28,26 @@ import { PublishingQueueItem } from "@nostr-ts/common";
 import { excerpt } from "../lib/excerpt";
 
 export function PublishingQueueRoute() {
-  const [queue] = useNClient((s) => [s.eventsPublishingQueue]);
+  const [queue, setQueue] = useState<PublishingQueueItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<null | PublishingQueueItem>(
     null
   );
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const update = async () => {
+    await useNClient
+      .getState()
+      .getQueueItems()
+      .then((q) => setQueue(q));
+  };
+
+  useEffect(() => {
+    update();
+    const updateInterval = setInterval(update, 2000);
+
+    return () => clearInterval(updateInterval);
+  }, []);
 
   const hasError = (item: PublishingQueueItem) => {
     return item.error ? true : false;
@@ -41,18 +57,8 @@ export function PublishingQueueRoute() {
     return item.error ? item.error : "";
   };
 
-  const {
-    isOpen: isQueueItemModalOpen,
-    onOpen: onQueueItemModalOpen,
-    onClose: onQueueItemModalClose,
-  } = useDisclosure();
-
   const QueueModal = (
-    <Modal
-      isOpen={isQueueItemModalOpen}
-      onClose={onQueueItemModalClose}
-      size="xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
       <ModalContent maxHeight="80vh" maxWidth="80vw">
         <ModalHeader>Queue Item Detail</ModalHeader>
@@ -89,7 +95,7 @@ export function PublishingQueueRoute() {
             size={"sm"}
             onClick={() => {
               setSelectedItem(item);
-              onQueueItemModalOpen();
+              onOpen();
             }}
           >
             Show

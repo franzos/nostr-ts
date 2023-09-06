@@ -13,6 +13,7 @@ import {
   Input,
   ModalFooter,
   useToast,
+  ButtonGroup,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
@@ -89,6 +90,10 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
       }
       setTimeout(() => relaysFromExtention(count), 1000); // retry after 1 second
     }
+  };
+
+  const resetRelays = () => {
+    setInitialRelayUrls(objectOfRelaysToArray(DEFAULT_RELAYS));
   };
 
   useEffect(() => {
@@ -189,14 +194,24 @@ export function ConnectModal({ isOpen, onClose }: ConnectModalProps) {
             </Button>
           </Flex>
 
-          <Button
-            isLoading={loadingRelaysNos2x}
-            onClick={() => relaysFromExtention()}
-            size="xs"
-            marginTop={2}
-          >
-            Load from nos2x
-          </Button>
+          <ButtonGroup>
+            <Button
+              isLoading={loadingRelaysNos2x}
+              onClick={() => relaysFromExtention()}
+              size="xs"
+              marginTop={2}
+            >
+              Load from nos2x
+            </Button>
+            <Button
+              isLoading={loadingRelaysNos2x}
+              onClick={resetRelays}
+              size="xs"
+              marginTop={2}
+            >
+              Reset
+            </Button>
+          </ButtonGroup>
         </ModalBody>
         <ModalFooter>
           <Button

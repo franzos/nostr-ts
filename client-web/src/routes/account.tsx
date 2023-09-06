@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Heading,
   Button,
@@ -14,11 +14,36 @@ import { generateClientKeys } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 
 export function AccountRoute() {
-  const [keystore] = useNClient((state) => [state.keystore]);
-  const [keypairIsLoaded] = useNClient((state) => [state.keypairIsLoaded]);
-  const [keypair] = useNClient((state) => [state.keypair]);
-  const [publicKey] = useNClient((state) => [state?.keypair?.publicKey || ""]);
+  const [keystore, keypairIsLoaded, keypair, publicKey, privateKey] =
+    useNClient((state) => [
+      state.keystore,
+      state.keypairIsLoaded,
+      state.keypair,
+      state?.keypair?.publicKey || "",
+      state?.keypair?.privateKey || "",
+    ]);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
+
+  const [keyInputIsActive, setKeyInputIsActive] = useState(false);
+  const [newPublicKey, setNewPublicKey] = useState("");
+  const [newPrivateKey, setNewPrivateKey] = useState("");
+
+  useEffect(() => {
+    setNewPublicKey(publicKey);
+  }, [publicKey]);
+
+  useEffect(() => {
+    setNewPrivateKey(privateKey);
+  }, [privateKey]);
+
+  useEffect(() => {
+    if (keystore === "nos2x") {
+      setKeyInputIsActive(false);
+    }
+  }, [keystore]);
+
+  const showPrivateKeyInput =
+    (keyInputIsActive || keystore === "localstore") && keystore !== "nos2x";
 
   const toast = useToast();
   const [loadingPublicKeyNosx2, setLoadingPublicKeyNosx2] = useState(false);
@@ -67,6 +92,44 @@ export function AccountRoute() {
     }
   };
 
+  const saveKeyPair = () => {
+    if (newPublicKey.length !== 64) {
+      toast({
+        title: "Invalid public key",
+        description: `Public key must be 64 characters long.`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (newPrivateKey !== "" && newPrivateKey.length !== 64) {
+      toast({
+        title: "Invalid private key",
+        description: `Private key must be 64 characters long.`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (newPublicKey && newPrivateKey) {
+      useNClient.getState().setKeyStore({
+        keystore: "localstore",
+        publicKey: newPublicKey,
+        privateKey: newPrivateKey,
+      });
+      setKeyInputIsActive(false);
+    }
+  };
+
+  const reset = () => {
+    useNClient.getState().resetKeyStore();
+    setNewPrivateKey("");
+    setNewPublicKey("");
+    setKeyInputIsActive(false);
+  };
+
   return (
     <Box>
       <Heading size="lg">Account</Heading>
@@ -90,7 +153,10 @@ export function AccountRoute() {
         {!keystore ||
           (keystore === "none" ? (
             <>
-              <Button onClick={generateKeypair}>Generate new keypair</Button>
+              <Button onClick={generateKeypair}>New keypair</Button>
+              <Button onClick={() => setKeyInputIsActive(true)}>
+                Enter keypair
+              </Button>
               <Button
                 isLoading={loadingPublicKeyNosx2}
                 onClick={() => publicKeyFromExtention()}
@@ -99,26 +165,30 @@ export function AccountRoute() {
               </Button>
             </>
           ) : (
-            <Button onClick={() => useNClient.getState().resetKeyStore()}>
-              Reset
-            </Button>
+            <Button onClick={reset}>Reset</Button>
           ))}
       </HStack>
       {keypair && (
         <Box mt={4}>
           <FormControl marginBottom={4}>
             <FormLabel>Public key:</FormLabel>
-            <Input type="text" value={publicKey} isReadOnly />
+            <Input
+              type="text"
+              value={newPublicKey}
+              onChange={(e) => setNewPublicKey(e.target.value)}
+              isReadOnly
+            />
           </FormControl>
 
-          {keystore === "localstore" && (
+          {showPrivateKeyInput && (
             <FormControl marginBottom={4}>
               <FormLabel>Private key:</FormLabel>
               <HStack spacing={2}>
                 <Input
                   type={showPrivateKey ? "text" : "password"}
-                  value={keypair.privateKey}
-                  isReadOnly
+                  value={newPrivateKey}
+                  onChange={(e) => setNewPrivateKey(e.target.value)}
+                  isReadOnly={!keyInputIsActive}
                 />
                 <Button
                   size="sm"
@@ -129,6 +199,8 @@ export function AccountRoute() {
               </HStack>
             </FormControl>
           )}
+
+          {keyInputIsActive && <Button onClick={saveKeyPair}>Save</Button>}
         </Box>
       )}
     </Box>

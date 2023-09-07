@@ -27,7 +27,7 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { WorkerEvent } from "./base-types";
+import { CreateListRecord, WorkerEvent } from "./base-types";
 
 const throttleDelayInMs = 250;
 
@@ -484,6 +484,30 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   getAllUsersBlocked: async () => {
     return get().store.getAllUsersBlocked();
+  },
+  createList: async (payload: CreateListRecord) => {
+    return get().store.createList(payload);
+  },
+  updateList: async (id: string, payload: CreateListRecord) => {
+    return get().store.updateList(id, payload);
+  },
+  deleteList: async (id: string) => {
+    return get().store.deleteList(id);
+  },
+  getAllLists: async () => {
+    return get().store.getAllLists();
+  },
+  getList: async (id: string) => {
+    return get().store.getList(id);
+  },
+  getListsWithUser: async (pubkey: string) => {
+    return get().store.getListsWithUser(pubkey);
+  },
+  addUserToList: async (id: string, pubkey: string) => {
+    return get().store.addUserToList(id, pubkey);
+  },
+  removeUserFromList: async (id: string, pubkey: string) => {
+    return get().store.removeUserFromList(id, pubkey);
   },
   requestInformation: (
     payload: RelaysWithIdsOrKeys,

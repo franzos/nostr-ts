@@ -5,8 +5,16 @@ export interface UserOptions {
   showBanner?: boolean;
   following?: boolean;
   showFollowing?: boolean;
+  /**
+   * Show block button
+   */
+  showBlock?: boolean;
   relayUrls: string[];
   isBlocked?: boolean;
+  lists?: {
+    id: string;
+    title: string;
+  }[];
 
   /**
    * For pop-over

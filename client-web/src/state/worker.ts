@@ -28,6 +28,8 @@ import { expose } from "comlink";
 import { IncomingEventsQueue } from "./incoming-queue";
 import { NClientDB, NClientWorker } from "./worker-types";
 import { NUser, RelayClient } from "@nostr-ts/web";
+import { ListRecord, ProcessedListRecord } from "./base-types";
+import { nanoid } from "nanoid";
 
 const incomingQueue = new IncomingEventsQueue();
 
@@ -52,8 +54,8 @@ class WorkerClass implements NClientWorker {
   }
 
   async init() {
-    this.db = await openDB<NClientDB>("nostr-client", 2, {
-      upgrade(db, oldVersion) {
+    this.db = await openDB<NClientDB>("nostr-client", 3, {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           // Initial version
           if (!db.objectStoreNames.contains("users")) {
@@ -65,9 +67,17 @@ class WorkerClass implements NClientWorker {
         }
 
         if (oldVersion < 2) {
-          // Upgrading to version 2: remove the "following" object store
           if (db.objectStoreNames.contains("following")) {
             db.deleteObjectStore("following");
+          }
+        }
+
+        if (oldVersion < 3) {
+          // Make sure "lists" exists before trying to create an index on it.
+          if (!db.objectStoreNames.contains("lists")) {
+            db.createObjectStore("lists", { keyPath: "id" });
+            const listStore = transaction.objectStore("lists");
+            listStore.createIndex("users", "userPubkeys", { multiEntry: true });
           }
         }
       },
@@ -913,6 +923,124 @@ class WorkerClass implements NClientWorker {
     });
   }
 
+  async createList(payload: ListRecord): Promise<void> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    await this.db.add("lists", {
+      ...payload,
+      id: nanoid(),
+    });
+  }
+
+  async updateList(id: string, payload: ListRecord): Promise<void> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const record = await this.db.get("lists", id);
+    await this.db.put("lists", Object.assign(record, payload));
+  }
+
+  async deleteList(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    await this.db.delete("lists", id);
+  }
+
+  async getAllLists(): Promise<ProcessedListRecord[] | undefined> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+
+    const lists: ListRecord[] = await this.db.getAll("lists");
+
+    // Use Promise.all to wait for all list processing to complete
+    const processedLists = await Promise.all(
+      lists.map(async (list) => {
+        if (list.userPubkeys) {
+          // Use Promise.all to wait for all users to be fetched
+          const users = await Promise.all(
+            list.userPubkeys.map(async (pubkey) => {
+              const user = await this.getUser(pubkey);
+              return user;
+            })
+          );
+
+          return {
+            ...list,
+            users,
+          } as ProcessedListRecord;
+        } else {
+          return list;
+        }
+      })
+    );
+
+    return processedLists;
+  }
+
+  async getList(id: string): Promise<ProcessedListRecord | undefined> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const list: ListRecord = await this.db.get("lists", id);
+    if (list.userPubkeys) {
+      const users: UserRecord[] = [];
+      list.userPubkeys.map(async (pubkey) => {
+        const user = await this.getUser(pubkey);
+        if (user) {
+          users.push(user);
+        }
+      });
+      return {
+        ...list,
+        users,
+      };
+    } else {
+      return list;
+    }
+  }
+
+  async getListsWithUser(pubkey: string): Promise<ListRecord[] | undefined> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const transaction = this.db.transaction("lists", "readonly");
+    const listStore = transaction.objectStore("lists");
+    const userIndex = listStore.index("userPubkeys");
+    return userIndex.getAll(pubkey);
+  }
+
+  async addUserToList(id: string, pubkey: string): Promise<void> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const list: ListRecord = await this.db.get("lists", id);
+    if (list && list.userPubkeys) {
+      if (!list.userPubkeys.includes(pubkey)) {
+        list.userPubkeys.push(pubkey);
+        await this.updateList(id, list);
+      } else {
+        throw new Error("User already in list");
+      }
+    } else {
+      list.userPubkeys = [pubkey];
+      await this.updateList(id, list);
+    }
+  }
+
+  async removeUserFromList(id: string, pubkey: string): Promise<void> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const list: ListRecord = await this.db.get("lists", id);
+    if (list && list.userPubkeys) {
+      list.userPubkeys = list.userPubkeys.filter((p) => p !== pubkey);
+      await this.updateList(id, list);
+    }
+  }
+
   async setViewSubscription(
     view: string,
     filters: NFilters,
@@ -1149,8 +1277,9 @@ class WorkerClass implements NClientWorker {
     const subscriptions: RelaySubscription[] = [];
 
     // for 25 each
-    for (let i = 0; i < filtered.length; i += 25) {
-      const keys = filtered.slice(i, i + 25);
+    const sliceSize = 50;
+    for (let i = 0; i < filtered.length; i += sliceSize) {
+      const keys = filtered.slice(i, i + sliceSize);
       let filters: NFilters;
 
       if (payload.source === "events") {

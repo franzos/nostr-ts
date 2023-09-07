@@ -1,6 +1,5 @@
 import {
   WebSocketClientInfo,
-  UserBase,
   PublishingRequest,
   Subscription,
   PublishingQueueItem,
@@ -9,7 +8,7 @@ import {
   NFilters,
   ProcessedUserBase,
 } from "@nostr-ts/common";
-import { NClientBase } from "./base-types";
+import { ListRecord, NClientBase } from "./base-types";
 
 export interface NClientWorker extends NClientBase {
   checkedUsers: string[];
@@ -70,16 +69,14 @@ export interface NClientDB {
       };
     };
   };
-  following: {
+  lists: {
     key: string;
-    value: {
-      user: UserBase;
-      relayUrls: string[];
-    };
+    value: ListRecord;
     indexes: {
-      user: {
-        pubkey: string;
+      list: {
+        id: string;
       };
+      userPubkeys: string[];
     };
   };
 }

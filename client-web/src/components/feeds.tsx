@@ -21,6 +21,13 @@ export function EventsFeeds() {
     ]
   );
 
+  const [lists, setLists] = useState<
+    {
+      id: string;
+      title: string;
+    }[]
+  >([]);
+
   const [eventFilters, setEventFilters] = useState<NFilters>(defaultFilters);
   const [activeView, setActiveView] = useState<string>("global");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,6 +40,16 @@ export function EventsFeeds() {
       reset: true,
     });
     setIsLoading(false);
+
+    const lists = await useNClient.getState().getAllLists();
+    if (lists) {
+      setLists(
+        lists.map((item) => ({
+          id: item.id,
+          title: item.title,
+        }))
+      );
+    }
   };
 
   /**
@@ -82,7 +99,24 @@ export function EventsFeeds() {
         "#p": [keypair.publicKey],
       });
       setEventFilters(filters);
+    } else if (lists && lists.length > 0) {
+      const list = lists.find((item) => item.id === feedName);
+      if (list) {
+        const listRecord = await useNClient.getState().getList(list.id);
+        if (!listRecord || !listRecord.userPubkeys) return;
+        setActiveView(feedName);
+        filters = new NFilters({
+          kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+          limit: MAX_EVENTS,
+          authors: listRecord?.userPubkeys,
+        });
+        setEventFilters(filters);
+      } else {
+        console.log("list not found");
+        return;
+      }
     } else {
+      console.log("list not found");
       return;
     }
     console.log(filters);
@@ -101,6 +135,13 @@ export function EventsFeeds() {
             <Radio value="following">Following</Radio>
           )}
           {keypairIsLoaded && <Radio value="mentions">Mentions</Radio>}
+          {lists &&
+            lists.length > 0 &&
+            lists.map((list) => (
+              <Radio key={list.id} value={list.id}>
+                {list.title}
+              </Radio>
+            ))}
         </Stack>
       </RadioGroup>
       <Box overflowY="auto">
@@ -110,6 +151,7 @@ export function EventsFeeds() {
             view="welcome"
             filters={eventFilters}
             connected={connected}
+            lists={lists}
           />
         ) : (
           <Box marginTop={5} marginBottom={5} textAlign={"center"}>

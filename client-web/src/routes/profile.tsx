@@ -20,6 +20,14 @@ export function ProfileRoute() {
     state.connected,
     state.events.length >= state.maxEvents,
   ]);
+
+  const [lists, setLists] = useState<
+    {
+      id: string;
+      title: string;
+    }[]
+  >([]);
+
   const [userRecord, setUserRecord] = useState<UserRecord | null>(null);
   const [relayUrls, setrelayUrls] = useState<string[]>([]);
 
@@ -42,6 +50,15 @@ export function ProfileRoute() {
         }),
         relayUrls,
       });
+    }
+    const lists = await useNClient.getState().getAllLists();
+    if (lists) {
+      setLists(
+        lists.map((item) => ({
+          id: item.id,
+          title: item.title,
+        }))
+      );
     }
   };
 
@@ -134,6 +151,8 @@ export function ProfileRoute() {
                 showBanner: true,
                 showFollowing: true,
                 relayUrls: userRecord.relayUrls,
+                lists,
+                showBlock: true,
               }}
             />
           </Box>

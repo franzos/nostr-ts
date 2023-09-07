@@ -40,6 +40,10 @@ import { CreateEventForm } from "./create-event-form";
 export interface EventProps extends ProcessedEvent {
   userComponent?: JSX.Element;
   level: number;
+  lists: {
+    id: string;
+    title: string;
+  }[];
 }
 
 export function Event({
@@ -51,6 +55,7 @@ export function Event({
   replies,
   eventRelayUrls,
   level,
+  lists,
 }: EventProps) {
   const [isReady] = useNClient((state) => [
     state.connected && state.keystore !== "none",
@@ -363,21 +368,21 @@ export function Event({
       </CardHeader>
       <CardBody p={4}>
         <Box
+          padding={2}
+          background={"blackAlpha.100"}
+          borderRadius={4}
           style={{ overflowWrap: "anywhere" }}
           dangerouslySetInnerHTML={{
             __html: makeLinksClickable(event.content),
           }}
         />
-        <Text fontWeight="bold" fontSize={12} marginTop={2}>
-          {unixTimeToRelative(event.created_at)}
-        </Text>
       </CardBody>
       <CardFooter p={4}>
         <HStack width="100%">
           <ActionButtons />
 
           <Spacer />
-
+          <Text fontSize={12}>{unixTimeToRelative(event.created_at)}</Text>
           <Button
             size={"sm"}
             variant="outline"
@@ -429,6 +434,7 @@ export function Event({
                       relayUrls: eventRelayUrls,
                       reaction: r.event.content,
                       avatarSize: "xs",
+                      lists: lists,
                     }}
                   />
                 </Box>
@@ -451,6 +457,7 @@ export function Event({
                       showBanner: true,
                       relayUrls: eventRelayUrls,
                       avatarSize: "xs",
+                      lists: lists,
                     }}
                   />
                   <Icon as={RepeatIcon} />
@@ -474,6 +481,7 @@ export function Event({
                       showBanner: true,
                       relayUrls: eventRelayUrls,
                       avatarSize: "xs",
+                      lists: lists,
                     }}
                   />
                 </Box>
@@ -494,6 +502,7 @@ export function Event({
                 userComponent={userComponent}
                 eventRelayUrls={eventRelayUrls}
                 level={level + 1}
+                lists={lists}
               />
             </Box>
           );

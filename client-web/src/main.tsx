@@ -14,6 +14,7 @@ import { RelaysRoute } from "./routes/relays.tsx";
 import { PublishingQueueRoute } from "./routes/queue.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
 import { BlockedUsersRoute } from "./routes/blocked.tsx";
+import { ListsRoute } from "./routes/lists.tsx";
 import "./index.css";
 import theme from "./theme.ts";
 
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/following" element={<FollowingUsersRoute />} />
             <Route path="/blocked" element={<BlockedUsersRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
+            <Route path="/lists" element={<ListsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />
             <Route path="/p/:nprofile" element={<ProfileRoute />} />

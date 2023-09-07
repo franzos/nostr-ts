@@ -13,6 +13,10 @@ export function Events(props: {
   view: string;
   filters: NFilters;
   connected: boolean;
+  lists?: {
+    id: string;
+    title: string;
+  }[];
 }) {
   const [events, maxEvents] = useNClient((state) => [
     state.events,
@@ -85,7 +89,6 @@ export function Events(props: {
       setMoreEventsCount(moreEventsCount + 1);
     }
     if (currentPage < totalPages) {
-      console.log("nextPage");
       await nextPage();
       return;
     }
@@ -129,6 +132,8 @@ export function Events(props: {
                       options={{
                         showFollowing: true,
                         relayUrls: event.eventRelayUrls,
+                        lists: props.lists || [],
+                        showBlock: true,
                       }}
                     />
                   ) : (
@@ -138,12 +143,15 @@ export function Events(props: {
                       }}
                       options={{
                         relayUrls: event.eventRelayUrls,
+                        lists: props.lists || [],
+                        showBlock: true,
                       }}
                     />
                   )
                 ) : undefined
               }
               level={0}
+              lists={props.lists || []}
             />
           </Box>
         );

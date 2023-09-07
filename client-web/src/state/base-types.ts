@@ -85,6 +85,14 @@ export interface NClientBase {
   blockUser(payload: UserPublicKeyAndRelays): void;
   unblockUser(pubkey: string): Promise<void>;
   getAllUsersBlocked(): Promise<UserRecord[] | undefined>;
+  createList(payload: CreateListRecord): Promise<void>;
+  updateList(id: string, payload: CreateListRecord): Promise<void>;
+  deleteList(id: string): Promise<void>;
+  getAllLists(): Promise<ProcessedListRecord[] | undefined>;
+  getList(id: string): Promise<ProcessedListRecord | undefined>;
+  getListsWithUser(pubkey: string): Promise<ListRecord[] | undefined>;
+  addUserToList(id: string, pubkey: string): Promise<void>;
+  removeUserFromList(id: string, pubkey: string): Promise<void>;
   requestInformation(
     payload: RelaysWithIdsOrKeys,
     options: SubscriptionOptions
@@ -101,4 +109,19 @@ export interface WorkerEvent {
       | "event:queue:update";
     data: ProcessedEvent | WebSocketEvent | PublishingQueueItem;
   };
+}
+
+export interface CreateListRecord {
+  title: string;
+  description?: string;
+  tags?: string[];
+  userPubkeys?: string[];
+}
+
+export interface ListRecord extends CreateListRecord {
+  id: string;
+}
+
+export interface ProcessedListRecord extends ListRecord {
+  users?: UserRecord[];
 }

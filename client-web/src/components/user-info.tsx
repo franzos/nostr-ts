@@ -6,6 +6,16 @@ import {
   Image,
   Text,
   HStack,
+  Select,
+  useToast,
+  Modal,
+  ModalOverlay,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
@@ -19,8 +29,10 @@ export function UserInfo({
     showBanner,
     following,
     showFollowing,
+    showBlock,
     relayUrls,
     isBlocked,
+    lists,
   },
 }: UserInfoProps) {
   const name = data && data.name ? data.name : "Anonymous";
@@ -44,6 +56,69 @@ export function UserInfo({
 
   const profileLink = `/p/${bech32ProfileLink}`;
 
+  const toast = useToast();
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const assignToList = async (listId: string) => {
+    if (listId === "0") return;
+    try {
+      await useNClient.getState().addUserToList(listId, pubkey);
+      toast({
+        title: "User added to list",
+        description: `User added to ${listId}`,
+        status: "success",
+        duration: 9000,
+        isClosable: true,
+      });
+    } catch (e) {
+      toast({
+        title: "Already added",
+        description: "User already on list",
+        status: "warning",
+        duration: 9000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const SelectModal = (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Add to list</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          {lists && lists.length > 0 ? (
+            <Select
+              onChange={(ev) => assignToList(ev.target.value)}
+              width={180}
+            >
+              <option key={"0"} value={"0"}>
+                {""}
+              </option>
+              {lists.map((list) => {
+                return (
+                  <option key={list.id} value={list.id}>
+                    {list.title}
+                  </option>
+                );
+              })}
+            </Select>
+          ) : (
+            <Text>No lists found. Create one first.</Text>
+          )}
+        </ModalBody>
+
+        <ModalFooter>
+          <Button colorScheme="blue" mr={3} onClick={onClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
   return (
     <>
       {showBanner && banner && (
@@ -64,20 +139,27 @@ export function UserInfo({
         <Text size="xs">{displayName}</Text>
 
         <Spacer />
-        <Button
-          variant="outline"
-          size={"sm"}
-          onClick={() =>
-            isBlocked
-              ? useNClient.getState().unblockUser(pubkey)
-              : useNClient.getState().blockUser({
-                  pubkey: pubkey,
-                  relayUrls,
-                })
-          }
-        >
-          {isBlocked ? "Unblock" : "Block"}
-        </Button>
+        {showBlock && (
+          <Button
+            variant="outline"
+            size={"sm"}
+            onClick={() =>
+              isBlocked
+                ? useNClient.getState().unblockUser(pubkey)
+                : useNClient.getState().blockUser({
+                    pubkey: pubkey,
+                    relayUrls,
+                  })
+            }
+          >
+            {isBlocked ? "Unblock" : "Block"}
+          </Button>
+        )}
+        {lists && lists.length > 0 && (
+          <Button variant="outline" size={"sm"} onClick={onOpen}>
+            Lists
+          </Button>
+        )}
         {showFollowing && (
           <Button
             variant="outline"
@@ -99,6 +181,7 @@ export function UserInfo({
       <Box overflowWrap="anywhere" mt={2}>
         {showAbout && about && <Text fontSize="sm">{about}</Text>}
       </Box>
+      {SelectModal}
     </>
   );
 }

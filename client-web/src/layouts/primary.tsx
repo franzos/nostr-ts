@@ -62,6 +62,12 @@ export function PrimaryLayout() {
             leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
           />
 
+          <MenuItem
+            label="Lists"
+            to="/lists"
+            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
+          />
+
           {publicKey && publicKey !== "" && (
             <MenuItem
               label="Profile"

@@ -3,6 +3,7 @@ import {
   CLIENT_MESSAGE_TYPE,
   NEVENT_KIND,
   NFilters,
+  UserRecord,
   decodeBech32,
 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +14,6 @@ import { User } from "../components/user";
 import { Events } from "../components/events";
 import { MAX_EVENTS } from "../defaults";
 import { CreateEventForm } from "../components/create-event-form";
-import { UserRecord } from "../state/base-types";
 
 export function ProfileRoute() {
   const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
@@ -58,6 +58,12 @@ export function ProfileRoute() {
     });
   };
 
+  const loadEvents = async (view: string, filters: NFilters) => {
+    await useNClient.getState().setViewSubscription(view, filters, {
+      reset: true,
+    });
+  };
+
   const init = async (nprofileString: string) => {
     const decoded = decodeBech32(nprofileString);
     const relayUrls: string[] = [];
@@ -74,6 +80,14 @@ export function ProfileRoute() {
     setPublicKey(pubkey);
     view.current = `profile-${pubkey}`;
     await loadUser(pubkey);
+    await loadEvents(
+      view.current,
+      new NFilters({
+        limit: MAX_EVENTS,
+        authors: [pubkey],
+        kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+      })
+    );
     await count(pubkey);
   };
 
@@ -94,59 +108,6 @@ export function ProfileRoute() {
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
   });
 
-  // const init = async () => {
-  //   if (!connected) return;
-
-  //   // USER
-
-  //   if (!userRecord || userRecord.user.pubkey !== publicKey) {
-  //     await useNClient.getState().setViewSubscription(view, defaultFilters, {
-  //       reset: true,
-  //     });
-
-  //     const dbUser = await useNClient.getState().getUser(publicKey);
-  //     if (dbUser) {
-  //       setUserRecord(dbUser);
-  //       setrelayUrls(dbUser.relayUrls);
-  //     } else {
-  //       setUserRecord({
-  //         user: new NUser({
-  //           pubkey,
-  //         }),
-  //         relayUrls,
-  //       });
-
-  //       for (const params of searchParams.entries()) {
-  //         if (params[0] === "relays") {
-  //           setrelayUrls(params[1].split(","));
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   await useNClient.getState().count({
-  //     type: CLIENT_MESSAGE_TYPE.COUNT,
-  //     filters: new NFilters({
-  //       kinds: [3],
-  //       "#p": [pubkey],
-  //     }),
-  //     options: {
-  //       timeoutIn: 10000,
-  //     },
-  //   });
-  // };
-
-  /**
-   * Handle initial load
-   */
-  // useEffect(() => {
-  //   init();
-  // }, []);
-
-  // useEffect(() => {
-  //   init();
-  // }, [pubkey]);
-
   /**
    * Remove subscription when we hit the limit
    */
@@ -163,9 +124,9 @@ export function ProfileRoute() {
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
-      <Box maxHeight="80vh" overflowY="auto">
-        <Box>
-          {userRecord && (
+      <Box>
+        {userRecord && (
+          <Box mb={4}>
             <User
               user={userRecord.user}
               options={{
@@ -175,18 +136,20 @@ export function ProfileRoute() {
                 relayUrls: userRecord.relayUrls,
               }}
             />
-          )}
-        </Box>
-        <Box>
-          {connected ? (
-            <Events
-              view={view.current}
-              filters={defaultFilters}
-              connected={connected}
-            />
-          ) : (
-            <Text>Not connected.</Text>
-          )}
+          </Box>
+        )}
+        <Box overflowY="auto">
+          <Box>
+            {connected ? (
+              <Events
+                view={view.current}
+                filters={defaultFilters}
+                connected={connected}
+              />
+            ) : (
+              <Text>Not connected.</Text>
+            )}
+          </Box>
         </Box>
       </Box>
 

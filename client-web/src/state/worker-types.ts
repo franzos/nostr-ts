@@ -7,6 +7,7 @@ import {
   CountRequest,
   RelaySubscription,
   NFilters,
+  ProcessedUserBase,
 } from "@nostr-ts/common";
 import { NClientBase } from "./base-types";
 
@@ -24,6 +25,8 @@ export interface NClientWorker extends NClientBase {
   unsubscribeAll: () => void;
 
   count: (payload: CountRequest) => Subscription[] | undefined;
+  countEvents: () => number;
+  getEvents: (params: { limit?: number; offset?: number }) => void;
   sendEvent: (payload: PublishingRequest) => void;
   setMaxEvents: (max: number) => void;
   sendQueueItems: (items: PublishingQueueItem[]) => void;
@@ -60,10 +63,7 @@ export interface NClientWorker extends NClientBase {
 export interface NClientDB {
   users: {
     key: string;
-    value: {
-      user: UserBase;
-      relayUrls: string[];
-    };
+    value: ProcessedUserBase;
     indexes: {
       user: {
         pubkey: string;

@@ -3,8 +3,10 @@ import { NFilters } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useState } from "react";
-import { MAX_EVENTS } from "../defaults";
+import { EVENTS_PER_PAGE, MAX_EVENTS } from "../defaults";
 import { User } from "./user";
+
+const firstPage = 1;
 
 export function Events(props: {
   userComponent?: typeof User;
@@ -22,18 +24,70 @@ export function Events(props: {
 
   const [filters, setFilters] = useState<NFilters>(props.filters);
 
+  const [currentPage, setCurrentPage] = useState(firstPage);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const calculateTotalPages = async () => {
+    const totalEvents = await useNClient.getState().countEvents();
+    console.log("totalEvents", totalEvents);
+    setTotalPages(Math.ceil(totalEvents / EVENTS_PER_PAGE));
+  };
+
+  const loadEvents = async () => {
+    const eventsCount = await useNClient.getState().events.length;
+    const expected = currentPage * EVENTS_PER_PAGE;
+    if (eventsCount < expected) {
+      console.log("loadEvents", eventsCount, expected);
+      await useNClient.getState().getEvents({
+        limit: EVENTS_PER_PAGE,
+        offset: eventsCount,
+      });
+    }
+  };
+
   useEffect(() => {
+    loadEvents();
     const timeout = setTimeout(() => {
       setShowButtonsAnyway(true);
     }, 5000);
+    const totalPageCountInterval = setInterval(async () => {
+      await calculateTotalPages();
+    }, 2000);
+    const loadEventsInterval = setInterval(async () => {
+      await loadEvents();
+    }, 1000);
     return () => {
       clearTimeout(timeout);
+      clearInterval(totalPageCountInterval);
+      clearInterval(loadEventsInterval);
     };
   }, []);
+
+  useEffect(() => {
+    const expected = currentPage * EVENTS_PER_PAGE;
+    if (events.length < expected) {
+      // useNClient.getState().setStreamEvents(false);
+    }
+  }, [events]);
+
+  const nextPage = async () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      await useNClient.getState().getEvents({
+        limit: EVENTS_PER_PAGE,
+        offset: currentPage * EVENTS_PER_PAGE,
+      });
+    }
+  };
 
   const moreEvents = async () => {
     if (moreEventsCount === 0) {
       setMoreEventsCount(moreEventsCount + 1);
+    }
+    if (currentPage < totalPages) {
+      console.log("nextPage");
+      await nextPage();
+      return;
     }
     if (events.length >= maxEvents) {
       await useNClient.getState().setMaxEvents(maxEvents + MAX_EVENTS);

@@ -6,13 +6,14 @@ import { useNClient } from "./state/client.ts";
 import { AccountRoute } from "./routes/account.tsx";
 import { PrimaryLayout } from "./layouts/primary.tsx";
 import { WelcomeRoute } from "./routes/welcome.js";
-import { FollowingRoute } from "./routes/following.tsx";
+import { FollowingUsersRoute } from "./routes/following.tsx";
 import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
 import { ProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
 import { RelaysRoute } from "./routes/relays.tsx";
 import { PublishingQueueRoute } from "./routes/queue.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
+import { BlockedUsersRoute } from "./routes/blocked.tsx";
 import "./index.css";
 import theme from "./theme.ts";
 
@@ -34,7 +35,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<WelcomeRoute />} />
             <Route path="/account" element={<AccountRoute />} />
             <Route path="/profile" element={<UserProfileRoute />} />
-            <Route path="/following" element={<FollowingRoute />} />
+            <Route path="/following" element={<FollowingUsersRoute />} />
+            <Route path="/blocked" element={<BlockedUsersRoute />} />
             <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/relays" element={<RelaysRoute />} />
             <Route path="/queue" element={<PublishingQueueRoute />} />

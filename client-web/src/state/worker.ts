@@ -18,14 +18,16 @@ import {
   AuthRequest,
   EventsRequest,
   CloseRequest,
+  UserRecord,
+  ProcessedUserBase,
+  UserPublicKeyAndRelays,
 } from "@nostr-ts/common";
-import { NUser, RelayClient } from "@nostr-ts/web";
 import { IDBPDatabase, openDB } from "idb";
 import { MAX_EVENTS } from "../defaults";
 import { expose } from "comlink";
 import { IncomingEventsQueue } from "./incoming-queue";
 import { NClientDB, NClientWorker } from "./worker-types";
-import { UpdateUserRecord } from "./base-types";
+import { NUser, RelayClient } from "@nostr-ts/web";
 
 const incomingQueue = new IncomingEventsQueue();
 
@@ -50,11 +52,24 @@ class WorkerClass implements NClientWorker {
   }
 
   async init() {
-    this.db = await openDB<NClientDB>("nostr-client", 1, {
-      upgrade(db) {
-        db.createObjectStore("users", { keyPath: "user.pubkey" });
-        // db.createObjectStore("subscriptions", { keyPath: "subscriptionId" });
-        db.createObjectStore("following", { keyPath: "user.pubkey" });
+    this.db = await openDB<NClientDB>("nostr-client", 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          // Initial version
+          if (!db.objectStoreNames.contains("users")) {
+            db.createObjectStore("users", { keyPath: "user.pubkey" });
+          }
+          if (!db.objectStoreNames.contains("following")) {
+            db.createObjectStore("following", { keyPath: "user.pubkey" });
+          }
+        }
+
+        if (oldVersion < 2) {
+          // Upgrading to version 2: remove the "following" object store
+          if (db.objectStoreNames.contains("following")) {
+            db.deleteObjectStore("following");
+          }
+        }
       },
     });
   }
@@ -150,10 +165,10 @@ class WorkerClass implements NClientWorker {
    */
   addEvent(payload: ProcessedEvent) {
     this.eventsMap.set(payload.event.id, payload);
-    postMessage({
-      type: "event:new",
-      data: payload,
-    });
+    // postMessage({
+    //   type: "event:new",
+    //   data: payload,
+    // });
   }
 
   /**
@@ -197,20 +212,20 @@ class WorkerClass implements NClientWorker {
     return this.eventsPublishingQueue;
   }
 
-  async getUser(pubkey: string) {
+  async getUser(pubkey: string): Promise<UserRecord | undefined> {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
     const data = await this.db.get("users", pubkey);
     return data
       ? {
+          ...data,
           user: new NUser(data.user),
-          relayUrls: data.relayUrls,
         }
       : undefined;
   }
 
-  async addUser(payload: UpdateUserRecord) {
+  async addUser(payload: ProcessedUserBase) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
@@ -220,15 +235,12 @@ class WorkerClass implements NClientWorker {
       relayUrls: payload.relayUrls,
     });
   }
-  async updateUser(payload: UpdateUserRecord) {
+  async updateUser(pubkey: string, payload: ProcessedUserBase) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    const record = await this.db.get("users", payload.user.pubkey);
-    await this.db.put("users", {
-      user: payload.user ? payload.user : record.user,
-      relayUrls: payload.relayUrls ? payload.relayUrls : record.relayUrls,
-    });
+    const record = await this.db.get("users", pubkey);
+    await this.db.put("users", Object.assign(record, payload));
   }
 
   async countUsers() {
@@ -240,6 +252,25 @@ class WorkerClass implements NClientWorker {
 
   count(payload: CountRequest) {
     return this.client?.count(payload);
+  }
+
+  countEvents() {
+    return this.eventsMap.size;
+  }
+
+  getEvents(params: { limit?: number; offset?: number }) {
+    const events = Array.from(this.eventsMap.values());
+    const offset = params.offset || 0;
+    const limit = params.limit || events.length;
+    const result = events.slice(offset, offset + limit);
+
+    result.map((event) => {
+      postMessage({
+        type: "event:new",
+        data: event,
+      });
+    });
+    // return result;
   }
 
   async processEvent(payload: WebSocketEvent, count: number = 0) {
@@ -369,9 +400,12 @@ class WorkerClass implements NClientWorker {
             eventRelayUrls: [payload.meta.url as string],
           };
 
-          const data = await this.getUser(event.pubkey);
-          if (data) {
-            newEvent.user = data.user;
+          const userRecord = await this.getUser(event.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+            newEvent.user = userRecord.user;
           }
 
           const mentions = newEvent.event.hasMentions();
@@ -465,24 +499,29 @@ class WorkerClass implements NClientWorker {
           }
 
           const ev = new NEvent(event);
-          const user = await this.getUser(ev.pubkey);
+          const userRecord = await this.getUser(ev.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+          }
           const tags = ev.hasEventTags();
           const hasRootTag = tags?.find((tag) => tag.marker === "root");
           if (hasRootTag) {
             const rootEvent = this.eventsMap.get(hasRootTag.eventId);
             if (rootEvent) {
+              const data = {
+                event: ev,
+                user: userRecord
+                  ? userRecord?.user
+                  : {
+                      pubkey: ev.pubkey,
+                    },
+              };
               if (rootEvent.zapReceipt) {
-                rootEvent.zapReceipt.push({
-                  event: ev,
-                  user: user?.user,
-                });
+                rootEvent.zapReceipt.push(data);
               } else {
-                rootEvent.zapReceipt = [
-                  {
-                    event: ev,
-                    user: user?.user,
-                  },
-                ];
+                rootEvent.zapReceipt = [data];
               }
               this.updateEvent(rootEvent);
             }
@@ -495,22 +534,17 @@ class WorkerClass implements NClientWorker {
           const payloadUser = payload.data[2] as EventBase;
           newUser.fromEvent(payloadUser);
 
-          const user = await this.getUser(newUser.pubkey);
-          if (user) {
-            await this.updateUser({
-              user: newUser,
-              relayUrls: [payload.meta.url as string],
-            });
-            await this.updateUserFollowing({
+          const userRecord = await this.getUser(newUser.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+            await this.updateUser(newUser.pubkey, {
               user: newUser,
               relayUrls: [payload.meta.url as string],
             });
           } else {
             await this.addUser({
-              user: newUser,
-              relayUrls: [payload.meta.url as string],
-            });
-            await this.updateUserFollowing({
               user: newUser,
               relayUrls: [payload.meta.url as string],
             });
@@ -562,7 +596,12 @@ class WorkerClass implements NClientWorker {
             // TODO: Support users
             return;
           }
-          const data = await this.getUser(ev.pubkey);
+          const userRecord = await this.getUser(ev.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+          }
 
           const eventIds = inResponse
             .filter((tag) => tag.eventId)
@@ -571,20 +610,19 @@ class WorkerClass implements NClientWorker {
           for (const id of eventIds) {
             const event = this.eventsMap.get(id);
             if (event) {
+              const data = {
+                event: ev,
+                user: userRecord
+                  ? userRecord?.user
+                  : {
+                      pubkey: ev.pubkey,
+                    },
+              };
               if (event.reactions && event.reactions.length) {
-                event.reactions.push({
-                  event: ev,
-                  user: data?.user,
-                });
+                event.reactions.push(data);
               } else {
-                event.reactions = [
-                  {
-                    event: ev,
-                    user: data?.user,
-                  },
-                ];
+                event.reactions = [data];
               }
-              console.log(`Reaction event added to L1 event ${event.event.id}`);
               this.updateEvent(event);
               return;
             }
@@ -597,22 +635,19 @@ class WorkerClass implements NClientWorker {
                   (reply) => reply.event.id === eventId
                 );
                 if (reply) {
+                  const data = {
+                    event: ev,
+                    user: userRecord
+                      ? userRecord.user
+                      : {
+                          pubkey: ev.pubkey,
+                        },
+                  };
                   if (reply.reactions) {
-                    reply.reactions.push({
-                      event: ev,
-                      user: data?.user,
-                    });
+                    reply.reactions.push(data);
                   } else {
-                    reply.reactions = [
-                      {
-                        event: ev,
-                        user: data?.user,
-                      },
-                    ];
+                    reply.reactions = [data];
                   }
-                  console.log(
-                    `Reaction event added to L2 event ${event.event.id}`
-                  );
                   this.updateEvent(event);
                   return;
                 }
@@ -631,7 +666,12 @@ class WorkerClass implements NClientWorker {
             // TODO: Support users
             return;
           }
-          const data = await this.getUser(ev.pubkey);
+          const userRecord = await this.getUser(ev.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+          }
 
           const eventIds = inResponse
             .filter((tag) => tag.eventId)
@@ -640,18 +680,18 @@ class WorkerClass implements NClientWorker {
           eventIds.map((id) => {
             const event = this.eventsMap.get(id);
             if (event) {
+              const data = {
+                event: ev,
+                user: userRecord
+                  ? userRecord.user
+                  : {
+                      pubkey: ev.pubkey,
+                    },
+              };
               if (event.reposts) {
-                event.reposts.push({
-                  event: ev,
-                  user: data?.user,
-                });
+                event.reposts.push(data);
               } else {
-                event.reposts = [
-                  {
-                    event: ev,
-                    user: data?.user,
-                  },
-                ];
+                event.reposts = [data];
               }
               console.log(`Repost event added to event ${event.event.id}`);
               this.updateEvent(event);
@@ -734,41 +774,38 @@ class WorkerClass implements NClientWorker {
     this.checkedUsers = [];
   }
 
-  async followUser({
-    pubkey,
-    relayUrls,
-  }: {
-    pubkey: string;
-    relayUrls: string[];
-  }) {
+  async followUser({ pubkey, relayUrls }: UserPublicKeyAndRelays) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
     const user = await this.db.get("users", pubkey);
-    const following = await this.db.get("following", pubkey);
-    if (user && !following) {
-      this.db.add("following", user);
-    } else if (!user && !following) {
-      const newFollowing = new NUserBase({
-        pubkey: pubkey,
+    if (user) {
+      await this.updateUser(pubkey, {
+        following: true,
       });
-      await this.db.put("following", {
-        user: newFollowing,
+    } else {
+      await this.addUser({
+        user: new NUserBase({
+          pubkey: pubkey,
+        }),
         relayUrls,
-      });
-      relayUrls.map((relayUrl) => {
-        this.requestInformation(
-          {
-            source: "users",
-            idsOrKeys: [pubkey],
-            relayUrl,
-          },
-          {
-            timeoutIn: 10000,
-          }
-        );
+        following: true,
       });
     }
+
+    relayUrls.map((relayUrl) => {
+      this.requestInformation(
+        {
+          source: "users",
+          idsOrKeys: [pubkey],
+          relayUrl,
+        },
+        {
+          timeoutIn: 10000,
+        }
+      );
+    });
+
     this.followingUserIds.push(pubkey);
   }
 
@@ -776,7 +813,9 @@ class WorkerClass implements NClientWorker {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    await this.db.delete("following", pubkey);
+    await this.updateUser(pubkey, {
+      following: false,
+    });
     this.followingUserIds = this.followingUserIds.filter((id) => id !== pubkey);
   }
 
@@ -784,39 +823,94 @@ class WorkerClass implements NClientWorker {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    const following = await this.db.get("following", pubkey);
-    return !!following;
+    const user = await this.db.get("users", pubkey);
+    return !!user.following;
   }
 
-  async getAllUsersFollowing(): Promise<
-    | {
-        user: NUserBase;
-        relayUrls: string[];
-      }[]
-    | undefined
-  > {
+  async getAllUsersFollowing(): Promise<UserRecord[] | undefined> {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    const users = await this.db.getAll("following");
-    this.followingUserIds = users.map((user) => user.pubkey);
-    return users;
+
+    const tx = this.db.transaction("users", "readonly");
+    const store = tx.objectStore("users");
+
+    let cursor = await store.openCursor();
+    const records: UserRecord[] = [];
+
+    while (cursor) {
+      if (cursor.value.following === true) {
+        records.push(cursor.value);
+      }
+      cursor = await cursor.continue();
+    }
+
+    return records.map((record) => {
+      return {
+        ...record,
+        user: new NUser(record.user),
+      };
+    });
   }
 
-  async updateUserFollowing(payload: {
-    user: NUserBase;
-    relayUrls?: string[];
-  }): Promise<void> {
+  async blockUser(payload: UserPublicKeyAndRelays) {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    const following = await this.db.get("following", payload.user.pubkey);
-    if (following) {
-      await this.db.put("following", {
-        user: payload.user,
-        relayUrls: payload.relayUrls ? payload.relayUrls : following.relayUrls,
+    const user = await this.db.get("users", payload.pubkey);
+    if (user) {
+      await this.updateUser(payload.pubkey, {
+        isBlocked: true,
+      });
+    } else {
+      await this.addUser({
+        user: new NUserBase({
+          pubkey: payload.pubkey,
+        }),
+        relayUrls: payload.relayUrls,
+        isBlocked: true,
       });
     }
+    this.eventsMap = new Map(
+      Array.from(this.eventsMap.entries()).filter(
+        (entry) => entry[1].event.pubkey !== payload.pubkey
+      )
+    );
+  }
+
+  async unblockUser(pubkey: string) {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    await this.updateUser(pubkey, {
+      isBlocked: false,
+    });
+  }
+
+  async getAllUsersBlocked(): Promise<UserRecord[] | undefined> {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+
+    const tx = this.db.transaction("users", "readonly");
+    const store = tx.objectStore("users");
+
+    let cursor = await store.openCursor();
+    const records: UserRecord[] = [];
+
+    while (cursor) {
+      if (cursor.value.isBlocked === true) {
+        records.push(cursor.value);
+      }
+      cursor = await cursor.continue();
+    }
+
+    return records.map((record) => {
+      return {
+        ...record,
+        user: new NUser(record.user),
+      };
+    });
   }
 
   async setViewSubscription(

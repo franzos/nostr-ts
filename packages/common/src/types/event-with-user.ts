@@ -2,8 +2,37 @@ import { NEvent } from "../classes/event";
 import { NUserBase } from "../classes/user";
 import { UserBase } from "./user";
 
+export interface UserPublicKeyAndRelays {
+  pubkey: string;
+  relayUrls: string[];
+}
+
 export interface ProcessedUserBase {
   user?: UserBase;
+  relayUrls?: string[];
+  /**
+   * User is blocked
+   */
+  isBlocked?: boolean;
+  /**
+   * Unix time in seconds
+   * - undefined = not muted
+   * - 0 = muted forever
+   */
+  isMutedUntil?: number | undefined;
+  /**
+   * True if we're following the user
+   * - undefined / false = not following
+   */
+  following?: boolean;
+  /**
+   * Tags
+   */
+  tags?: string[];
+}
+
+export interface UserRecord extends ProcessedUserBase {
+  user: NUserBase;
   relayUrls: string[];
 }
 

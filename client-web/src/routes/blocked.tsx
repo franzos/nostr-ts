@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import { UserRecord } from "@nostr-ts/common";
 import { User } from "../components/user";
 
-export function FollowingUsersRoute() {
-  const [followingUsers, setFollowingUsers] = useState<UserRecord[]>([]);
+export function BlockedUsersRoute() {
+  const [blockedUsers, setBlockedUsers] = useState<UserRecord[]>([]);
 
   const update = async () => {
     await useNClient
       .getState()
-      .getAllUsersFollowing()
+      .getAllUsersBlocked()
       .then((following) => {
         if (following) {
-          setFollowingUsers(following);
+          setBlockedUsers(following);
         }
       });
   };
@@ -27,17 +27,18 @@ export function FollowingUsersRoute() {
 
   return (
     <Box>
-      <Heading size="lg">Following</Heading>
-      {followingUsers.length > 0 ? (
+      <Heading size="lg">Blocked</Heading>
+      {blockedUsers.length > 0 ? (
         <>
-          {followingUsers.map((item) => (
+          {blockedUsers.map((item) => (
             <Box mb="3" key={item.user.pubkey}>
               <User
                 user={item.user}
                 key={item.user.pubkey}
                 options={{
-                  showFollowing: true,
+                  showFollowing: false,
                   relayUrls: item.relayUrls,
+                  isBlocked: true,
                 }}
               />
             </Box>
@@ -46,10 +47,10 @@ export function FollowingUsersRoute() {
       ) : (
         <>
           <Text>
-            Follow users to subscribe to their messages. The information is
-            stored in your browser and not shared with relays.
+            Block users to ignore their events. The information is stored in
+            your browser and not shared with relays.
           </Text>
-          <Text fontWeight="bold">You are not following anyone.</Text>
+          <Text fontWeight="bold">You have not blocked anyone.</Text>
         </>
       )}
     </Box>

@@ -12,7 +12,6 @@ import {
 import { useEffect, useState } from "react";
 import { useNClient } from "../state/client";
 import { BottomBar } from "../components/bottom-bar";
-import { NUserBase } from "@nostr-ts/common";
 import { MenuItem } from "../components/menu-item";
 import LanConnectIcon from "mdi-react/LanConnectIcon";
 import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
@@ -28,20 +27,15 @@ export function PrimaryLayout() {
     state.keystore,
     state.keypair?.publicKey || "",
   ]);
-  const [followingUsers, setFollowingUsers] = useState<
-    {
-      user: NUserBase;
-      relayUrls: string[];
-    }[]
-  >([]);
+  const [followingUsersCount, setFollowingUsersCount] = useState<number>(0);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const update = async () => {
-    // if (!connected) return;
+    if (!useNClient.getState().connected) return;
     const following = await useNClient.getState().getAllUsersFollowing();
     if (following) {
-      setFollowingUsers(following);
+      setFollowingUsersCount(following.length);
     }
   };
 
@@ -63,7 +57,7 @@ export function PrimaryLayout() {
         <>
           <MenuItem
             label="Following"
-            value={followingUsers.length}
+            value={followingUsersCount}
             to="/following"
             leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
           />

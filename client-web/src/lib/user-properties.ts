@@ -6,6 +6,7 @@ export interface UserOptions {
   following?: boolean;
   showFollowing?: boolean;
   relayUrls: string[];
+  isBlocked?: boolean;
 
   /**
    * For pop-over

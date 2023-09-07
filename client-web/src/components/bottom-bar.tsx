@@ -18,11 +18,12 @@ import { EventFormModal } from "./event-form-modal";
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
   const [userCount, setUserCount] = useState(0);
-  const [eventsCount, maxEvents, relayEvents] = useNClient((state) => [
+  const [eventsCount, relayEvents] = useNClient((state) => [
     state.events.length,
-    state.maxEvents,
     state.relayEvents,
   ]);
+  const [blockedUsersCount, setBlockedUsersCount] = useState<number>(0);
+  const [totalEvents, setTotalEvents] = useState<number>(0);
   const [lastCount, setLastCount] = useState(0);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [relaysCount, setRelaysCount] = useState<number>(0);
@@ -31,6 +32,7 @@ export function BottomBar() {
   const toast = useToast();
 
   const update = async () => {
+    if (!useNClient.getState().connected) return;
     const count = await useNClient.getState().countUsers();
     if (count) {
       setUserCount(count);
@@ -47,10 +49,18 @@ export function BottomBar() {
     if (queue) {
       setQueueItemsCount(queue.length);
     }
+    const totalEvents = await useNClient.getState().countEvents();
+    if (totalEvents) {
+      setTotalEvents(totalEvents);
+    }
+    const blockedUsers = await useNClient.getState().getAllUsersBlocked();
+    if (blockedUsers) {
+      setBlockedUsersCount(blockedUsers.length);
+    }
   };
 
   useEffect(() => {
-    const statsUpdateInterval = setInterval(update, 1000);
+    const statsUpdateInterval = setInterval(async () => await update(), 1000);
 
     return () => clearInterval(statsUpdateInterval);
   }, []);
@@ -118,13 +128,19 @@ export function BottomBar() {
           <HStack spacing={2}>
             <Text fontSize="sm">Events:</Text>
             <Text fontSize="xl" marginLeft={1}>
-              {eventsCount} (max {maxEvents})
+              {eventsCount} / {totalEvents}
             </Text>
           </HStack>
           <HStack spacing={2}>
             <Text fontSize="sm">Users:</Text>
             <Text fontSize="xl">{userCount}</Text>
           </HStack>
+          <Link as={NavLink} to="/blocked">
+            <HStack spacing={2}>
+              <Text fontSize="sm">Blocked Users:</Text>
+              <Text fontSize="xl">{blockedUsersCount}</Text>
+            </HStack>
+          </Link>
           <Link as={NavLink} to="/relays">
             <HStack spacing={2}>
               <Text fontSize="sm">Relays:</Text>

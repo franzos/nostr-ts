@@ -5,7 +5,7 @@ import { UserOptions } from "../lib/user-properties";
 
 export function User({
   user,
-  options: { showAbout, showBanner, showFollowing, relayUrls },
+  options,
 }: {
   user: UserBase;
   options: UserOptions;
@@ -18,11 +18,8 @@ export function User({
     <UserInfo
       user={user}
       opts={{
-        showAbout,
-        showBanner,
+        ...options,
         following: !!following,
-        showFollowing,
-        relayUrls,
       }}
     />
   );

@@ -12,19 +12,14 @@ const defaultFilters = new NFilters({
 });
 
 export function EventsFeeds() {
-  const [
-    connected,
-    eventsEqualOrMoreThanMax,
-    followingUserIds,
-    keypairIsLoaded,
-    keypair,
-  ] = useNClient((state) => [
-    state.connected,
-    state.events.length >= state.maxEvents,
-    state.followingUserIds,
-    state.keypairIsLoaded,
-    state.keypair,
-  ]);
+  const [connected, followingUserIds, keypairIsLoaded, keypair] = useNClient(
+    (state) => [
+      state.connected,
+      state.followingUserIds,
+      state.keypairIsLoaded,
+      state.keypair,
+    ]
+  );
 
   const [eventFilters, setEventFilters] = useState<NFilters>(defaultFilters);
   const [activeView, setActiveView] = useState<string>("global");
@@ -55,20 +50,6 @@ export function EventsFeeds() {
       init();
     }, 500);
   }, [connected]);
-
-  /**
-   * Remove subscription when we hit the limit
-   */
-  useEffect(() => {
-    const remove = async () => {
-      if (!connected) return;
-      await useNClient.getState().removeViewSubscription(activeView);
-    };
-
-    if (eventsEqualOrMoreThanMax) {
-      remove();
-    }
-  }, [eventsEqualOrMoreThanMax]);
 
   const changeFeed = async (feedName: string) => {
     if (!connected) return;

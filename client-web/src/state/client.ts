@@ -4,7 +4,6 @@ import {
   WebSocketEvent,
   Relay,
   NEvent,
-  NUserBase,
   NFilters,
   PublishingQueueItem,
   CountRequest,
@@ -14,6 +13,8 @@ import {
   AuthRequest,
   CloseRequest,
   EventsRequest,
+  ProcessedUserBase,
+  UserRecord,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -26,7 +27,7 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { UpdateUserRecord, WorkerEvent } from "./base-types";
+import { WorkerEvent } from "./base-types";
 
 const throttleDelayInMs = 250;
 
@@ -210,6 +211,12 @@ export const useNClient = create<NClient>((set, get) => ({
   count: async (payload: CountRequest) => {
     return get().store.count(payload);
   },
+  countEvents: async () => {
+    return get().store.countEvents();
+  },
+  getEvents: async (params: { limit?: number; offset?: number }) => {
+    await get().store.getEvents(params);
+  },
   events: [],
   addEvent: (payload: ProcessedEvent) => {
     set({
@@ -298,14 +305,14 @@ export const useNClient = create<NClient>((set, get) => ({
   /**
    * Add items to publishing queue
    */
-  getUser: async (pubkey: string) => {
+  getUser: async (pubkey: string): Promise<UserRecord | undefined> => {
     return get().store.getUser(pubkey);
   },
-  addUser: async (payload: UpdateUserRecord) => {
+  addUser: async (payload: ProcessedUserBase) => {
     return get().store.addUser(payload);
   },
-  updateUser: async (payload: UpdateUserRecord) => {
-    return get().store.updateUser(payload);
+  updateUser: async (pubkey: string, payload: ProcessedUserBase) => {
+    return get().store.updateUser(pubkey, payload);
   },
   countUsers: async () => {
     return get().store.countUsers();
@@ -466,11 +473,17 @@ export const useNClient = create<NClient>((set, get) => ({
   getAllUsersFollowing: async () => {
     return get().store.getAllUsersFollowing();
   },
-  updateUserFollowing: async (payload: {
-    user: NUserBase;
-    relayUrls?: string[];
-  }) => {
-    return get().store.updateUserFollowing(payload);
+  blockUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
+    await get().store.blockUser(payload);
+    set({
+      events: get().events.filter((e) => e.event.pubkey !== payload.pubkey),
+    });
+  },
+  unblockUser: async (pubkey: string) => {
+    return get().store.unblockUser(pubkey);
+  },
+  getAllUsersBlocked: async () => {
+    return get().store.getAllUsersBlocked();
   },
   requestInformation: (
     payload: RelaysWithIdsOrKeys,

@@ -14,7 +14,14 @@ import { BECH32_PREFIX, encodeBech32 } from "@nostr-ts/common";
 
 export function UserInfo({
   user: { pubkey, data },
-  opts: { showAbout, showBanner, following, showFollowing, relayUrls },
+  opts: {
+    showAbout,
+    showBanner,
+    following,
+    showFollowing,
+    relayUrls,
+    isBlocked,
+  },
 }: UserInfoProps) {
   const name = data && data.name ? data.name : "Anonymous";
   const displayName = data && data.display_name ? data.display_name : "";
@@ -57,9 +64,24 @@ export function UserInfo({
         <Text size="xs">{displayName}</Text>
 
         <Spacer />
+        <Button
+          variant="outline"
+          size={"sm"}
+          onClick={() =>
+            isBlocked
+              ? useNClient.getState().unblockUser(pubkey)
+              : useNClient.getState().blockUser({
+                  pubkey: pubkey,
+                  relayUrls,
+                })
+          }
+        >
+          {isBlocked ? "Unblock" : "Block"}
+        </Button>
         {showFollowing && (
           <Button
             variant="outline"
+            size={"sm"}
             colorScheme={following ? "red" : "green"}
             onClick={() =>
               following
@@ -74,7 +96,7 @@ export function UserInfo({
           </Button>
         )}
       </HStack>
-      <Box overflowWrap="anywhere">
+      <Box overflowWrap="anywhere" mt={2}>
         {showAbout && about && <Text fontSize="sm">{about}</Text>}
       </Box>
     </>

@@ -47,6 +47,8 @@ export interface NClient extends NClientBase {
 
   eventProofOfWork: (event: NEvent, bits: number) => Promise<NEvent>;
   count: (payload: CountRequest) => Promise<Subscription[] | undefined>;
+  countEvents: () => Promise<number>;
+  getEvents: (params: { limit?: number; offset?: number }) => Promise<void>;
   sendEvent: (events: PublishingRequest) => Promise<void>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 

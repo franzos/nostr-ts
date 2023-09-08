@@ -20,6 +20,7 @@ import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
+import InlineSvg from "react-inlinesvg";
 
 export function PrimaryLayout() {
   const [connected, keystore, publicKey] = useNClient((state) => [
@@ -114,7 +115,12 @@ export function PrimaryLayout() {
         <VStack spacing={5} align="stretch">
           <VStack spacing={1} align="start">
             <Heading as="h1" size="lg">
-              Nostr Client
+              <InlineSvg
+                src="/logo.svg"
+                width="60px"
+                height="60px"
+                fill="#ffffff"
+              />
             </Heading>
           </VStack>
 

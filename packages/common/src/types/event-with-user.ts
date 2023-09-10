@@ -32,7 +32,7 @@ export interface ProcessedUserBase {
 }
 
 export interface UserRecord extends ProcessedUserBase {
-  user: NUserBase;
+  user: UserBase;
   relayUrls: string[];
 }
 
@@ -42,6 +42,7 @@ export interface UserRecord extends ProcessedUserBase {
  * - event: The event
  */
 export interface ProcessedEventBase {
+  eventRelayUrls: string[];
   user?: UserBase;
   event: NEvent;
 }
@@ -65,8 +66,6 @@ export interface ProcessedEventWithReactionsAndReplies
  * - zapReceipt: Lightning receipts for the event
  */
 export interface ProcessedEvent extends ProcessedEventWithReactionsAndReplies {
-  eventRelayUrls: string[];
-
   /**
    * Kind 7
    */
@@ -90,7 +89,7 @@ export interface ProcessedEvent extends ProcessedEventWithReactionsAndReplies {
   /**
    * from event content
    */
-  mentions?: NUserBase[];
+  mentions?: UserBase[];
 
   /**
    * Kind 9735
@@ -113,4 +112,26 @@ export interface RelaysWithIdsOrKeys {
   source: "events" | "events:related" | "users";
   relayUrl: string;
   idsOrKeys: string[];
+}
+
+type ReactionsCount = {
+  [key: string]: number;
+};
+
+export interface LightProcessedEvent extends ProcessedEventBase {
+  eventRelayUrls: string[];
+  reactionsCount: ReactionsCount;
+  repostsCount: number;
+  badgeAwardsCount: number;
+  repliesCount: number;
+  mentionsCount: number;
+  zapReceiptCount: number;
+  zapReceiptAmount: number;
+
+  reactions?: LightProcessedEvent[];
+  reposts?: LightProcessedEvent[];
+  badgeAwards?: LightProcessedEvent[];
+  replies?: LightProcessedEvent[];
+  mentions?: LightProcessedEvent[];
+  zapReceipt?: LightProcessedEvent[];
 }

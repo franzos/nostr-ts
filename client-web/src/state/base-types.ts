@@ -1,6 +1,5 @@
 import {
   Relay,
-  ProcessedEvent,
   RelayAuth,
   RelayCount,
   RelayEose,
@@ -20,6 +19,7 @@ import {
   ProcessedUserBase,
   UserRecord,
   UserPublicKeyAndRelays,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
 
 export interface NClientBase {
@@ -44,17 +44,6 @@ export interface NClientBase {
   subscribe: (
     payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
   ) => Promise<Subscription[] | undefined>;
-  eventsMap?: Map<string, ProcessedEvent>;
-  /**
-   * Add event to array or map
-   * - In worker, must post message to main thread
-   */
-  addEvent: (payload: ProcessedEvent) => void;
-  /**
-   * Update event on array or map
-   * - In worker, must post message to main thread
-   */
-  updateEvent: (payload: ProcessedEvent) => void;
 
   maxEvents: number;
   getUser: (pubkey: string) => Promise<UserRecord | undefined>;
@@ -74,7 +63,6 @@ export interface NClientBase {
       | RelayOK;
     meta: WebSocketClientInfo;
   }) => void;
-  getEventById: (id: string) => void;
   followUser(payload: UserPublicKeyAndRelays): Promise<void>;
   unfollowUser(pubkey: string): Promise<void>;
   followingUser(pubkey: string): Promise<boolean>;
@@ -107,7 +95,8 @@ export interface WorkerEvent {
       | "relay:message"
       | "event:queue:new"
       | "event:queue:update";
-    data: ProcessedEvent | WebSocketEvent | PublishingQueueItem;
+    view: string;
+    data: LightProcessedEvent | WebSocketEvent | PublishingQueueItem;
   };
 }
 
@@ -125,3 +114,11 @@ export interface ListRecord extends CreateListRecord {
 export interface ProcessedListRecord extends ListRecord {
   users?: UserRecord[];
 }
+
+export type ProcessedEventKeys =
+  | "reactions"
+  | "replies"
+  | "mentions"
+  | "reposts"
+  | "badgeAwards"
+  | "zapReceipt";

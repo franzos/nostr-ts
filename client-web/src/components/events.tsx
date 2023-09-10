@@ -1,161 +1,137 @@
+import React from "react";
 import { Box, Button, Text } from "@chakra-ui/react";
-import { NFilters } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-import { useEffect, useState } from "react";
-import { EVENTS_PER_PAGE, MAX_EVENTS } from "../defaults";
-import { User } from "./user";
+import { useEffect, useRef, useState } from "react";
+import { EVENTS_PER_PAGE } from "../defaults";
 
-const firstPage = 1;
-
-export function Events(props: {
-  userComponent?: typeof User;
-  view: string;
-  filters: NFilters;
-  connected: boolean;
-  lists?: {
-    id: string;
-    title: string;
-  }[];
-}) {
+export function Events() {
   const [events, maxEvents] = useNClient((state) => [
     state.events,
     state.maxEvents,
   ]);
 
-  const [moreEventsCount, setMoreEventsCount] = useState(0);
-  const [showButtonsAnyway, setShowButtonsAnyway] = useState(false);
+  const currentPage = useRef(1);
+  const totalPages = useRef(1);
 
-  const [filters, setFilters] = useState<NFilters>(props.filters);
+  const loadMoreRef = useRef<HTMLDivElement[]>([]);
 
-  const [currentPage, setCurrentPage] = useState(firstPage);
-  const [totalPages, setTotalPages] = useState(1);
+  const throttleTimestamp = useRef(Date.now());
+
+  const [buttonTimeoutPassed, setButtonTimeoutPassed] = useState(false);
 
   const calculateTotalPages = async () => {
-    const totalEvents = await useNClient.getState().countEvents();
-    console.log("totalEvents", totalEvents);
-    setTotalPages(Math.ceil(totalEvents / EVENTS_PER_PAGE));
+    await useNClient
+      .getState()
+      .countEvents()
+      .then((r) => {
+        totalPages.current = Math.ceil(r / EVENTS_PER_PAGE);
+      });
   };
 
   const loadEvents = async () => {
-    const eventsCount = await useNClient.getState().events.length;
-    const expected = currentPage * EVENTS_PER_PAGE;
-    if (eventsCount < expected) {
-      console.log("loadEvents", eventsCount, expected);
+    if (throttleTimestamp.current > Date.now() - 2000) {
+      return;
+    }
+    throttleTimestamp.current = Date.now();
+    const currCount = useNClient.getState().events.length;
+    const loadCount = currentPage.current * EVENTS_PER_PAGE - currCount;
+    if (loadCount > 0) {
       await useNClient.getState().getEvents({
-        limit: EVENTS_PER_PAGE,
-        offset: eventsCount,
+        limit: loadCount,
+        offset: currCount,
       });
     }
   };
 
   useEffect(() => {
-    loadEvents();
-    const timeout = setTimeout(() => {
-      setShowButtonsAnyway(true);
-    }, 5000);
-    const totalPageCountInterval = setInterval(async () => {
-      await calculateTotalPages();
-    }, 2000);
+    const initialLoad = setTimeout(async () => {
+      await calculateTotalPages().then(async () => {
+        await loadEvents();
+      });
+    }, 250);
+
     const loadEventsInterval = setInterval(async () => {
       await loadEvents();
-    }, 1000);
+    }, 2000);
+
+    // Activate button after 3s
+    const buttonTimeout = setTimeout(() => {
+      setButtonTimeoutPassed(true);
+    }, 3000);
+
     return () => {
-      clearTimeout(timeout);
-      clearInterval(totalPageCountInterval);
+      clearTimeout(initialLoad);
       clearInterval(loadEventsInterval);
+      clearTimeout(buttonTimeout);
     };
   }, []);
 
   useEffect(() => {
-    const expected = currentPage * EVENTS_PER_PAGE;
-    if (events.length < expected) {
-      // useNClient.getState().setStreamEvents(false);
-    }
-  }, [events]);
+    // Intersection Observer logic
+    const observer = new IntersectionObserver((entries) => {
+      const first = entries[0];
+      if (first.isIntersecting) {
+        nextPage();
+      }
+    }, {});
+
+    loadMoreRef.current.forEach((ref) => {
+      if (ref) {
+        observer.observe(ref);
+      }
+    });
+
+    return () => {
+      loadMoreRef.current.forEach((ref) => {
+        if (ref) {
+          observer.unobserve(ref);
+        }
+      });
+    };
+  }, [events.length]); // Depend on `events.length`
 
   const nextPage = async () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-      await useNClient.getState().getEvents({
-        limit: EVENTS_PER_PAGE,
-        offset: currentPage * EVENTS_PER_PAGE,
-      });
+    const total = useNClient.getState().events.length;
+    const expected = currentPage.current * EVENTS_PER_PAGE;
+    console.log(`next page; total: ${total}, expected: ${expected}`);
+    const diff = expected - total;
+    if (diff === 0) {
+      console.log(`next page; diff: ${diff}`);
+      await calculateTotalPages();
+      currentPage.current = currentPage.current + 1;
+      if (currentPage.current < totalPages.current) {
+        await calculateTotalPages();
+        await loadEvents();
+      } else {
+        console.log(currentPage.current, totalPages.current);
+      }
+    } else {
+      console.log(`Not next page; diff: ${diff}`);
+      await loadEvents();
     }
   };
 
-  const moreEvents = async () => {
-    if (moreEventsCount === 0) {
-      setMoreEventsCount(moreEventsCount + 1);
-    }
-    if (currentPage < totalPages) {
-      await nextPage();
-      return;
-    }
-    if (events.length >= maxEvents) {
-      await useNClient.getState().setMaxEvents(maxEvents + MAX_EVENTS);
-    }
-    if (props) {
-      await useNClient.getState().setViewSubscription(props.view, filters);
-    }
-  };
-
-  const newEvents = async () => {
-    setMoreEventsCount(0);
-    setFilters(props.filters);
-    await useNClient.getState().setViewSubscription(props.view, filters, {
-      reset: true,
-    });
-    setShowButtonsAnyway(false);
-  };
-
-  const showButtons = events.length >= maxEvents || showButtonsAnyway;
+  const showButtons = events.length >= maxEvents || buttonTimeoutPassed;
 
   return (
     <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
-      {events.map((event, index) => {
-        return (
-          <Box padding={2} key={`${event.event.id}-${index}`}>
-            <Event
-              event={event.event}
-              user={event.user}
-              reactions={event.reactions}
-              reposts={event.reposts}
-              mentions={event.mentions}
-              replies={event.replies}
-              eventRelayUrls={event.eventRelayUrls}
-              userComponent={
-                props && props.userComponent ? (
-                  event.user && event.user.pubkey ? (
-                    <props.userComponent
-                      user={event.user}
-                      options={{
-                        showFollowing: true,
-                        relayUrls: event.eventRelayUrls,
-                        lists: props.lists || [],
-                        showBlock: true,
-                      }}
-                    />
-                  ) : (
-                    <props.userComponent
-                      user={{
-                        pubkey: event.event.pubkey,
-                      }}
-                      options={{
-                        relayUrls: event.eventRelayUrls,
-                        lists: props.lists || [],
-                        showBlock: true,
-                      }}
-                    />
-                  )
-                ) : undefined
-              }
-              level={0}
-              lists={props.lists || []}
-            />
+      {events.map((event, index) => (
+        <React.Fragment key={`${event.event.id}-${index}`}>
+          <Box mb={2}>
+            <Event data={event} level={0} />
           </Box>
-        );
-      })}
+          {(index + 1) % 25 === 15 && (
+            <div
+              ref={(el) => {
+                if (el && !loadMoreRef.current.includes(el)) {
+                  loadMoreRef.current.push(el);
+                }
+              }}
+            ></div>
+          )}
+        </React.Fragment>
+      ))}
       {events.length === 0 && (
         <Box marginTop={5} marginBottom={5} textAlign={"center"}>
           <Text>Waiting for fresh content ... hold on.</Text>
@@ -163,12 +139,12 @@ export function Events(props: {
       )}
       {showButtons && (
         <Box display="flex" justifyContent="space-between" padding={2}>
-          <Button flex="1" marginRight={2} onClick={moreEvents}>
+          <Button flex="1" marginRight={2} onClick={nextPage}>
             Load more
           </Button>
-          <Button flex="1" marginLeft={2} onClick={newEvents}>
+          {/* <Button flex="1" marginLeft={2} onClick={newEvents}>
             Clear and load new
-          </Button>
+          </Button> */}
         </Box>
       )}
     </Box>

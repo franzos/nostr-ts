@@ -6,21 +6,13 @@ import {
   Image,
   Text,
   HStack,
-  Select,
-  useToast,
-  Modal,
-  ModalOverlay,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
   useDisclosure,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
 import { UserInfoProps } from "../lib/user-properties";
 import { BECH32_PREFIX, encodeBech32 } from "@nostr-ts/common";
+import { ListAssignmentModal } from "./list-assignment-modal";
 
 export function UserInfo({
   user: { pubkey, data },
@@ -56,68 +48,7 @@ export function UserInfo({
 
   const profileLink = `/p/${bech32ProfileLink}`;
 
-  const toast = useToast();
-
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  const assignToList = async (listId: string) => {
-    if (listId === "0") return;
-    try {
-      await useNClient.getState().addUserToList(listId, pubkey);
-      toast({
-        title: "User added to list",
-        description: `User added to ${listId}`,
-        status: "success",
-        duration: 9000,
-        isClosable: true,
-      });
-    } catch (e) {
-      toast({
-        title: "Already added",
-        description: "User already on list",
-        status: "warning",
-        duration: 9000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const SelectModal = (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Add to list</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {lists && lists.length > 0 ? (
-            <Select
-              onChange={(ev) => assignToList(ev.target.value)}
-              width={180}
-            >
-              <option key={"0"} value={"0"}>
-                {""}
-              </option>
-              {lists.map((list) => {
-                return (
-                  <option key={list.id} value={list.id}>
-                    {list.title}
-                  </option>
-                );
-              })}
-            </Select>
-          ) : (
-            <Text>No lists found. Create one first.</Text>
-          )}
-        </ModalBody>
-
-        <ModalFooter>
-          <Button colorScheme="blue" mr={3} onClick={onClose}>
-            Close
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
 
   return (
     <>
@@ -132,11 +63,12 @@ export function UserInfo({
             <Avatar size="xs" src={picture} />
           </Link>
         </Box>
-
-        <Link to={profileLink}>
-          <Text size="sm">{name}</Text>
-        </Link>
-        <Text size="xs">{displayName}</Text>
+        <Box overflowWrap="anywhere" maxWidth={350}>
+          <Link to={profileLink}>
+            <Text size="sm">{name}</Text>
+          </Link>
+          <Text size="xs">{displayName}</Text>
+        </Box>
 
         <Spacer />
         {showBlock && (
@@ -181,7 +113,7 @@ export function UserInfo({
       <Box overflowWrap="anywhere" mt={2}>
         {showAbout && about && <Text fontSize="sm">{about}</Text>}
       </Box>
-      {SelectModal}
+      <ListAssignmentModal pubkey={pubkey} isOpen={isOpen} onClose={onClose} />
     </>
   );
 }

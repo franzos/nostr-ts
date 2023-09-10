@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
 import {
-  ProcessedEvent,
   WebSocketEvent,
   Relay,
   NEvent,
@@ -15,6 +14,7 @@ import {
   EventsRequest,
   ProcessedUserBase,
   UserRecord,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -27,9 +27,13 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { CreateListRecord, WorkerEvent } from "./base-types";
+import {
+  CreateListRecord,
+  ProcessedEventKeys,
+  WorkerEvent,
+} from "./base-types";
 
-const throttleDelayInMs = 250;
+const throttleDelayInMs = 500;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -59,16 +63,23 @@ export const useNClient = create<NClient>((set, get) => ({
     await get().store.init(config);
 
     const processEvents = (events: WorkerEvent[]) => {
-      if (get().changingView) return;
       events.map((event) => {
         const payload = event.data;
-
         if (payload.type === "event:new" || payload.type === "event:update") {
-          const data = payload.data as ProcessedEvent;
-          if (payload.type === "event:new") {
-            get().addEvent(data);
-          } else if (payload.type === "event:update") {
-            get().updateEvent(data);
+          const sameView = get().activeView === payload.view;
+          if (sameView) {
+            if (payload.type === "event:new") {
+              get().addEvent(payload.data as LightProcessedEvent);
+            } else if (payload.type === "event:update") {
+              get().updateEvent(payload.data as LightProcessedEvent);
+            }
+          } else {
+            console.log(
+              `Not same view, ignoring`,
+              `active: '${get().activeView}'`,
+              `payload: '${payload.view}'`,
+              (payload.data as LightProcessedEvent).event.content
+            );
           }
         } else if (payload.type === "relay:message") {
           const data = payload.data as WebSocketEvent;
@@ -208,27 +219,50 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
-  count: async (payload: CountRequest) => {
-    return get().store.count(payload);
+  count: async (pubkey: string) => {
+    return get().store.count(pubkey);
   },
   countEvents: async () => {
     return get().store.countEvents();
   },
+  getEvent: async (id: string, view?: string) => {
+    return get().store.getEvent(id, view);
+  },
   getEvents: async (params: { limit?: number; offset?: number }) => {
-    await get().store.getEvents(params);
+    await get().store.getEvents({
+      view: get().activeView,
+      ...params,
+    });
   },
   events: [],
-  addEvent: (payload: ProcessedEvent) => {
+  addEvent: (payload: LightProcessedEvent) => {
     set({
       events: [...get().events, payload],
     });
   },
-  updateEvent: (payload: ProcessedEvent) => {
+  addEvents: (payload: LightProcessedEvent[]) => {
+    set({
+      events: [...get().events, ...payload],
+    });
+  },
+  updateEvent: (payload: LightProcessedEvent) => {
     set({
       events: get().events.map((event) => {
         if (event.event.id === payload.event.id) {
           return payload;
         }
+        return event;
+      }),
+    });
+  },
+  updateEvents: (payload: LightProcessedEvent[]) => {
+    set({
+      events: get().events.map((event) => {
+        payload.map((p) => {
+          if (event.event.id === p.event.id) {
+            return p;
+          }
+        });
         return event;
       }),
     });
@@ -317,8 +351,8 @@ export const useNClient = create<NClient>((set, get) => ({
   countUsers: async () => {
     return get().store.countUsers();
   },
-  getEventById: async (id: string) => {
-    return get().store.getEventById(id);
+  getEventById: async (id: string, key?: ProcessedEventKeys) => {
+    return get().store.getEventById(id, key);
   },
   eventProofOfWork: async (event: NEvent, bits: number) => {
     return new Promise((resolve) => {
@@ -516,7 +550,10 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.requestInformation(payload, options);
   },
 
-  changingView: false,
+  activeView: "",
+  setView: (view: string) => {
+    set({ activeView: view });
+  },
 
   /**
    * Setup a subscription related to a view
@@ -527,11 +564,13 @@ export const useNClient = create<NClient>((set, get) => ({
   setViewSubscription: async (
     view: string,
     filters: NFilters,
-    options?: {
+    options: {
       reset?: boolean;
+      limit: number;
+      offset: number;
     }
   ) => {
-    set({ changingView: true });
+    set({ activeView: view });
     await get().store.setViewSubscription(view, filters, options);
     if (options && options.reset) {
       /**
@@ -540,7 +579,6 @@ export const useNClient = create<NClient>((set, get) => ({
       set({ maxEvents: MAX_EVENTS });
       set({ events: [] });
     }
-    set({ changingView: false });
   },
 
   /**

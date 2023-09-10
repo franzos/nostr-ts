@@ -1,18 +1,17 @@
 import {
   NEvent,
-  ProcessedEvent,
   WebSocketClientInfo,
   WebSocketEvent,
   NFilters,
   Subscription,
-  CountRequest,
   PublishingQueueItem,
   PublishingRequest,
   RelaySubscription,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
 import { NClientWorker } from "./worker-types";
-import { NClientBase } from "./base-types";
+import { NClientBase, ProcessedEventKeys } from "./base-types";
 import { NClientKeystore } from "./keystore";
 
 export interface NClient extends NClientBase {
@@ -46,8 +45,12 @@ export interface NClient extends NClientBase {
   keypairIsLoaded: boolean;
 
   eventProofOfWork: (event: NEvent, bits: number) => Promise<NEvent>;
-  count: (payload: CountRequest) => Promise<Subscription[] | undefined>;
+  count: (pubkey: string) => Promise<Subscription[] | undefined>;
   countEvents: () => Promise<number>;
+  getEvent: (
+    id: string,
+    view?: string
+  ) => Promise<LightProcessedEvent | undefined>;
   getEvents: (params: { limit?: number; offset?: number }) => Promise<void>;
   sendEvent: (events: PublishingRequest) => Promise<void>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
@@ -60,18 +63,37 @@ export interface NClient extends NClientBase {
   generateQueueItems: (
     request: PublishingRequest
   ) => Promise<PublishingQueueItem[] | undefined>;
-  events: ProcessedEvent[];
+  events: LightProcessedEvent[];
+  /**
+   * Add event to array or map
+   * - In worker, must post message to main thread
+   */
+  addEvent: (payload: LightProcessedEvent) => void;
+  addEvents: (payload: LightProcessedEvent[]) => void;
+  /**
+   * Update event on array or map
+   * - In worker, must post message to main thread
+   */
+  updateEvent: (payload: LightProcessedEvent) => void;
+  updateEvents: (payload: LightProcessedEvent[]) => void;
+  getEventById: (
+    id: string,
+    key?: ProcessedEventKeys
+  ) => Promise<Partial<LightProcessedEvent> | undefined>;
 
-  changingView: boolean;
+  activeView: string;
 
+  setView: (view: string) => void;
   /**
    * Set subscription related to view
    */
   setViewSubscription: (
     view: string,
     filters: NFilters,
-    options?: {
+    options: {
       reset?: boolean;
+      limit: number;
+      offset: number;
     }
   ) => Promise<void>;
 

@@ -23,10 +23,10 @@ import {
 } from "@chakra-ui/react";
 import {
   NEvent,
-  ProcessedEvent,
   NewQuoteRepost,
   NewReaction,
   eventHasContentWarning,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
@@ -34,71 +34,38 @@ import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
-import { UserIcon } from "./user-icon";
 import { CreateEventForm } from "./create-event-form";
+import { User } from "./user";
 
-export interface EventProps extends ProcessedEvent {
-  userComponent?: JSX.Element;
+export interface EventProps {
+  data: LightProcessedEvent;
   level: number;
-  lists: {
-    id: string;
-    title: string;
-  }[];
 }
 
-export function Event({
-  userComponent,
-  event,
-  reactions,
-  reposts,
-  mentions,
-  replies,
-  eventRelayUrls,
-  level,
-  lists,
-}: EventProps) {
+export function Event({ data, level }: EventProps) {
   const [isReady] = useNClient((state) => [
     state.connected && state.keystore !== "none",
   ]);
 
   const toast = useToast();
 
-  const [upVotesCount, setUpVotesCount] = useState(0);
-  const [downVotesCount, setDownVotesCount] = useState(0);
-  const [repostsCount, setRepostsCount] = useState(0);
-  const [reactionsWithCount, setReactionsWithCount] = useState<{
-    [key: string]: number;
-  }>({});
+  const [replies, setReplies] = useState<LightProcessedEvent[]>();
 
-  useEffect(() => {
-    setDownVotesCount(
-      reactions?.filter((r) => r.event.content === "-").length || 0
-    );
-    setUpVotesCount(
-      reactions?.filter((r) => r.event.content === "+").length || 0
-    );
-    setRepostsCount(reposts?.length || 0);
-    setReactionsWithCount(
-      reactions
-        ?.filter((r) => r.event.content !== "+" && r.event.content !== "-")
-        .reduce((acc, r) => {
-          const content = r.event?.content ? r.event.content : undefined;
-          if (content && acc[content]) {
-            acc[content] += 1;
-          } else if (content) {
-            acc[content] = 1;
-          }
-          return acc;
-        }, {} as { [key: string]: number }) || {}
-    );
-  }, [reactions]);
+  const loadReplies = async () => {
+    const evData = await useNClient
+      .getState()
+      .getEventById(data.event.id, "replies");
+    if (evData && evData.replies) {
+      setReplies(evData.replies);
+    }
+  };
 
-  const hasContentWarning = eventHasContentWarning(event);
+  const hasContentWarning = eventHasContentWarning(data.event);
   const [showContent, setShowContent] = useState(
     hasContentWarning == undefined ? true : false
   );
 
-  const images = event?.content?.match(
+  const images = data.event?.content?.match(
     /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif)\b/gi
   );
 
@@ -116,6 +83,12 @@ export function Event({
   } = useDisclosure();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isReplyOpen) {
+      loadReplies();
+    }
+  }, [isReplyOpen]);
+
   const openImage = (imageSrc: string) => {
     setSelectedImage(imageSrc);
     onOpen();
@@ -127,12 +100,12 @@ export function Event({
 
   const relatedRelay = async () => {
     const relays = await useNClient.getState().getRelays();
-    const relay = relays.find((r) => eventRelayUrls.includes(r.url));
+    const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay) return relay;
 
     toast({
       title: "Error",
-      description: `None of the required relays are active ${eventRelayUrls.join(
+      description: `None of the required relays are active ${data.eventRelayUrls.join(
         ", "
       )}.`,
       status: "error",
@@ -156,7 +129,7 @@ export function Event({
     switch (type) {
       case "quote":
         ev = NewQuoteRepost({
-          inResponseTo: event,
+          inResponseTo: data.event,
           relayUrl: relay.url,
         });
         break;
@@ -165,8 +138,8 @@ export function Event({
         ev = NewReaction({
           text: reaction,
           inResponseTo: {
-            id: event.id,
-            pubkey: event.pubkey,
+            id: data.event.id,
+            pubkey: data.event.pubkey,
           },
           relayUrl: relay.url,
         });
@@ -193,7 +166,7 @@ export function Event({
             {
               source: "events",
               idsOrKeys: [evId],
-              relayUrl: eventRelayUrls[0],
+              relayUrl: data.eventRelayUrls[0],
             },
             {
               timeoutIn: 10000,
@@ -230,7 +203,7 @@ export function Event({
           onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
           isDisabled={!isReady || level >= 1}
         >
-          Reply
+          Reply ({data.repliesCount})
         </Button>
         <Button
           size="sm"
@@ -239,7 +212,7 @@ export function Event({
           onClick={() => newAction("reaction", "+")}
           isDisabled={!isReady}
         >
-          {upVotesCount}
+          {data.reactionsCount?.["+"] || 0}
         </Button>
         <Button
           size="sm"
@@ -248,7 +221,7 @@ export function Event({
           onClick={() => newAction("reaction", "-")}
           isDisabled={!isReady}
         >
-          {downVotesCount}
+          {data.reactionsCount?.["-"] || 0}
         </Button>
         <Button
           size="sm"
@@ -257,14 +230,14 @@ export function Event({
           onClick={() => newAction("quote")}
           isDisabled={!isReady}
         >
-          {repostsCount}
+          {data.repostsCount}
         </Button>
-        {reactionsWithCount &&
-          Object.keys(reactionsWithCount)
+        {data.reactionsCount &&
+          Object.keys(data.reactionsCount)
             .slice(0, 2)
             .map((r) => (
               <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
-                {r} {reactionsWithCount[r]}
+                {r} {data.reactionsCount[r]}
               </Button>
             ))}
       </HStack>
@@ -278,15 +251,40 @@ export function Event({
         <ModalHeader>Event</ModalHeader>
         <ModalCloseButton />
         <ModalBody overflowY="auto">
-          <Text>Relay: {eventRelayUrls[0]}</Text>
+          <Text>Relay: {data.eventRelayUrls[0]}</Text>
           <Box m={4}>
             <pre>
-              <code>{JSON.stringify(event, null, 2)}</code>
+              <code>{JSON.stringify(data.event, null, 2)}</code>
             </pre>
           </Box>
         </ModalBody>
       </ModalContent>
     </Modal>
+  );
+
+  const UserComponent = (
+    <>
+      {data.user && data.user.pubkey ? (
+        <User
+          user={data.user}
+          options={{
+            showFollowing: true,
+            relayUrls: data.eventRelayUrls,
+            showBlock: true,
+          }}
+        />
+      ) : (
+        <User
+          user={{
+            pubkey: data.event.pubkey,
+          }}
+          options={{
+            relayUrls: data.eventRelayUrls,
+            showBlock: true,
+          }}
+        />
+      )}
+    </>
   );
 
   const ImageModal = (
@@ -298,7 +296,7 @@ export function Event({
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>{userComponent && userComponent}</ModalHeader>
+        <ModalHeader>{UserComponent}</ModalHeader>
         <ModalBody>
           <Image
             src={selectedImage || ""}
@@ -361,19 +359,21 @@ export function Event({
               Show Content ({hasContentWarning})
             </Button>
           )}
-          <Box p={4} paddingBottom={0}>
-            {userComponent && userComponent}
-          </Box>
+          {UserComponent && (
+            <Box p={4} paddingBottom={0}>
+              {UserComponent}
+            </Box>
+          )}
         </Box>
       </CardHeader>
-      <CardBody p={4}>
+      <CardBody p={0}>
         <Box
           padding={2}
           background={"blackAlpha.100"}
           borderRadius={4}
           style={{ overflowWrap: "anywhere" }}
           dangerouslySetInnerHTML={{
-            __html: makeLinksClickable(event.content),
+            __html: makeLinksClickable(data.event.content),
           }}
         />
       </CardBody>
@@ -382,7 +382,7 @@ export function Event({
           <ActionButtons />
 
           <Spacer />
-          <Text fontSize={12}>{unixTimeToRelative(event.created_at)}</Text>
+          <Text fontSize={12}>{unixTimeToRelative(data.event.created_at)}</Text>
           <Button
             size={"sm"}
             variant="outline"
@@ -410,14 +410,14 @@ export function Event({
         >
           <CreateEventForm
             isResponse={true}
-            inResponseTo={event}
-            relayUrls={eventRelayUrls}
+            inResponseTo={data.event}
+            relayUrls={data.eventRelayUrls}
             kind="NewShortTextNoteResponse"
             sendCallback={sendCallback}
           />
         </Box>
       )}
-      <HStack padding={2} flexWrap="wrap">
+      {/* <HStack padding={2} flexWrap="wrap">
         {reactions && (
           <>
             <Text>Reactions</Text>
@@ -489,21 +489,19 @@ export function Event({
             </>
           )
         }
-      </HStack>
+      </HStack>*/}
 
       {replies &&
+        isReplyOpen &&
         replies.map((r) => {
           const user = r.user ? r.user : { pubkey: r.event.pubkey };
           return (
-            <Box key={`${r.event.id}_${user.pubkey}_replies`} marginLeft={10}>
-              <Event
-                event={r.event}
-                reactions={r.reactions}
-                userComponent={userComponent}
-                eventRelayUrls={eventRelayUrls}
-                level={level + 1}
-                lists={lists}
-              />
+            <Box
+              key={`${r.event.id}_${user.pubkey}_replies`}
+              marginLeft={10}
+              mb={1}
+            >
+              <Event data={r} level={level + 1} />
             </Box>
           );
         })}

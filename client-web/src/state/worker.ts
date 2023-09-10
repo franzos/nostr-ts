@@ -21,6 +21,7 @@ import {
   UserRecord,
   ProcessedUserBase,
   UserPublicKeyAndRelays,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
 import { IDBPDatabase, openDB } from "idb";
 import { MAX_EVENTS } from "../defaults";
@@ -28,16 +29,49 @@ import { expose } from "comlink";
 import { IncomingEventsQueue } from "./incoming-queue";
 import { NClientDB, NClientWorker } from "./worker-types";
 import { NUser, RelayClient } from "@nostr-ts/web";
-import { ListRecord, ProcessedListRecord } from "./base-types";
+import {
+  ListRecord,
+  ProcessedEventKeys,
+  ProcessedListRecord,
+  WorkerEvent,
+} from "./base-types";
 import { nanoid } from "nanoid";
 
 const incomingQueue = new IncomingEventsQueue();
+
+function processedToLightProcessedEvent(
+  event: ProcessedEvent
+): LightProcessedEvent {
+  return {
+    event: event.event,
+    user: event.user,
+    eventRelayUrls: event.eventRelayUrls,
+    reactionsCount:
+      event && event.reactions
+        ? event.reactions.reduce((acc, r) => {
+            const content = r.event?.content ? r.event.content : undefined;
+            if (content && acc[content]) {
+              acc[content] += 1;
+            } else if (content) {
+              acc[content] = 1;
+            }
+            return acc;
+          }, {} as { [key: string]: number })
+        : {},
+    repostsCount: event.reposts?.length || 0,
+    badgeAwardsCount: event.badgeAwards?.length || 0,
+    repliesCount: event.replies?.length || 0,
+    mentionsCount: event.mentions?.length || 0,
+    zapReceiptCount: event.zapReceipt?.length || 0,
+    zapReceiptAmount: 0,
+  };
+}
 
 class WorkerClass implements NClientWorker {
   connected: boolean;
   db: IDBPDatabase<NClientDB> | null;
   client: RelayClient | null;
-  eventsMap: Map<string, ProcessedEvent> = new Map();
+  events: ProcessedEvent[];
   maxEvents: number;
   checkedUsers: string[] = [];
   checkedEvents: string[] = [];
@@ -50,6 +84,7 @@ class WorkerClass implements NClientWorker {
     this.connected = false;
     this.db = null;
     this.client = null;
+    this.events = [];
     this.maxEvents = config?.maxEvents || MAX_EVENTS;
   }
 
@@ -101,7 +136,7 @@ class WorkerClass implements NClientWorker {
 
   disconnect() {
     this.client?.disconnect();
-    this.eventsMap.clear();
+    this.events = [];
     this.connected = false;
   }
 
@@ -174,7 +209,10 @@ class WorkerClass implements NClientWorker {
    * - Post message to main thread
    */
   addEvent(payload: ProcessedEvent) {
-    this.eventsMap.set(payload.event.id, payload);
+    this.events.push(payload);
+    this.events.sort((a, b) => {
+      return b.event.created_at - a.event.created_at;
+    });
     // postMessage({
     //   type: "event:new",
     //   data: payload,
@@ -185,11 +223,20 @@ class WorkerClass implements NClientWorker {
    * - Update event on map
    * - Post message to main thread
    */
-  updateEvent(payload: ProcessedEvent) {
-    this.eventsMap.set(payload.event.id, payload);
-    postMessage({
-      type: "event:update",
-      data: payload,
+  updateEvent(payload: ProcessedEvent, view?: string) {
+    this.events.map((event) => {
+      if (event.event.id === payload.event.id) {
+        const workerEvent: WorkerEvent = {
+          data: {
+            type: "event:update",
+            view: view || "",
+            data: processedToLightProcessedEvent(payload),
+          },
+        };
+        postMessage(workerEvent.data);
+        return;
+      }
+      return;
     });
   }
 
@@ -260,36 +307,86 @@ class WorkerClass implements NClientWorker {
     return await this.db.count("users");
   }
 
-  count(payload: CountRequest) {
-    return this.client?.count(payload);
+  count(pubkey: string) {
+    return this.client?.count({
+      type: CLIENT_MESSAGE_TYPE.COUNT,
+      filters: new NFilters({
+        kinds: [3],
+        "#p": [pubkey],
+      }),
+      options: {
+        timeoutIn: 10000,
+      },
+    });
   }
 
   countEvents() {
-    return this.eventsMap.size;
+    return this.events.length;
   }
 
-  getEvents(params: { limit?: number; offset?: number }) {
-    const events = Array.from(this.eventsMap.values());
-    const offset = params.offset || 0;
-    const limit = params.limit || events.length;
-    const result = events.slice(offset, offset + limit);
-
-    result.map((event) => {
-      postMessage({
-        type: "event:new",
-        data: event,
+  async getEvent(id: string, view?: string) {
+    const event = this.events.find((e) => e.event.id === id);
+    if (event) {
+      return processedToLightProcessedEvent(event);
+    } else {
+      await this.subscribe({
+        type: CLIENT_MESSAGE_TYPE.REQ,
+        filters: new NFilters({
+          ids: [id],
+        }),
+        options: {
+          timeoutIn: 10000,
+          view,
+        },
       });
+    }
+  }
+
+  getEvents(params: { view: string; limit?: number; offset?: number }) {
+    const limit = params.limit || this.events.length;
+    const offset = params.offset || 0;
+    this.events.slice(offset, offset + limit).map((event) => {
+      const workerEvent: WorkerEvent = {
+        data: {
+          type: "event:new",
+          view: params.view,
+          data: processedToLightProcessedEvent(event),
+        },
+      };
+      postMessage(workerEvent.data);
     });
-    // return result;
+    this.processSelectedEvents(
+      params.view,
+      this.events.slice(offset, offset + limit)
+    );
   }
 
   async processEvent(payload: WebSocketEvent, count: number = 0) {
     if (!payload.data) {
       return;
     }
-    // logRelayMessage(payload.data);
 
     const payLoadKind = payload.data[0];
+
+    /**
+     * Determine if related to subscription and view
+     */
+
+    let subscription: RelaySubscription | undefined = undefined;
+    let associatedWithView: string | undefined = undefined;
+
+    if (
+      payLoadKind === RELAY_MESSAGE_TYPE.COUNT ||
+      payLoadKind === RELAY_MESSAGE_TYPE.EOSE ||
+      payLoadKind === RELAY_MESSAGE_TYPE.EVENT
+    ) {
+      subscription = this.client?.getSubscription(payload.data[1] as string);
+      associatedWithView = subscription?.options?.view;
+    }
+
+    /**
+     * Process Messages
+     */
 
     if (
       payLoadKind === RELAY_MESSAGE_TYPE.AUTH ||
@@ -325,13 +422,9 @@ class WorkerClass implements NClientWorker {
 
           return;
         } else if (payLoadKind === RELAY_MESSAGE_TYPE.EOSE) {
-          const subscription = this.client?.getSubscriptions();
-          const itemIsSubscription = subscription?.find(
-            (item) => item.id === payload.data[1]
-          );
-          if (itemIsSubscription) {
+          if (subscription) {
             this.updateSubscription({
-              ...itemIsSubscription,
+              ...subscription,
               eose: true,
             });
           }
@@ -377,7 +470,10 @@ class WorkerClass implements NClientWorker {
       });
     }
 
-    // Handle incoming messages of type EVENT
+    /**
+     * Handle events
+     */
+
     if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
       const kind = payload.data[2].kind;
       if (
@@ -387,14 +483,16 @@ class WorkerClass implements NClientWorker {
         incomingQueue.enqueuePriority(async () => {
           const event = payload.data[2] as EventBase;
 
-          if (this.eventsMap.size >= this.maxEvents) {
+          if (this.events.length >= this.maxEvents * 2) {
             return;
           }
 
           // Check if event already exists
           // TODO: This doesn't cover events that are replies to other events; needs rewrite
           // maybe a level? 0, 1, 2 and then do the rest durin the render step
-          const exists = event.id ? this.eventsMap.has(event.id) : false;
+          const exists = event.id
+            ? this.events.find((e) => e.event.id === event.id)
+            : undefined;
 
           // TODO: It's probably better to check hasEventTags first to ensure replies are assigned
           // if (exists) {
@@ -444,10 +542,11 @@ class WorkerClass implements NClientWorker {
             const rootTag = eventTags.find((tag) => tag.marker === "root");
             // let replyTag = eventTags.find((tag) => tag.marker === "reply");
 
+            // Check if event with root tag exists
             if (rootTag) {
               const eventId = rootTag.eventId;
 
-              const origEvent = this.eventsMap.get(eventId);
+              const origEvent = this.events.find((e) => e.event.id === eventId);
               if (origEvent) {
                 if (origEvent.replies) {
                   const exist = origEvent.replies.find(
@@ -465,11 +564,14 @@ class WorkerClass implements NClientWorker {
                     },
                   ];
                 }
-                this.updateEvent(origEvent);
+
+                this.updateEvent(origEvent, associatedWithView);
                 console.log(`Reply event added to event ${origEvent.event.id}`);
                 return;
               }
-              for (const ev of this.eventsMap.values()) {
+
+              // Loop over all events; maybe reply of reply
+              this.events.map((ev) => {
                 if (ev.replies) {
                   const exist = ev.replies.find(
                     (reply) => reply.event.id === newEvent.event.id
@@ -478,12 +580,23 @@ class WorkerClass implements NClientWorker {
                     ev.replies.push({
                       ...newEvent,
                     });
-                    this.updateEvent(ev);
+                    this.updateEvent(
+                      {
+                        ...ev,
+                        replies: [
+                          ...ev.replies,
+                          {
+                            ...newEvent,
+                          },
+                        ],
+                      },
+                      associatedWithView
+                    );
                     console.log(`Reply event added to event ${ev.event.id}`);
                     return;
                   }
                 }
-              }
+              });
               // If we cannot find the root event, skip the reply for now
               if (count < 3) {
                 setTimeout(() => {
@@ -518,9 +631,12 @@ class WorkerClass implements NClientWorker {
           const tags = ev.hasEventTags();
           const hasRootTag = tags?.find((tag) => tag.marker === "root");
           if (hasRootTag) {
-            const rootEvent = this.eventsMap.get(hasRootTag.eventId);
+            const rootEvent = this.events.find(
+              (e) => e.event.id === hasRootTag.eventId
+            );
             if (rootEvent) {
               const data = {
+                eventRelayUrls: [payload.meta.url as string],
                 event: ev,
                 user: userRecord
                   ? userRecord?.user
@@ -533,7 +649,8 @@ class WorkerClass implements NClientWorker {
               } else {
                 rootEvent.zapReceipt = [data];
               }
-              this.updateEvent(rootEvent);
+
+              this.updateEvent(rootEvent, associatedWithView);
             }
           }
         });
@@ -560,7 +677,7 @@ class WorkerClass implements NClientWorker {
             });
           }
 
-          for (const item of this.eventsMap.values()) {
+          this.events.map((item) => {
             let changed = false;
             if (item.event.pubkey === newUser.pubkey) {
               item.user = newUser;
@@ -592,9 +709,9 @@ class WorkerClass implements NClientWorker {
             }
 
             if (changed) {
-              this.updateEvent(item);
+              this.updateEvent(item, associatedWithView);
             }
-          }
+          });
         });
       } else if (kind === NEVENT_KIND.REACTION) {
         // Handle reaction
@@ -618,9 +735,10 @@ class WorkerClass implements NClientWorker {
             .map((tag) => tag.eventId);
 
           for (const id of eventIds) {
-            const event = this.eventsMap.get(id);
+            const event = this.events.find((e) => e.event.id === id);
             if (event) {
               const data = {
+                eventRelayUrls: [payload.meta.url as string],
                 event: ev,
                 user: userRecord
                   ? userRecord?.user
@@ -633,12 +751,12 @@ class WorkerClass implements NClientWorker {
               } else {
                 event.reactions = [data];
               }
-              this.updateEvent(event);
+              this.updateEvent(event, associatedWithView);
               return;
             }
           }
 
-          for (const event of this.eventsMap.values()) {
+          this.events.map((event) => {
             if (event.replies) {
               for (const eventId of eventIds) {
                 const reply = event.replies.find(
@@ -646,6 +764,7 @@ class WorkerClass implements NClientWorker {
                 );
                 if (reply) {
                   const data = {
+                    eventRelayUrls: [payload.meta.url as string],
                     event: ev,
                     user: userRecord
                       ? userRecord.user
@@ -658,12 +777,13 @@ class WorkerClass implements NClientWorker {
                   } else {
                     reply.reactions = [data];
                   }
-                  this.updateEvent(event);
+                  this.updateEvent(event, associatedWithView);
                   return;
                 }
               }
             }
-          }
+          });
+
           return;
         });
       } else if (kind === NEVENT_KIND.REPOST) {
@@ -688,9 +808,10 @@ class WorkerClass implements NClientWorker {
             .map((tag) => tag.eventId);
 
           eventIds.map((id) => {
-            const event = this.eventsMap.get(id);
+            const event = this.events.find((e) => e.event.id === id);
             if (event) {
               const data = {
+                eventRelayUrls: [payload.meta.url as string],
                 event: ev,
                 user: userRecord
                   ? userRecord.user
@@ -704,7 +825,7 @@ class WorkerClass implements NClientWorker {
                 event.reposts = [data];
               }
               console.log(`Repost event added to event ${event.event.id}`);
-              this.updateEvent(event);
+              this.updateEvent(event, associatedWithView);
               return;
             }
           });
@@ -713,8 +834,31 @@ class WorkerClass implements NClientWorker {
     }
   }
 
-  getEventById(id: string) {
-    return this.eventsMap.get(id);
+  getEventById(
+    id: string,
+    key?: ProcessedEventKeys
+  ): Partial<LightProcessedEvent> | undefined {
+    const event = this.events.find((e) => e.event.id === id);
+    if (event) {
+      if (key && event[key]) {
+        if (key === "replies") {
+          const ev = processedToLightProcessedEvent(event);
+          return {
+            ...ev,
+            replies: event.replies
+              ? event.replies.map((reply) => {
+                  return processedToLightProcessedEvent(reply);
+                })
+              : undefined,
+          } as Partial<LightProcessedEvent>;
+        }
+        return {
+          eventRelayUrls: event.eventRelayUrls,
+          [key]: event[key],
+        } as Partial<LightProcessedEvent>;
+      }
+      return processedToLightProcessedEvent(event);
+    }
   }
 
   /**
@@ -779,7 +923,7 @@ class WorkerClass implements NClientWorker {
 
   clearEvents() {
     incomingQueue.clearPriority();
-    this.eventsMap.clear();
+    this.events = [];
     this.checkedEvents = [];
     this.checkedUsers = [];
   }
@@ -881,10 +1025,8 @@ class WorkerClass implements NClientWorker {
         isBlocked: true,
       });
     }
-    this.eventsMap = new Map(
-      Array.from(this.eventsMap.entries()).filter(
-        (entry) => entry[1].event.pubkey !== payload.pubkey
-      )
+    this.events = this.events.filter(
+      (event) => event.event.pubkey !== payload.pubkey
     );
   }
 
@@ -1041,39 +1183,44 @@ class WorkerClass implements NClientWorker {
     }
   }
 
+  currentViewSubscription = {
+    view: "",
+    limit: 0,
+    offset: 0,
+  };
+
   async setViewSubscription(
     view: string,
     filters: NFilters,
-    options?: {
+    options: {
       reset?: boolean;
+      limit: number;
+      offset: number;
     }
   ) {
     const subs = this.getSubscriptions();
-    const subIds = [];
-    for (const sub of subs) {
-      if (sub.options && sub.options.view) {
-        subIds.push(sub.id);
+    subs.map((sub) => {
+      if (sub.options && sub.options.view === view) {
+        this.unsubscribe([sub.id]);
       }
-    }
-    if (subIds.length > 0) {
-      this.unsubscribe(subIds);
-    }
+    });
 
     if (options && options.reset) {
       /**
        * Cleanup previous subscription
        */
+      incomingQueue.clearPriority();
       this.clearEvents();
     }
 
-    const relays = this.getRelays();
+    const relaysCount = this.getRelays().length;
 
     await this.subscribe({
       type: CLIENT_MESSAGE_TYPE.REQ,
       filters: {
         ...filters,
         limit: filters.limit
-          ? Math.round(filters.limit / relays.length)
+          ? Math.round(filters.limit / Math.round(relaysCount * 0.25))
           : undefined,
       },
       options: {
@@ -1084,14 +1231,15 @@ class WorkerClass implements NClientWorker {
 
     // TODO: This is not accurate
     setTimeout(async () => {
-      await this.processActiveEvents(view);
+      await this.processActiveEvents(view, {
+        limit: options?.limit,
+        offset: options?.offset,
+      });
     }, 1500);
-    setTimeout(async () => {
-      await this.processActiveEvents(view);
-    }, 6000);
-    setTimeout(async () => {
-      await this.processActiveEvents(view);
-    }, 12000);
+
+    return {
+      viewChanged: true,
+    };
   }
 
   removeViewSubscription(view: string) {
@@ -1107,7 +1255,7 @@ class WorkerClass implements NClientWorker {
     }
   }
 
-  async processActiveEvents(view: string) {
+  processSelectedEvents(view: string, events: ProcessedEvent[]) {
     const eventUserPubkeys: {
       pubkey: string;
       relayUrls: string[];
@@ -1123,8 +1271,7 @@ class WorkerClass implements NClientWorker {
       relayUrls: string[];
     }[] = [];
 
-    for (const entry of this.eventsMap.entries()) {
-      const ev = entry[1];
+    events.map((ev) => {
       // TODO: Check if user is stale
       if (ev.event?.pubkey && !ev.user?.pubkey) {
         eventUserPubkeys.push({
@@ -1186,7 +1333,7 @@ class WorkerClass implements NClientWorker {
           }
         });
       }
-    }
+    });
 
     const relayUrlToPubkeysMap: Record<string, Set<string>> = {};
 
@@ -1232,14 +1379,35 @@ class WorkerClass implements NClientWorker {
     });
 
     const infoRequestPromises = [];
-    [...reqUsers, ...reqRelEvents].map((item) => {
+    [...reqUsers].map((item) => {
       infoRequestPromises.push(
         this.requestInformation(item, {
-          timeoutIn: 60000,
+          timeoutIn: 10000,
           view,
         })
       );
     });
+    [...reqRelEvents].map((item) => {
+      infoRequestPromises.push(
+        this.requestInformation(item, {
+          timeoutIn: 10000,
+          view,
+        })
+      );
+    });
+  }
+
+  async processActiveEvents(
+    view: string,
+    options: {
+      limit: number;
+      offset: number;
+    }
+  ) {
+    const limit = options.limit;
+    const offset = options.offset;
+
+    this.processSelectedEvents(view, this.events.slice(offset, offset + limit));
   }
 
   async requestInformation(
@@ -1250,25 +1418,27 @@ class WorkerClass implements NClientWorker {
       return;
     }
 
-    let filtered: string[] = [];
+    // let filtered: string[] = [];
 
-    if (payload.source === "events" || payload.source === "events:related") {
-      filtered = payload.idsOrKeys.filter(
-        (id) => !this.checkedEvents.includes(id)
-      );
-      if (filtered.length === 0) {
-        return;
-      }
-      this.checkedEvents = [...this.checkedEvents, ...filtered];
-    } else if (payload.source === "users") {
-      filtered = payload.idsOrKeys.filter(
-        (pubkey) => !this.checkedUsers.includes(pubkey)
-      );
-      if (filtered.length === 0) {
-        return;
-      }
-      this.checkedUsers = [...this.checkedUsers, ...filtered];
-    }
+    // if (payload.source === "events" || payload.source === "events:related") {
+    //   filtered = payload.idsOrKeys.filter(
+    //     (id) => !this.checkedEvents.includes(id)
+    //   );
+    //   if (filtered.length === 0) {
+    //     return;
+    //   }
+    //   this.checkedEvents = [...this.checkedEvents, ...filtered];
+    // } else if (payload.source === "users") {
+    //   filtered = payload.idsOrKeys.filter(
+    //     (pubkey) => !this.checkedUsers.includes(pubkey)
+    //   );
+    //   if (filtered.length === 0) {
+    //     return;
+    //   }
+    //   this.checkedUsers = [...this.checkedUsers, ...filtered];
+    // }
+
+    const filtered = payload.idsOrKeys;
 
     console.log(
       `=> Getting information for ${filtered.length} ${payload.source}`

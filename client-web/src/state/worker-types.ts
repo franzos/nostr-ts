@@ -3,16 +3,20 @@ import {
   PublishingRequest,
   Subscription,
   PublishingQueueItem,
-  CountRequest,
   RelaySubscription,
   NFilters,
   ProcessedUserBase,
+  ProcessedEvent,
+  LightProcessedEvent,
 } from "@nostr-ts/common";
-import { ListRecord, NClientBase } from "./base-types";
+import { ListRecord, NClientBase, ProcessedEventKeys } from "./base-types";
 
 export interface NClientWorker extends NClientBase {
-  checkedUsers: string[];
-  checkedEvents: string[];
+  currentViewSubscription: {
+    view: string;
+    limit: number;
+    offset: number;
+  };
 
   eventsPublishingQueue: PublishingQueueItem[];
   addQueueItems: (payload: PublishingQueueItem[]) => void;
@@ -23,10 +27,33 @@ export interface NClientWorker extends NClientBase {
   unsubscribe: (ids: string[]) => void;
   unsubscribeAll: () => void;
 
-  count: (payload: CountRequest) => Subscription[] | undefined;
+  count: (pubkey: string) => Subscription[] | undefined;
   countEvents: () => number;
-  getEvents: (params: { limit?: number; offset?: number }) => void;
+  getEvent: (
+    id: string,
+    view?: string
+  ) => Promise<LightProcessedEvent | undefined>;
+  getEvents: (params: {
+    view: string;
+    limit?: number;
+    offset?: number;
+  }) => void;
   sendEvent: (payload: PublishingRequest) => void;
+  events?: ProcessedEvent[];
+  /**
+   * Add event to array or map
+   * - In worker, must post message to main thread
+   */
+  addEvent: (payload: ProcessedEvent) => void;
+  /**
+   * Update event on array or map
+   * - In worker, must post message to main thread
+   */
+  updateEvent: (payload: ProcessedEvent, view: string) => void;
+  getEventById: (
+    id: string,
+    key?: ProcessedEventKeys
+  ) => Partial<LightProcessedEvent> | undefined;
   setMaxEvents: (max: number) => void;
   sendQueueItems: (items: PublishingQueueItem[]) => void;
   clearEvents: () => void;
@@ -43,12 +70,22 @@ export interface NClientWorker extends NClientBase {
   setViewSubscription: (
     view: string,
     filters: NFilters,
-    options?: {
+    options: {
       reset?: boolean;
+      limit: number;
+      offset: number;
+    }
+  ) => Promise<void | {
+    viewChanged: boolean;
+  }>;
+  removeViewSubscription: (view: string) => void;
+  processActiveEvents: (
+    view: string,
+    options: {
+      limit: number;
+      offset: number;
     }
   ) => void;
-  removeViewSubscription: (view: string) => void;
-  processActiveEvents: (view: string) => void;
 
   /**
    * Set to disconnect state

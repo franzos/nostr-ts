@@ -4,7 +4,7 @@ import {
   Button,
   Container,
   Grid,
-  Heading,
+  Image,
   Icon,
   VStack,
   useDisclosure,
@@ -20,7 +20,7 @@ import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
-import InlineSvg from "react-inlinesvg";
+import Logo from "../assets/logo.svg";
 
 export function PrimaryLayout() {
   const [connected, keystore, publicKey] = useNClient((state) => [
@@ -114,14 +114,7 @@ export function PrimaryLayout() {
       <Container maxW="8xl" p={5} marginBottom={14}>
         <VStack spacing={5} align="stretch">
           <VStack spacing={1} align="start">
-            <Heading as="h1" size="lg">
-              <InlineSvg
-                src="/logo.svg"
-                width="60px"
-                height="60px"
-                fill="#ffffff"
-              />
-            </Heading>
+            <Image height={"30px"} src={Logo} />
           </VStack>
 
           <Grid templateColumns={["1fr", "1fr 4fr"]} gap={20}>

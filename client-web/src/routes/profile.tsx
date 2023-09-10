@@ -1,157 +1,106 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
-import {
-  CLIENT_MESSAGE_TYPE,
-  NEVENT_KIND,
-  NFilters,
-  UserRecord,
-  decodeBech32,
-} from "@nostr-ts/common";
+import { NFilters, UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
-import { NUser } from "@nostr-ts/web";
 import { useParams } from "react-router-dom";
 import { User } from "../components/user";
 import { Events } from "../components/events";
 import { MAX_EVENTS } from "../defaults";
 import { CreateEventForm } from "../components/create-event-form";
+import { filterByAuthor } from "../lib/default-filters";
 
 export function ProfileRoute() {
-  const [connected, eventsEqualOrMoreThanMax] = useNClient((state) => [
-    state.connected,
-    state.events.length >= state.maxEvents,
-  ]);
+  const [connected] = useNClient((state) => [state.connected]);
 
-  const [lists, setLists] = useState<
-    {
-      id: string;
-      title: string;
-    }[]
-  >([]);
+  const isInitDone = useRef<boolean>(false);
 
-  const [userRecord, setUserRecord] = useState<UserRecord | null>(null);
-  const [relayUrls, setrelayUrls] = useState<string[]>([]);
+  const activeFilters = useRef<NFilters | null>(null);
 
-  const [publicKey, setPublicKey] = useState<string>("");
+  const pubkey = useRef("");
+  const [userData, setUserData] = useState<UserRecord | null>(null);
 
+  // URL params
   const { nprofile } = useParams();
 
-  const view = useRef("");
+  const view = `profile-${nprofile}`;
 
-  const loadUser = async (pubkey: string) => {
-    if (!connected) return;
-    const dbUser = await useNClient.getState().getUser(pubkey);
-    if (dbUser) {
-      setUserRecord(dbUser);
-      setrelayUrls(dbUser.relayUrls);
-    } else {
-      setUserRecord({
-        user: new NUser({
-          pubkey,
-        }),
-        relayUrls,
+  const getUser = async () => {
+    await useNClient
+      .getState()
+      .getUser(pubkey.current)
+      .then((r) => {
+        if (r) {
+          setUserData(r);
+        }
       });
-    }
-    const lists = await useNClient.getState().getAllLists();
-    if (lists) {
-      setLists(
-        lists.map((item) => ({
-          id: item.id,
-          title: item.title,
-        }))
-      );
-    }
   };
 
   const count = async (pubkey: string) => {
-    await useNClient.getState().count({
-      type: CLIENT_MESSAGE_TYPE.COUNT,
-      filters: new NFilters({
-        kinds: [3],
-        "#p": [pubkey],
-      }),
-      options: {
-        timeoutIn: 10000,
-      },
-    });
+    await useNClient.getState().count(pubkey);
   };
 
-  const loadEvents = async (view: string, filters: NFilters) => {
-    await useNClient.getState().setViewSubscription(view, filters, {
-      reset: true,
-    });
-  };
-
-  const init = async (nprofileString: string) => {
+  const onMount = async (nprofileString: string) => {
+    if (!connected || isInitDone.current) return;
+    isInitDone.current = true;
     const decoded = decodeBech32(nprofileString);
     const relayUrls: string[] = [];
-    let pubkey: string = "";
+    let key: string = "";
     decoded.tlvItems.map((item) => {
       if (item.type === 0) {
-        pubkey = item.value as string;
+        key = item.value as string;
+        return;
       }
       if (item.type === 1) {
         relayUrls.push(item.value as string);
       }
     });
-    setrelayUrls(relayUrls);
-    setPublicKey(pubkey);
-    view.current = `profile-${pubkey}`;
-    await loadUser(pubkey);
-    await loadEvents(
-      view.current,
-      new NFilters({
+    pubkey;
+    setUserData({
+      user: {
+        pubkey: key,
+      },
+      relayUrls: relayUrls,
+    });
+    pubkey.current = key;
+    activeFilters.current = filterByAuthor([key]);
+    await useNClient
+      .getState()
+      .setViewSubscription(view, activeFilters.current, {
+        reset: true,
         limit: MAX_EVENTS,
-        authors: [pubkey],
-        kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-      })
-    );
-    await count(pubkey);
+        offset: 0,
+      });
+    await getUser();
+    await count(key);
   };
 
   useEffect(() => {
+    useNClient.getState().setView(view);
     try {
       if (nprofile) {
-        init(nprofile);
+        onMount(nprofile);
       }
     } catch (e) {
       console.log(e);
     }
-  }, []);
 
-  // const view = `profile-${publicKey}`;
-  const defaultFilters = new NFilters({
-    limit: MAX_EVENTS,
-    authors: [publicKey],
-    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-  });
-
-  /**
-   * Remove subscription when we hit the limit
-   */
-  useEffect(() => {
-    const remove = async () => {
-      if (!connected) return;
-      await useNClient.getState().removeViewSubscription(view.current);
+    return () => {
+      useNClient.getState().setView("");
     };
-
-    if (eventsEqualOrMoreThanMax) {
-      remove();
-    }
-  }, [eventsEqualOrMoreThanMax]);
+  }, []);
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
-        {userRecord && (
+        {userData && (
           <Box mb={4}>
             <User
-              user={userRecord.user}
+              user={userData.user}
               options={{
                 showAbout: true,
                 showBanner: true,
                 showFollowing: true,
-                relayUrls: userRecord.relayUrls,
-                lists,
+                relayUrls: userData.relayUrls,
                 showBlock: true,
               }}
             />
@@ -159,12 +108,8 @@ export function ProfileRoute() {
         )}
         <Box overflowY="auto">
           <Box>
-            {connected ? (
-              <Events
-                view={view.current}
-                filters={defaultFilters}
-                connected={connected}
-              />
+            {connected && activeFilters.current ? (
+              <Events />
             ) : (
               <Text>Not connected.</Text>
             )}

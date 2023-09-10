@@ -1,15 +1,15 @@
-import { NFilters, NEVENT_KIND } from "@nostr-ts/common";
-import { Box, Radio, RadioGroup, Stack, Text } from "@chakra-ui/react";
+import { NFilters } from "@nostr-ts/common";
+import { Box, Text } from "@chakra-ui/react";
 import { useRef, useEffect, useState } from "react";
 import { MAX_EVENTS } from "../defaults";
 import { useNClient } from "../state/client";
 import { Events } from "./events";
-import { User } from "./user";
-
-const defaultFilters = new NFilters({
-  kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-  limit: MAX_EVENTS,
-});
+import { ListSelection } from "./list-selection";
+import {
+  filterByAuthor,
+  filterByMentions,
+  filterDefault,
+} from "../lib/default-filters";
 
 export function EventsFeeds() {
   const [connected, followingUserIds, keypairIsLoaded, keypair] = useNClient(
@@ -21,138 +21,84 @@ export function EventsFeeds() {
     ]
   );
 
-  const [lists, setLists] = useState<
-    {
-      id: string;
-      title: string;
-    }[]
-  >([]);
+  const isInitDone = useRef<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [eventFilters, setEventFilters] = useState<NFilters>(defaultFilters);
-  const [activeView, setActiveView] = useState<string>("global");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const activeFilters = useRef<NFilters>(filterDefault());
 
-  const initDone = useRef<boolean>(false);
-  const init = async () => {
-    if (!connected || initDone.current) return;
-    initDone.current = true;
-    await useNClient.getState().setViewSubscription(activeView, eventFilters, {
-      reset: true,
-    });
+  const onMount = async () => {
+    if (!connected || isInitDone.current) return;
+    // Set the default, "initial" view
+    await useNClient
+      .getState()
+      .setViewSubscription("global", activeFilters.current, {
+        reset: true,
+        limit: MAX_EVENTS,
+        offset: 0,
+      });
+    isInitDone.current = true;
     setIsLoading(false);
-
-    const lists = await useNClient.getState().getAllLists();
-    if (lists) {
-      setLists(
-        lists.map((item) => ({
-          id: item.id,
-          title: item.title,
-        }))
-      );
-    }
   };
 
   /**
    * Handle initial load
    */
   useEffect(() => {
-    init();
+    onMount();
   }, []);
 
   /**
    * Handle the connection status change
    */
   useEffect(() => {
-    setTimeout(() => {
-      init();
-    }, 500);
+    if (connected) {
+      onMount();
+    }
+    return () => {
+      useNClient.getState().setView("");
+    };
   }, [connected]);
 
   const changeFeed = async (feedName: string) => {
     if (!connected) return;
     setIsLoading(true);
 
-    let filters: NFilters;
     if (feedName === "global") {
-      setActiveView(feedName);
-      filters = new NFilters({
-        kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-        limit: MAX_EVENTS,
-      });
-      setEventFilters(filters);
+      activeFilters.current = filterDefault();
     } else if (feedName === "following") {
-      setActiveView(feedName);
-      filters = new NFilters({
-        kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-        authors: followingUserIds,
-      });
-      setEventFilters(filters);
+      activeFilters.current = filterByAuthor(followingUserIds);
     } else if (feedName === "mentions") {
-      setActiveView(feedName);
-      filters = new NFilters({
-        kinds: [
-          NEVENT_KIND.SHORT_TEXT_NOTE,
-          NEVENT_KIND.LONG_FORM_CONTENT,
-          NEVENT_KIND.REPOST,
-        ],
-        limit: MAX_EVENTS,
-        "#p": [keypair.publicKey],
-      });
-      setEventFilters(filters);
-    } else if (lists && lists.length > 0) {
-      const list = lists.find((item) => item.id === feedName);
-      if (list) {
-        const listRecord = await useNClient.getState().getList(list.id);
-        if (!listRecord || !listRecord.userPubkeys) return;
-        setActiveView(feedName);
-        filters = new NFilters({
-          kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
-          limit: MAX_EVENTS,
-          authors: listRecord?.userPubkeys,
-        });
-        setEventFilters(filters);
+      activeFilters.current = filterByMentions([keypair.publicKey]);
+    } else {
+      const list = await useNClient.getState().getList(feedName);
+      if (list && list.userPubkeys) {
+        activeFilters.current = filterByAuthor(list.userPubkeys);
       } else {
         console.log("list not found");
         return;
       }
-    } else {
-      console.log("list not found");
-      return;
     }
-    console.log(filters);
-    await useNClient.getState().setViewSubscription(feedName, filters, {
-      reset: true,
-    });
+
+    await useNClient
+      .getState()
+      .setViewSubscription(feedName, activeFilters.current, {
+        reset: true,
+        limit: MAX_EVENTS,
+        offset: 0,
+      });
     setIsLoading(false);
   };
 
   return (
     <Box>
-      <RadioGroup onChange={changeFeed} value={activeView}>
-        <Stack direction="row">
-          <Radio value="global">Global</Radio>
-          {followingUserIds.length > 0 && (
-            <Radio value="following">Following</Radio>
-          )}
-          {keypairIsLoaded && <Radio value="mentions">Mentions</Radio>}
-          {lists &&
-            lists.length > 0 &&
-            lists.map((list) => (
-              <Radio key={list.id} value={list.id}>
-                {list.title}
-              </Radio>
-            ))}
-        </Stack>
-      </RadioGroup>
+      <ListSelection
+        showFollowing={followingUserIds.length > 0}
+        showMentions={keypairIsLoaded}
+        changeFeed={changeFeed}
+      />
       <Box overflowY="auto">
         {!isLoading ? (
-          <Events
-            userComponent={User}
-            view="welcome"
-            filters={eventFilters}
-            connected={connected}
-            lists={lists}
-          />
+          <Events />
         ) : (
           <Box marginTop={5} marginBottom={5} textAlign={"center"}>
             <Text>Changing feed ...</Text>

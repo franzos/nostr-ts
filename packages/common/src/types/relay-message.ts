@@ -66,6 +66,9 @@ export interface RelayCount extends Array<string | { count: number }> {
  */
 export interface RelayEose extends Array<string | FiltersBase> {
   0: RELAY_MESSAGE_TYPE.EOSE;
+  /**
+   * Subscription ID
+   */
   1: string;
 }
 

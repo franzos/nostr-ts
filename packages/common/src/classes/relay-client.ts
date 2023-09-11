@@ -48,9 +48,12 @@ export class RelayClientBase {
     request: CountRequest | AuthRequest | EventsRequest | CloseRequest
   ): RelaySubscription[] {
     const newSubscriptions: RelaySubscription[] = [];
-    const relays = request?.relayUrls
-      ? this.relays.filter((r) => request.relayUrls.includes(r.url))
-      : this.relays;
+
+    // Filter relays if specified
+    const relays =
+      request?.relayUrls?.length > 0
+        ? this.relays.filter((r) => request.relayUrls.includes(r.url))
+        : this.relays;
 
     // Always read since we are not posting anything
     const opt = "read";
@@ -204,12 +207,12 @@ export class RelayClientBase {
   }
 
   unsubscribeAll() {
-    for (const relay of this.relays) {
+    this.relays.map((relay) => {
       const subs = relay.getSubscriptions();
       if (subs && subs.length > 0) {
         this.unsubscribe(subs.map((s) => s.id));
       }
-    }
+    });
   }
 
   getSubscription(id: string): RelaySubscription | undefined {
@@ -232,11 +235,11 @@ export class RelayClientBase {
   }
 
   updateSubscription(sub: RelaySubscription) {
-    for (const relay of this.relays) {
+    this.relays.map((relay) => {
       if (relay.url === sub.relayUrl) {
         relay.updateSubscription(sub);
       }
-    }
+    });
   }
 
   countConnections() {

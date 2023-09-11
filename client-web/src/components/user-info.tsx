@@ -24,7 +24,6 @@ export function UserInfo({
     showBlock,
     relayUrls,
     isBlocked,
-    lists,
   },
 }: UserInfoProps) {
   const name = data && data.name ? data.name : "Anonymous";
@@ -87,11 +86,9 @@ export function UserInfo({
             {isBlocked ? "Unblock" : "Block"}
           </Button>
         )}
-        {lists && lists.length > 0 && (
-          <Button variant="outline" size={"sm"} onClick={onOpen}>
-            Lists
-          </Button>
-        )}
+        <Button variant="outline" size={"sm"} onClick={onOpen}>
+          Lists
+        </Button>
         {showFollowing && (
           <Button
             variant="outline"

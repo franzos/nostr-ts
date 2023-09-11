@@ -5,7 +5,12 @@ import { Event } from "../components/event";
 import { useEffect, useRef, useState } from "react";
 import { EVENTS_PER_PAGE } from "../defaults";
 
-export function Events() {
+interface EventsProps {
+  view: string;
+  changingView?: boolean;
+}
+
+export function Events({ view, changingView }: EventsProps) {
   const [events, maxEvents] = useNClient((state) => [
     state.events,
     state.maxEvents,
@@ -30,7 +35,10 @@ export function Events() {
   };
 
   const loadEvents = async () => {
-    if (throttleTimestamp.current > Date.now() - 2000) {
+    if (
+      throttleTimestamp.current > Date.now() - 2000 ||
+      changingView === true
+    ) {
       return;
     }
     throttleTimestamp.current = Date.now();
@@ -40,6 +48,7 @@ export function Events() {
       await useNClient.getState().getEvents({
         limit: loadCount,
         offset: currCount,
+        view,
       });
     }
   };
@@ -94,10 +103,9 @@ export function Events() {
   const nextPage = async () => {
     const total = useNClient.getState().events.length;
     const expected = currentPage.current * EVENTS_PER_PAGE;
-    console.log(`next page; total: ${total}, expected: ${expected}`);
+
     const diff = expected - total;
     if (diff === 0) {
-      console.log(`next page; diff: ${diff}`);
       await calculateTotalPages();
       currentPage.current = currentPage.current + 1;
       if (currentPage.current < totalPages.current) {
@@ -107,7 +115,6 @@ export function Events() {
         console.log(currentPage.current, totalPages.current);
       }
     } else {
-      console.log(`Not next page; diff: ${diff}`);
       await loadEvents();
     }
   };

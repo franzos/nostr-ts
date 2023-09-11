@@ -20,6 +20,7 @@ import {
   ModalHeader,
   ModalCloseButton,
   Spacer,
+  IconButton,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -27,10 +28,14 @@ import {
   NewReaction,
   eventHasContentWarning,
   LightProcessedEvent,
+  ReactionsCount,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 import ThumbDownIcon from "mdi-react/ThumbDownIcon";
+import CurrencyBtcIcon from "mdi-react/CurrencyBtcIcon";
+import ReplyIcon from "mdi-react/ReplyIcon";
+import InformationOutlineIcon from "mdi-react/InformationOutlineIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
@@ -54,7 +59,7 @@ export function Event({ data, level }: EventProps) {
   const loadReplies = async () => {
     const evData = await useNClient
       .getState()
-      .getEventById(data.event.id, "replies");
+      .getEvent(data.event.id, "replies");
     if (evData && evData.replies) {
       setReplies(evData.replies);
     }
@@ -99,7 +104,7 @@ export function Event({ data, level }: EventProps) {
   };
 
   const relatedRelay = async () => {
-    const relays = await useNClient.getState().getRelays();
+    const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay) return relay;
 
@@ -193,20 +198,34 @@ export function Event({ data, level }: EventProps) {
     }
   };
 
-  const ActionButtons = () => {
+  const filterReactions = (obj?: ReactionsCount) => {
+    if (!obj) return {};
+    return Object.keys(obj)
+      .filter((key) => key !== "+" && key !== "-")
+      .reduce((newObj: ReactionsCount, key) => {
+        newObj[key] = obj[key];
+        return newObj;
+      }, {});
+  };
+
+  const filteredReactions = filterReactions(data.reactionsCount);
+
+  const ActionButtons = ({ showAll }: { showAll: boolean }) => {
     return (
       <HStack>
         <Button
-          size="sm"
-          variant="solid"
+          size="xs"
+          variant="outline"
           colorScheme="blue"
+          leftIcon={<Icon as={ReplyIcon} />}
           onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
           isDisabled={!isReady || level >= 1}
         >
-          Reply ({data.repliesCount})
+          {data.repliesCount}
         </Button>
         <Button
-          size="sm"
+          size="xs"
+          variant="outline"
           aria-label="Upvote"
           leftIcon={<Icon as={ThumbUpIcon} />}
           onClick={() => newAction("reaction", "+")}
@@ -215,7 +234,8 @@ export function Event({ data, level }: EventProps) {
           {data.reactionsCount?.["+"] || 0}
         </Button>
         <Button
-          size="sm"
+          size="xs"
+          variant="outline"
           aria-label="Downvote"
           leftIcon={<Icon as={ThumbDownIcon} />}
           onClick={() => newAction("reaction", "-")}
@@ -224,7 +244,8 @@ export function Event({ data, level }: EventProps) {
           {data.reactionsCount?.["-"] || 0}
         </Button>
         <Button
-          size="sm"
+          size="xs"
+          variant="outline"
           aria-label="Repost"
           leftIcon={<Icon as={RepeatIcon} />}
           onClick={() => newAction("quote")}
@@ -232,12 +253,22 @@ export function Event({ data, level }: EventProps) {
         >
           {data.repostsCount}
         </Button>
-        {data.reactionsCount &&
-          Object.keys(data.reactionsCount)
-            .slice(0, 2)
+        <Button
+          size="xs"
+          variant="outline"
+          aria-label="ZAP"
+          leftIcon={<Icon as={CurrencyBtcIcon} />}
+          isDisabled={!isReady}
+        >
+          {data.zapReceiptCount} ({data.zapReceiptAmount})
+        </Button>
+        {showAll &&
+          filteredReactions &&
+          Object.keys(filteredReactions)
+            .slice(0, 4)
             .map((r) => (
-              <Button size="sm" key={r} aria-label="Repost" isDisabled={true}>
-                {r} {data.reactionsCount[r]}
+              <Button size="xs" key={r} aria-label="Repost" isDisabled={true}>
+                {r} {filteredReactions[r]}
               </Button>
             ))}
       </HStack>
@@ -310,7 +341,7 @@ export function Event({ data, level }: EventProps) {
         </ModalBody>
 
         <ModalFooter>
-          <ActionButtons />
+          <ActionButtons showAll={true} />
 
           <Button marginLeft={4} onClick={onClose}>
             Close
@@ -366,32 +397,58 @@ export function Event({ data, level }: EventProps) {
           )}
         </Box>
       </CardHeader>
-      <CardBody p={0}>
+      <CardBody
+        p={0}
+        style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
+      >
+        {showContent && (
+          <Box
+            pl={4}
+            pr={4}
+            pt={2}
+            pb={2}
+            background={"blackAlpha.100"}
+            borderRadius={4}
+            style={{ overflowWrap: "anywhere" }}
+            dangerouslySetInnerHTML={{
+              __html: makeLinksClickable(data.event.content),
+            }}
+          />
+        )}
         <Box
-          padding={2}
-          background={"blackAlpha.100"}
-          borderRadius={4}
-          style={{ overflowWrap: "anywhere" }}
-          dangerouslySetInnerHTML={{
-            __html: makeLinksClickable(data.event.content),
-          }}
-        />
+          ml={4}
+          style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
+        >
+          {filteredReactions &&
+            Object.keys(filteredReactions).map((r) => (
+              <Button
+                size="xs"
+                variant="outline"
+                key={r}
+                aria-label="Repost"
+                isDisabled={true}
+                m={0.5}
+              >
+                {r} {filteredReactions[r]}
+              </Button>
+            ))}
+        </Box>
       </CardBody>
-      <CardFooter p={4}>
+      <CardFooter pl={4} pr={4} pt={2} pb={2}>
         <HStack width="100%">
-          <ActionButtons />
+          <ActionButtons showAll={false} />
 
           <Spacer />
           <Text fontSize={12}>{unixTimeToRelative(data.event.created_at)}</Text>
-          <Button
-            size={"sm"}
+          <IconButton
+            aria-label="Event info"
+            size={"xs"}
             variant="outline"
+            icon={<Icon as={InformationOutlineIcon} />}
             onClick={() => {
               onEventModalOpen();
             }}
-          >
-            Details
-          </Button>
+          ></IconButton>
         </HStack>
       </CardFooter>
     </Card>

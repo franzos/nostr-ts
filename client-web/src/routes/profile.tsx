@@ -109,7 +109,7 @@ export function ProfileRoute() {
         <Box overflowY="auto">
           <Box>
             {connected && activeFilters.current ? (
-              <Events />
+              <Events view={view} />
             ) : (
               <Text>Not connected.</Text>
             )}

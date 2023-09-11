@@ -11,27 +11,34 @@ import {
   filterDefault,
 } from "../lib/default-filters";
 
-export function EventsFeeds() {
-  const [connected, followingUserIds, keypairIsLoaded, keypair] = useNClient(
-    (state) => [
-      state.connected,
-      state.followingUserIds,
-      state.keypairIsLoaded,
-      state.keypair,
-    ]
-  );
+interface EventsFeedsProps {
+  connected: boolean;
+}
+
+export function EventsFeeds({ connected }: EventsFeedsProps) {
+  const [followingUserIds, keypairIsLoaded, keypair] = useNClient((state) => [
+    state.followingUserIds,
+    state.keypairIsLoaded,
+    state.keypair,
+  ]);
 
   const isInitDone = useRef<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const activeFilters = useRef<NFilters>(filterDefault());
+  const view = useRef<string>("global");
+  const changingView = useRef<boolean>(false);
 
   const onMount = async () => {
-    if (!connected || isInitDone.current) return;
+    if (!useNClient.getState().connected || isInitDone.current) {
+      return;
+    }
     // Set the default, "initial" view
+    isInitDone.current = true;
+
     await useNClient
       .getState()
-      .setViewSubscription("global", activeFilters.current, {
+      .setViewSubscription(view.current, activeFilters.current, {
         reset: true,
         limit: MAX_EVENTS,
         offset: 0,
@@ -44,24 +51,32 @@ export function EventsFeeds() {
    * Handle initial load
    */
   useEffect(() => {
-    onMount();
-  }, []);
-
-  /**
-   * Handle the connection status change
-   */
-  useEffect(() => {
     if (connected) {
       onMount();
     }
     return () => {
-      useNClient.getState().setView("");
+      useNClient.getState().removeViewSubscription(view.current);
     };
   }, [connected]);
 
+  /**
+   * Handle the connection status change
+   */
+  // useEffect(() => {
+  //   if (connected) {
+  //     onMount();
+  //   }
+  //   return () => {
+  //     useNClient.getState().setView("");
+  //   };
+  // }, [connected]);
+
   const changeFeed = async (feedName: string) => {
-    if (!connected) return;
+    if (!useNClient.getState().connected) return;
     setIsLoading(true);
+    changingView.current = true;
+    useNClient.getState().setView(feedName);
+    view.current = feedName;
 
     if (feedName === "global") {
       activeFilters.current = filterDefault();
@@ -86,8 +101,19 @@ export function EventsFeeds() {
         limit: MAX_EVENTS,
         offset: 0,
       });
+    changingView.current = false;
     setIsLoading(false);
   };
+
+  const InfoText = connected ? (
+    <Text textAlign="center" marginTop={4}>
+      Changing feed ...
+    </Text>
+  ) : (
+    <Text textAlign="center" marginTop={4}>
+      Not connected to the network
+    </Text>
+  );
 
   return (
     <Box>
@@ -98,10 +124,10 @@ export function EventsFeeds() {
       />
       <Box overflowY="auto">
         {!isLoading ? (
-          <Events />
+          <Events view={view.current} changingView={changingView.current} />
         ) : (
           <Box marginTop={5} marginBottom={5} textAlign={"center"}>
-            <Text>Changing feed ...</Text>
+            {InfoText}
           </Box>
         )}
       </Box>

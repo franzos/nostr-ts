@@ -9,9 +9,9 @@ export function WelcomeRoute() {
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
-        {connected ? (
-          <EventsFeeds />
-        ) : (
+        <EventsFeeds connected={connected} />
+
+        {!connected && (
           <Box maxWidth={600}>
             <Heading size="lg">About Nostr</Heading>
             <Text marginBottom={2} fontWeight="bold">

@@ -27,11 +27,7 @@ import {
 } from "./keystore";
 import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import {
-  CreateListRecord,
-  ProcessedEventKeys,
-  WorkerEvent,
-} from "./base-types";
+import { CreateListRecord, WorkerEvent } from "./base-types";
 
 const throttleDelayInMs = 500;
 
@@ -43,8 +39,28 @@ function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
   let timeout: number | null = null;
   let eventsBatch: WorkerEvent[] = [];
 
-  return function (event: WorkerEvent) {
-    eventsBatch.push(event);
+  return function (incomingEvent: WorkerEvent) {
+    if (incomingEvent.data.type === "event:update") {
+      const incomingEventId = (incomingEvent.data.data as LightProcessedEvent)
+        .event.id;
+
+      const existingEventIndex = eventsBatch.findIndex((batchEvent) => {
+        if (batchEvent.data.type === "event:update") {
+          const batchEventId = (batchEvent.data.data as LightProcessedEvent)
+            .event.id;
+          return batchEventId === incomingEventId;
+        }
+        return false;
+      });
+
+      if (existingEventIndex !== -1) {
+        eventsBatch[existingEventIndex] = incomingEvent;
+      } else {
+        eventsBatch.push(incomingEvent);
+      }
+    } else {
+      eventsBatch.push(incomingEvent);
+    }
 
     if (!timeout) {
       timeout = setTimeout(() => {
@@ -74,12 +90,13 @@ export const useNClient = create<NClient>((set, get) => ({
               get().updateEvent(payload.data as LightProcessedEvent);
             }
           } else {
-            console.log(
-              `Not same view, ignoring`,
-              `active: '${get().activeView}'`,
-              `payload: '${payload.view}'`,
-              (payload.data as LightProcessedEvent).event.content
-            );
+            if (payload.type === "event:new") {
+              console.log(
+                `Not adding event to view ${
+                  get().activeView
+                } because it is for view ${payload.view}`
+              );
+            }
           }
         } else if (payload.type === "relay:message") {
           const data = payload.data as WebSocketEvent;
@@ -228,11 +245,17 @@ export const useNClient = create<NClient>((set, get) => ({
   getEvent: async (id: string, view?: string) => {
     return get().store.getEvent(id, view);
   },
-  getEvents: async (params: { limit?: number; offset?: number }) => {
+  getEvents: async (params: {
+    view: string;
+    limit?: number;
+    offset?: number;
+  }) => {
     await get().store.getEvents({
-      view: get().activeView,
       ...params,
     });
+  },
+  getEventReplies: async (id: string) => {
+    return get().store.getEventReplies(id);
   },
   events: [],
   addEvent: (payload: LightProcessedEvent) => {
@@ -285,14 +308,21 @@ export const useNClient = create<NClient>((set, get) => ({
   }> => {
     console.log(`Determining applicable relays`, request);
     // TODO: RELAY check if supported (supportsEvent)
-    const allRelays = await get().getRelays();
-    const relays =
-      request.relayUrls && request.relayUrls.length > 0
-        ? allRelays.filter((r) => request.relayUrls?.includes(r.url))
-        : allRelays;
+    const relays = await get()
+      .getRelays()
+      .then((rels) => {
+        if (!rels) {
+          return [];
+        }
+        // If preference provided; if not use all
+        const selected = request.relayUrls
+          ? rels.filter((r) => request.relayUrls?.includes(r.url))
+          : rels;
+        return selected.filter((r) => r.isReady && r.write === true);
+      });
 
     return {
-      relays: relays.filter((r) => r.isReady && r.write === true),
+      relays,
       pow: 0,
     };
   },
@@ -350,9 +380,6 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   countUsers: async () => {
     return get().store.countUsers();
-  },
-  getEventById: async (id: string, key?: ProcessedEventKeys) => {
-    return get().store.getEventById(id, key);
   },
   eventProofOfWork: async (event: NEvent, bits: number) => {
     return new Promise((resolve) => {
@@ -551,6 +578,7 @@ export const useNClient = create<NClient>((set, get) => ({
   },
 
   activeView: "",
+
   setView: (view: string) => {
     set({ activeView: view });
   },
@@ -571,14 +599,14 @@ export const useNClient = create<NClient>((set, get) => ({
     }
   ) => {
     set({ activeView: view });
-    await get().store.setViewSubscription(view, filters, options);
-    if (options && options.reset) {
-      /**
-       * Cleanup previous subscription
-       */
-      set({ maxEvents: MAX_EVENTS });
-      set({ events: [] });
-    }
+    await get()
+      .store.setViewSubscription(view, filters, options)
+      .then(() => {
+        if (options && options.reset) {
+          set({ maxEvents: MAX_EVENTS });
+          set({ events: [] });
+        }
+      });
   },
 
   /**

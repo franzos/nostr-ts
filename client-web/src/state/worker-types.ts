@@ -6,24 +6,20 @@ import {
   RelaySubscription,
   NFilters,
   ProcessedUserBase,
-  ProcessedEvent,
   LightProcessedEvent,
+  EventBase,
+  NEVENT_KIND,
+  ProcessedEventWithEvents,
 } from "@nostr-ts/common";
-import { ListRecord, NClientBase, ProcessedEventKeys } from "./base-types";
+import { ListRecord, NClientBase } from "./base-types";
 
 export interface NClientWorker extends NClientBase {
-  currentViewSubscription: {
-    view: string;
-    limit: number;
-    offset: number;
-  };
-
   eventsPublishingQueue: PublishingQueueItem[];
   addQueueItems: (payload: PublishingQueueItem[]) => void;
   updateQueueItem: (payload: PublishingQueueItem) => void;
   getQueueItems: () => PublishingQueueItem[];
 
-  getSubscriptions: () => RelaySubscription[];
+  getSubscriptions: () => RelaySubscription[] | undefined;
   unsubscribe: (ids: string[]) => void;
   unsubscribeAll: () => void;
 
@@ -38,26 +34,26 @@ export interface NClientWorker extends NClientBase {
     limit?: number;
     offset?: number;
   }) => void;
+  getEventReplies: (
+    id: string,
+    view?: string
+  ) => Promise<LightProcessedEvent[] | undefined>;
   sendEvent: (payload: PublishingRequest) => void;
-  events?: ProcessedEvent[];
+  events?: ProcessedEventWithEvents[];
   /**
    * Add event to array or map
    * - In worker, must post message to main thread
    */
-  addEvent: (payload: ProcessedEvent) => void;
+  // useEvent: (payload: ProcessedEventWithEvents) => void;
   /**
    * Update event on array or map
    * - In worker, must post message to main thread
    */
-  updateEvent: (payload: ProcessedEvent, view: string) => void;
-  getEventById: (
-    id: string,
-    key?: ProcessedEventKeys
-  ) => Partial<LightProcessedEvent> | undefined;
+  // updateEvent: (payload: ProcessedEventWithEvents, view: string) => void;
   setMaxEvents: (max: number) => void;
   sendQueueItems: (items: PublishingQueueItem[]) => void;
   clearEvents: () => void;
-  getRelays: () => WebSocketClientInfo[];
+  getRelays: () => WebSocketClientInfo[] | undefined;
   updateRelay: (
     id: string,
     options: {
@@ -79,13 +75,6 @@ export interface NClientWorker extends NClientBase {
     viewChanged: boolean;
   }>;
   removeViewSubscription: (view: string) => void;
-  processActiveEvents: (
-    view: string,
-    options: {
-      limit: number;
-      offset: number;
-    }
-  ) => void;
 
   /**
    * Set to disconnect state
@@ -110,10 +99,30 @@ export interface NClientDB {
     key: string;
     value: ListRecord;
     indexes: {
-      list: {
-        id: string;
-      };
       userPubkeys: string[];
+    };
+  };
+  events: {
+    key: string;
+    value: EventBase;
+    indexes: {
+      pubkey: string;
+      kind: NEVENT_KIND;
+      created_at: number;
+      kindAndPubkey: [NEVENT_KIND, string];
+    };
+  };
+  tags: {
+    key: string;
+    value: {
+      eventId: string;
+      id: string;
+      type: string;
+      value: string;
+    };
+    indexes: {
+      eventId: string;
+      typeAndValue: [string, string];
     };
   };
 }

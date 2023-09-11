@@ -16,6 +16,15 @@ export interface EventBase {
   sig?: string;
 }
 
+export interface EventBaseSigned extends EventBase {
+  id: string;
+  pubkey: string;
+  created_at: number;
+  kind: NEVENT_KIND;
+  content: string;
+  sig: string;
+}
+
 export interface iNewShortTextNote {
   text: string;
   subject?: string;

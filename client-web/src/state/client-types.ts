@@ -11,12 +11,12 @@ import {
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
 import { NClientWorker } from "./worker-types";
-import { NClientBase, ProcessedEventKeys } from "./base-types";
+import { NClientBase } from "./base-types";
 import { NClientKeystore } from "./keystore";
 
 export interface NClient extends NClientBase {
   store: Remote<NClientWorker>;
-  getRelays: () => Promise<WebSocketClientInfo[]>;
+  getRelays: () => Promise<WebSocketClientInfo[] | undefined>;
   updateRelay: (
     url: string,
     options: {
@@ -30,7 +30,7 @@ export interface NClient extends NClientBase {
    */
   relayEvents: WebSocketEvent[];
 
-  getSubscriptions: () => Promise<RelaySubscription[]>;
+  getSubscriptions: () => Promise<RelaySubscription[] | undefined>;
   unsubscribe: (ids: string[]) => Promise<void>;
   unsubscribeAll: () => Promise<void>;
 
@@ -51,7 +51,15 @@ export interface NClient extends NClientBase {
     id: string,
     view?: string
   ) => Promise<LightProcessedEvent | undefined>;
-  getEvents: (params: { limit?: number; offset?: number }) => Promise<void>;
+  getEvents: (params: {
+    view: string;
+    limit?: number;
+    offset?: number;
+  }) => Promise<void>;
+  getEventReplies: (
+    id: string,
+    view?: string
+  ) => Promise<LightProcessedEvent[] | undefined>;
   sendEvent: (events: PublishingRequest) => Promise<void>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 
@@ -76,10 +84,6 @@ export interface NClient extends NClientBase {
    */
   updateEvent: (payload: LightProcessedEvent) => void;
   updateEvents: (payload: LightProcessedEvent[]) => void;
-  getEventById: (
-    id: string,
-    key?: ProcessedEventKeys
-  ) => Promise<Partial<LightProcessedEvent> | undefined>;
 
   activeView: string;
 

@@ -33,7 +33,11 @@ export function RelaysRoute() {
     await useNClient
       .getState()
       .getRelays()
-      .then((r) => setRelays(r));
+      .then((r) => {
+        if (r) {
+          setRelays(r);
+        }
+      });
   };
 
   useEffect(() => {

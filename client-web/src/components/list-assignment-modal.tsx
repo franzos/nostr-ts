@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNClient } from "../state/client";
 import {
   Button,
+  HStack,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -9,10 +9,10 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Select,
-  useToast,
   Text,
+  useToast,
 } from "@chakra-ui/react";
+import { useNClient } from "../state/client";
 
 interface ListAssignmentProps {
   pubkey: string;
@@ -29,21 +29,30 @@ export function ListAssignmentModal({
     {
       id: string;
       title: string;
+      isAssigned: boolean;
     }[]
   >([]);
 
   const toast = useToast();
 
   const onOpen = async () => {
+    // Get all lists
     const data = await useNClient.getState().getAllLists();
-    if (data) {
-      setLists(
-        data.map((item) => ({
-          id: item.id,
-          title: item.title,
-        }))
-      );
-    }
+    const initialLists =
+      data?.map((item) => ({
+        id: item.id,
+        title: item.title,
+        isAssigned: false,
+      })) || [];
+
+    // Check which lists the user is already assigned to
+    const withUser = await useNClient.getState().getListsWithUser(pubkey);
+    const updatedLists = initialLists.map((list) => ({
+      ...list,
+      isAssigned: Boolean(withUser?.find((uList) => uList.id === list.id)),
+    }));
+    console.log(updatedLists);
+    setLists(updatedLists);
   };
 
   useEffect(() => {
@@ -52,22 +61,37 @@ export function ListAssignmentModal({
     }
   }, [isOpen]);
 
-  const assignToList = async (listId: string) => {
-    if (listId === "0") return;
+  const toggleListAssignment = async (listId: string, isAssigned: boolean) => {
     try {
-      await useNClient.getState().addUserToList(listId, pubkey);
-      toast({
-        title: "User added to list",
-        description: `User added to ${listId}`,
-        status: "success",
-        duration: 9000,
-        isClosable: true,
-      });
+      if (isAssigned) {
+        await useNClient.getState().removeUserFromList(listId, pubkey);
+        toast({
+          title: "User removed from list",
+          status: "success",
+          duration: 9000,
+          isClosable: true,
+        });
+      } else {
+        await useNClient.getState().addUserToList(listId, pubkey);
+        toast({
+          title: "User added to list",
+          status: "success",
+          duration: 9000,
+          isClosable: true,
+        });
+      }
+
+      // Update list state
+      setLists((prevLists) =>
+        prevLists.map((list) =>
+          list.id === listId ? { ...list, isAssigned: !isAssigned } : list
+        )
+      );
     } catch (e) {
       toast({
-        title: "Already added",
-        description: "User already on list",
-        status: "warning",
+        title: "Operation failed",
+        description: (e as Error).message || "Something went wrong",
+        status: "error",
         duration: 9000,
         isClosable: true,
       });
@@ -78,30 +102,24 @@ export function ListAssignmentModal({
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>Add to list</ModalHeader>
+        <ModalHeader>Add or Remove from List</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          {lists && lists.length > 0 ? (
-            <Select
-              onChange={(ev) => assignToList(ev.target.value)}
-              width={180}
-            >
-              <option key={"0"} value={"0"}>
-                {""}
-              </option>
-              {lists.map((list) => {
-                return (
-                  <option key={list.id} value={list.id}>
-                    {list.title}
-                  </option>
-                );
-              })}
-            </Select>
-          ) : (
+          {lists.length === 0 ? (
             <Text>No lists found. Create one first.</Text>
+          ) : (
+            lists.map((list) => (
+              <HStack key={list.id}>
+                <Text>{list.title}</Text>
+                <Button
+                  onClick={() => toggleListAssignment(list.id, list.isAssigned)}
+                >
+                  {list.isAssigned ? "Remove from List" : "Add to List"}
+                </Button>
+              </HStack>
+            ))
           )}
         </ModalBody>
-
         <ModalFooter>
           <Button colorScheme="blue" mr={3} onClick={onClose}>
             Close

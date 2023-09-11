@@ -1,4 +1,4 @@
-import { EventBase } from "./event";
+import { EventBaseSigned } from "./event";
 import { FiltersBase } from "./filter";
 import { UserBase } from "./user";
 
@@ -75,13 +75,13 @@ export interface RelayEose extends Array<string | FiltersBase> {
 /**
  * Relay event
  */
-export interface RelayEvent extends Array<string | EventBase> {
+export interface RelayEvent extends Array<string | EventBaseSigned> {
   0: RELAY_MESSAGE_TYPE.EVENT;
   /**
    * Subscription ID
    */
   1: string;
-  2: EventBase;
+  2: EventBaseSigned;
 }
 
 /**
@@ -134,7 +134,11 @@ export function extractRelayMessage(data: any) {
     case RELAY_MESSAGE_TYPE.EOSE:
       return [type, rest[0] as string] as RelayEose;
     case RELAY_MESSAGE_TYPE.EVENT:
-      return [type, rest[0] as string, rest[1] as Event] as RelayEvent;
+      return [
+        type,
+        rest[0] as string,
+        rest[1] as EventBaseSigned,
+      ] as RelayEvent;
     case RELAY_MESSAGE_TYPE.NOTICE:
       return [type, rest[0] as string] as RelayNotice;
     case RELAY_MESSAGE_TYPE.OK:

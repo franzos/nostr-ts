@@ -114,7 +114,7 @@ export interface RelaysWithIdsOrKeys {
   idsOrKeys: string[];
 }
 
-type ReactionsCount = {
+export type ReactionsCount = {
   [key: string]: number;
 };
 
@@ -134,4 +134,26 @@ export interface LightProcessedEvent extends ProcessedEventBase {
   replies?: LightProcessedEvent[];
   mentions?: LightProcessedEvent[];
   zapReceipt?: LightProcessedEvent[];
+}
+
+export interface BareEvent {
+  id: string;
+  pubkey: string;
+}
+
+export interface BareEventContent extends BareEvent {
+  content: string;
+}
+
+export interface BareEventContentWithNumber extends BareEvent {
+  amount: number;
+}
+
+export interface ProcessedEventWithEvents extends ProcessedEventBase {
+  reactions: BareEventContent[];
+  reposts: BareEvent[];
+  badgeAwards: BareEventContent[];
+  replies: BareEvent[];
+  mentions: BareEvent[];
+  zapReceipts: BareEventContentWithNumber[];
 }

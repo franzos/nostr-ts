@@ -518,7 +518,6 @@ class WorkerClass implements NClientWorker {
     const offset = params.offset || 0;
     const selectedEvents = this.events.slice(offset, offset + limit);
 
-    // Process events asynchronously
     const processEvent = async (event: ProcessedEventWithEvents) => {
       const ev = await this.getEvent(event.event.id, params.view);
 
@@ -686,10 +685,31 @@ class WorkerClass implements NClientWorker {
             }
           }
         }
+        const hasReplyTag = tags?.find((tag) => tag.marker === "reply");
+        if (hasReplyTag) {
+          // Reply to existing reply
+          for (const e of this.events) {
+            if (e.event.id === hasReplyTag.eventId) {
+              const data = {
+                id: event.id,
+                pubkey: event.pubkey,
+                content: event.content,
+              };
+              if (e.replies) {
+                e.replies.push(data);
+              } else {
+                e.replies = [data];
+              }
+
+              this.updatedUsedEvent(e, view);
+              return;
+            }
+          }
+        }
       }
 
-      if (hasPositional) {
-        // Not adding to main thread since this is a reponse
+      if (tags) {
+        // Not adding to main thread since this is a reponse; we only couldn't find the related event
         return;
       }
 
@@ -795,6 +815,13 @@ class WorkerClass implements NClientWorker {
         });
 
         return;
+      } else if (kind === RELAY_MESSAGE_TYPE.AUTH) {
+        postMessage({
+          type: "relay:message",
+          data: payload,
+        });
+
+        return;
       }
     });
   }
@@ -875,7 +902,6 @@ class WorkerClass implements NClientWorker {
       ) {
         incomingQueue.enqueueBackground(async () => {
           const ev = payload.data[2] as EventBaseSigned;
-          console.log(`=> WORKER: Process event`, kind);
           const userRecord = await this.getUser(ev.pubkey);
           if (userRecord) {
             if (userRecord.isBlocked) {

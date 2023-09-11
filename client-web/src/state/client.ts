@@ -15,6 +15,8 @@ import {
   ProcessedUserBase,
   UserRecord,
   LightProcessedEvent,
+  NewAuthEvent,
+  CLIENT_MESSAGE_TYPE,
 } from "@nostr-ts/common";
 import { wrap } from "comlink";
 import { create } from "zustand";
@@ -143,6 +145,49 @@ export const useNClient = create<NClient>((set, get) => ({
     }
   ) => {
     return get().store.updateRelay(url, options);
+  },
+  relayAuth: async (relayUrl: string, challenge: string) => {
+    const keypair = get().keypair;
+    if (!keypair) {
+      throw new Error("Keypair not initialized");
+    }
+
+    const keystore = get().keystore;
+
+    const ev = NewAuthEvent({
+      relayUrl,
+      challenge,
+    });
+    ev.pubkey = keypair.publicKey;
+    ev.generateId();
+
+    if (keystore === "localstore") {
+      if (!keypair.privateKey || keypair.privateKey === "") {
+        throw new Error("No private key available");
+      }
+      ev.sign({
+        privateKey: keypair.privateKey,
+        publicKey: keypair.publicKey,
+      });
+    } else if (keystore === "nos2x") {
+      if (window.nostr && window.nostr.signEvent) {
+        const signedEv = await window.nostr.signEvent(ev.ToObj());
+        if (!signedEv.sig) {
+          throw new Error("No signature");
+        }
+        ev.sig = signedEv.sig;
+      } else {
+        throw new Error("Nostr not initialized");
+      }
+    } else {
+      throw new Error("Invalid keystore");
+    }
+
+    await get().subscribe({
+      type: CLIENT_MESSAGE_TYPE.AUTH,
+      signedEvent: ev.ToObj(),
+      relayUrls: [relayUrl],
+    });
   },
   relayEvents: [],
   getSubscriptions: async () => {

@@ -65,6 +65,11 @@ export function BottomBar() {
     return () => clearInterval(statsUpdateInterval);
   }, []);
 
+  const handleAuth = async (relayUrl: string, challenge: string) => {
+    if (!relayUrl || !challenge) return;
+    await useNClient.getState().relayAuth(relayUrl, challenge);
+  };
+
   /**
    * Relay events
    */
@@ -90,9 +95,12 @@ export function BottomBar() {
             return;
             // description = `Loaded all requested events for subscription ${event.data[1]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
-            description = `Relay ${event.data[1]}: ${JSON.stringify(
-              event.data[2]
-            )} events`;
+            description = `Relay ${event.meta.url} #${
+              event.data[1]
+            }: ${JSON.stringify(event.data[2])} events`;
+          } else if (event.data[0] === RELAY_MESSAGE_TYPE.AUTH) {
+            description = `Relay ${event.meta.url}: requested authentication`;
+            handleAuth(event.meta.url, event.data[1]);
           }
           if (description !== "") {
             toast({

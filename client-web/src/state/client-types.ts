@@ -25,6 +25,7 @@ export interface NClient extends NClientBase {
       write?: boolean;
     }
   ) => Promise<void>;
+  relayAuth: (url: string, challenge: string) => Promise<void>;
   /**
    * Events set by worker listener
    */

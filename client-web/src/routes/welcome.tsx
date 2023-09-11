@@ -1,7 +1,8 @@
-import { Heading, Box, Text, Grid } from "@chakra-ui/react";
+import { Heading, Box, Image, Grid } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { CreateEventForm } from "../components/create-event-form";
 import { EventsFeeds } from "../components/feeds";
+import Logo from "../assets/logo.svg";
 
 export function WelcomeRoute() {
   const [connected] = useNClient((state) => [state.connected]);
@@ -12,26 +13,27 @@ export function WelcomeRoute() {
         <EventsFeeds connected={connected} />
 
         {!connected && (
-          <Box maxWidth={600}>
-            <Heading size="lg">About Nostr</Heading>
-            <Text marginBottom={2} fontWeight="bold">
-              Tldr: Nostr is a decentralized social network.
-            </Text>
-            <Text marginBottom={4}>
-              Nostr is anything you can imagine. A new reddit, Twitter,
-              Facebook, Mastodon - Craigstslist or Ebay? It's only a matter of
-              what the interface looks like, the underlying network is the same,
-              and so is your identity - so you get to access it all, without
-              giving up yourself.
-            </Text>
-            <Heading size="md">Connect to get started</Heading>
-            <Text marginBottom={2}>
-              You don't need an account to browse or follow users. All data is
-              saved in your browser. To interact with events, generate or supply
-              a keypair.
-            </Text>
-            <Text>nos2x and nos2x-fox should be working too.</Text>
-          </Box>
+          <Image src={Logo} />
+          // <Box maxWidth={600}>
+          //   <Heading size="lg">About Nostr</Heading>
+          //   <Text marginBottom={2} fontWeight="bold">
+          //     Tldr: Nostr is a decentralized social network.
+          //   </Text>
+          //   <Text marginBottom={4}>
+          //     Nostr is anything you can imagine. A new reddit, Twitter,
+          //     Facebook, Mastodon - Craigstslist or Ebay? It's only a matter of
+          //     what the interface looks like, the underlying network is the same,
+          //     and so is your identity - so you get to access it all, without
+          //     giving up yourself.
+          //   </Text>
+          //   <Heading size="md">Connect to get started</Heading>
+          //   <Text marginBottom={2}>
+          //     You don't need an account to browse or follow users. All data is
+          //     saved in your browser. To interact with events, generate or supply
+          //     a keypair.
+          //   </Text>
+          //   <Text>nos2x and nos2x-fox should be working too.</Text>
+          // </Box>
         )}
       </Box>
       <Box display="flex" flexDirection="column">

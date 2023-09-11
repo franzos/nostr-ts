@@ -40,7 +40,7 @@ export function ProfileRoute() {
   };
 
   const onMount = async (nprofileString: string) => {
-    if (!connected || isInitDone.current) return;
+    if (!useNClient.getState().connected || isInitDone.current) return;
     isInitDone.current = true;
     const decoded = decodeBech32(nprofileString);
     const relayUrls: string[] = [];
@@ -62,6 +62,7 @@ export function ProfileRoute() {
       relayUrls: relayUrls,
     });
     pubkey.current = key;
+    await getUser();
     activeFilters.current = filterByAuthor([key]);
     await useNClient
       .getState()
@@ -70,7 +71,6 @@ export function ProfileRoute() {
         limit: MAX_EVENTS,
         offset: 0,
       });
-    await getUser();
     await count(key);
   };
 
@@ -85,9 +85,17 @@ export function ProfileRoute() {
     }
 
     return () => {
-      useNClient.getState().setView("");
+      useNClient.getState().removeViewSubscription(view);
     };
   }, []);
+
+  useEffect(() => {
+    if (connected) {
+      if (nprofile) {
+        onMount(nprofile);
+      }
+    }
+  }, [connected]);
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>

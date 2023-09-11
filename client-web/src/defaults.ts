@@ -9,8 +9,28 @@ export const DEFAULT_RELAYS = {
     read: true,
     write: true,
   },
-  // "wss://soloco.nl": {
-  //   read: true,
-  //   write: false,
-  // },
+  "wss://offchain.pub": {
+    read: true,
+    write: false,
+  },
+  "wss://nos.lol": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.snort.social": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.damus.io": {
+    read: true,
+    write: false,
+  },
+  "wss://soloco.nl": {
+    read: true,
+    write: false,
+  },
+  "wss://eden.nostr.land": {
+    read: true,
+    write: false,
+  },
 };

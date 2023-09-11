@@ -63,7 +63,6 @@ export function AccountRoute() {
       try {
         // Public key as hex string
         const publicKey = await window.nostr.getPublicKey();
-        console.log(publicKey);
         useNClient.getState().setKeyStore({
           keystore: "nos2x",
           publicKey: publicKey,

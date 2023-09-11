@@ -89,7 +89,7 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
       if (list && list.userPubkeys) {
         activeFilters.current = filterByAuthor(list.userPubkeys);
       } else {
-        console.log("list not found");
+        console.warn("List not found.");
         return;
       }
     }

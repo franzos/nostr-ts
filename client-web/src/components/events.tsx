@@ -111,8 +111,6 @@ export function Events({ view, changingView }: EventsProps) {
       if (currentPage.current < totalPages.current) {
         await calculateTotalPages();
         await loadEvents();
-      } else {
-        console.log(currentPage.current, totalPages.current);
       }
     } else {
       await loadEvents();

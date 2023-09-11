@@ -51,7 +51,6 @@ export function ListAssignmentModal({
       ...list,
       isAssigned: Boolean(withUser?.find((uList) => uList.id === list.id)),
     }));
-    console.log(updatedLists);
     setLists(updatedLists);
   };
 

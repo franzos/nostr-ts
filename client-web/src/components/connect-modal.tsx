@@ -19,23 +19,7 @@ import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { DEFAULT_RELAYS } from "../defaults";
 import { Relay } from "@nostr-ts/common";
-
-type RelayProps = {
-  read: boolean;
-  write: boolean;
-};
-
-type Relays = {
-  [key: string]: RelayProps;
-};
-
-function objectOfRelaysToArray(relays: Relays): Relay[] {
-  return Object.entries(relays).map(([url, { read, write }]) => ({
-    url,
-    read,
-    write,
-  }));
-}
+import { objectOfRelaysToArray } from "../lib/object-of-relays-to-array";
 
 interface ConnectModalProps {
   isOpen: boolean;

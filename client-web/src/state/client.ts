@@ -94,9 +94,9 @@ export const useNClient = create<NClient>((set, get) => ({
           } else {
             if (payload.type === "event:new") {
               console.log(
-                `Not adding event to view ${
+                `Meant for view ${payload.view}, but not active (${
                   get().activeView
-                } because it is for view ${payload.view}`
+                })`
               );
             }
           }
@@ -199,11 +199,9 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.subscribe(payload);
   },
   unsubscribe: async (ids: string[]) => {
-    console.log(`Unsubscribing ${ids}`);
     return get().store.unsubscribe(ids);
   },
   unsubscribeAll: async () => {
-    console.log(`Unsubscribing all`);
     return get().store.unsubscribeAll();
   },
   keystore: "none",
@@ -255,7 +253,6 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   setKeyStore: (config: NClientKeystore) => {
     if (config.keystore === "localstore") {
-      console.log(`Setting keystore for ${config.keystore}`, config);
       if (config.publicKey && config.privateKey) {
         set({
           keystore: config.keystore,
@@ -351,7 +348,6 @@ export const useNClient = create<NClient>((set, get) => ({
     relays: WebSocketClientInfo[];
     pow: number;
   }> => {
-    console.log(`Determining applicable relays`, request);
     // TODO: RELAY check if supported (supportsEvent)
     const relays = await get()
       .getRelays()

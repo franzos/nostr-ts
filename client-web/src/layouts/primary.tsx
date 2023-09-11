@@ -21,6 +21,8 @@ import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 import Logo from "../assets/logo.svg";
+import { DEFAULT_RELAYS } from "../defaults";
+import { objectOfRelaysToArray } from "../lib/object-of-relays-to-array";
 
 export function PrimaryLayout() {
   const [connected, keystore, publicKey] = useNClient((state) => [
@@ -40,8 +42,13 @@ export function PrimaryLayout() {
     }
   };
 
+  const connect = async () => {
+    await useNClient.getState().connect(objectOfRelaysToArray(DEFAULT_RELAYS));
+  };
+
   useEffect(() => {
     const statsUpdateInterval = setInterval(update, 1000);
+    connect();
 
     return () => clearInterval(statsUpdateInterval);
   }, []);

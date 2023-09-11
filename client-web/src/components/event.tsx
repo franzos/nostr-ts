@@ -367,7 +367,7 @@ export function Event({ data, level }: EventProps) {
   const EventCard = (
     <Card style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
       <CardHeader p={0}>
-        <Box>
+        <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
           {showContent ? (
             images &&
             images.length > 0 && (

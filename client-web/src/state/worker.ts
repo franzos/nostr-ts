@@ -210,7 +210,6 @@ class WorkerClass implements NClientWorker {
   async subscribe(
     payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
   ) {
-    console.log(`=> WORKER: Subscribe`, payload);
     return this.client?.subscribe(payload);
   }
 
@@ -1313,7 +1312,6 @@ class WorkerClass implements NClientWorker {
     const eventIds: { id: string; relayUrls?: string[] }[] = [];
 
     for (const ev of events) {
-      console.log(ev.eventRelayUrls);
       // TODO: Check if stale
       if (!eventUsers.find((user) => user.pubkey === ev.event.pubkey)) {
         const user = await this.getUser(ev.event.pubkey);

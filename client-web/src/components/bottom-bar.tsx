@@ -2,10 +2,18 @@ import {
   Box,
   Button,
   HStack,
+  Heading,
   Link,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   Spacer,
   Text,
   useColorMode,
+  useDisclosure,
   useToast,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
@@ -14,6 +22,9 @@ import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
 import { excerpt } from "../lib/excerpt";
 import { NavLink } from "react-router-dom";
 import { EventFormModal } from "./event-form-modal";
+import { SubscriptionsTable } from "./subscriptions-table";
+import { RelaysTable } from "./relays-table";
+import { PublishingQueueTable } from "./queue-table";
 
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -117,6 +128,75 @@ export function BottomBar() {
     }
   }, [relayEvents]);
 
+  const {
+    isOpen: isSubscriptionsModalOpen,
+    onOpen: onSubscriptionsModalOpen,
+    onClose: onSubscriptionsModalClose,
+  } = useDisclosure();
+
+  const SubscriptionsModal = (
+    <Modal
+      isOpen={isSubscriptionsModalOpen}
+      onClose={onSubscriptionsModalClose}
+      size="xl"
+    >
+      {" "}
+      <ModalOverlay />
+      <ModalContent maxHeight="80vh" maxWidth="80vw">
+        {" "}
+        <ModalHeader>
+          <Heading size="lg">Subscriptions</Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody overflowY="auto">
+          <SubscriptionsTable />
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+
+  const {
+    isOpen: isRelayModalOpen,
+    onOpen: onRelayModalOpen,
+    onClose: onRelayModalClose,
+  } = useDisclosure();
+
+  const RelaysModal = (
+    <Modal isOpen={isRelayModalOpen} onClose={onRelayModalClose} size="xl">
+      <ModalOverlay />
+      <ModalContent maxHeight="80vh" maxWidth="80vw">
+        <ModalHeader>
+          <Heading size="lg">Relays</Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody overflowY="auto">
+          <RelaysTable />
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+
+  const {
+    isOpen: isQueueOpen,
+    onOpen: onQueueOpen,
+    onClose: onQueueClose,
+  } = useDisclosure();
+
+  const QueueModal = (
+    <Modal isOpen={isQueueOpen} onClose={onQueueClose} size="xl">
+      <ModalOverlay />
+      <ModalContent maxHeight="80vh" maxWidth="80vw">
+        <ModalHeader>
+          <Heading size="lg">Queue</Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody overflowY="auto">
+          <PublishingQueueTable />
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+
   return (
     <Box
       position="fixed"
@@ -149,19 +229,27 @@ export function BottomBar() {
               <Text fontSize="xl">{blockedUsersCount}</Text>
             </HStack>
           </Link>
-          <Link as={NavLink} to="/relays">
+          <Link
+            onClick={isRelayModalOpen ? onRelayModalClose : onRelayModalOpen}
+          >
             <HStack spacing={2}>
               <Text fontSize="sm">Relays:</Text>
               <Text fontSize="xl">{relaysCount}</Text>
             </HStack>
           </Link>
-          <Link as={NavLink} to="/queue">
+          <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
             <HStack spacing={2}>
               <Text fontSize="sm">Queue:</Text>
               <Text fontSize="xl">{queueItemsCount}</Text>
             </HStack>
           </Link>
-          <Link as={NavLink} to="/subscriptions">
+          <Link
+            onClick={
+              isSubscriptionsModalOpen
+                ? onSubscriptionsModalClose
+                : onSubscriptionsModalOpen
+            }
+          >
             <HStack spacing={2}>
               <Text fontSize="sm">Subscriptions:</Text>
               <Text fontSize="xl">{subscriptionsCount}</Text>
@@ -169,6 +257,9 @@ export function BottomBar() {
           </Link>
         </>
       </HStack>
+      {SubscriptionsModal}
+      {RelaysModal}
+      {QueueModal}
     </Box>
   );
 }

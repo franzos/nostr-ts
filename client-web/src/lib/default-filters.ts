@@ -39,3 +39,19 @@ export function filterByMentions(pubKeys: string[], limit?: number) {
   }
   return filters;
 }
+
+export function filterByRelatedEvents(id: string, limit?: number) {
+  const filters = new NFilters({
+    kinds: [
+      NEVENT_KIND.SHORT_TEXT_NOTE,
+      NEVENT_KIND.REPOST,
+      NEVENT_KIND.REACTION,
+      NEVENT_KIND.ZAP_RECEIPT,
+    ],
+    "#e": [id],
+  });
+  if (limit) {
+    filters.limit = limit;
+  }
+  return filters;
+}

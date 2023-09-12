@@ -117,11 +117,13 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
 
   return (
     <Box>
-      <ListSelection
-        showFollowing={followingUserIds.length > 0}
-        showMentions={keypairIsLoaded}
-        changeFeed={changeFeed}
-      />
+      <Box p={2}>
+        <ListSelection
+          showFollowing={followingUserIds.length > 0}
+          showMentions={keypairIsLoaded}
+          changeFeed={changeFeed}
+        />
+      </Box>
       <Box overflowY="auto">
         {!isLoading ? (
           <Events view={view.current} changingView={changingView.current} />

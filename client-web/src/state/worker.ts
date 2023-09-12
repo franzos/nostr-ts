@@ -261,8 +261,8 @@ class WorkerClass implements NClientWorker {
    * - Post message to main thread
    */
   private updatedUsedEvent(payload: ProcessedEventWithEvents, view?: string) {
-    this.events = this.events.map((event) => {
-      if (event.event.id === payload.event.id) {
+    for (let i = 0; i < this.events.length; i++) {
+      if (this.events[i].event.id === payload.event.id) {
         const workerEvent: WorkerEvent = {
           data: {
             type: "event:update",
@@ -271,10 +271,10 @@ class WorkerClass implements NClientWorker {
           },
         };
         postMessage(workerEvent.data);
-        return payload;
+        this.events[i] = payload;
+        break; // Stops loop after the first match
       }
-      return event;
-    });
+    }
   }
 
   /**
@@ -306,10 +306,12 @@ class WorkerClass implements NClientWorker {
     const processedEvents: LightProcessedEvent[] = [];
     for (const event of events) {
       const user = await this.db?.get("users", event.pubkey);
-      processedEvents.push({
+      const ev = {
         event: event,
         user: user ? user.user : undefined,
         eventRelayUrls: user ? user.relayUrls : [],
+
+        // TODO
         repliesCount: 0,
         reactionsCount: {},
         repostsCount: 0,
@@ -317,7 +319,9 @@ class WorkerClass implements NClientWorker {
         mentionsCount: 0,
         zapReceiptAmount: 0,
         zapReceiptCount: 0,
-      });
+      };
+
+      processedEvents.push(ev);
     }
 
     return processedEvents;
@@ -408,58 +412,64 @@ class WorkerClass implements NClientWorker {
     return this.events.length;
   }
 
-  async getEvent(id: string, view?: string) {
+  async getEvent(
+    id: string,
+    options?: {
+      view?: string;
+      retryCount?: number;
+    }
+  ) {
     const event = this.events.find((e) => e.event.id === id);
     if (event) {
       const related = await this.getRelatedEvents(id, [
         NEVENT_KIND.REACTION,
         NEVENT_KIND.ZAP_RECEIPT,
         NEVENT_KIND.SHORT_TEXT_NOTE,
-        NEVENT_KIND.ZAP_RECEIPT,
       ]);
 
-      event.reactions = [
-        ...event.reactions,
-        ...related.filter((e) => e.kind === NEVENT_KIND.REACTION),
-      ];
-      event.replies = [
-        ...event.replies,
-        ...related.filter((e) => e.kind === NEVENT_KIND.SHORT_TEXT_NOTE),
-      ];
-
+      const newReactions = [];
+      const newReplies = [];
       const zapReceipts = [];
-      event.zapReceipts.map((receipt) => {
-        zapReceipts.push({
-          id: receipt.id,
-          pubkey: receipt.pubkey,
-          amount: receipt.amount,
-        });
-      });
-      related
-        .filter((e) => e.kind === NEVENT_KIND.ZAP_RECEIPT)
-        .map((receipt) => {
-          const added = event.zapReceipts.find(
-            (r) => r.id === receipt.id && r.pubkey === receipt.pubkey
-          );
-          if (!added) {
-            const invoice = receipt.tags?.find((tag) => tag[0] === "bolt11");
-            if (invoice) {
+
+      const existingZapIds = new Set(event.zapReceipts.map((r) => r.id));
+
+      for (const rel of related) {
+        switch (rel.kind) {
+          case NEVENT_KIND.REACTION:
+            newReactions.push(rel);
+            break;
+          case NEVENT_KIND.SHORT_TEXT_NOTE:
+            newReplies.push(rel);
+            break;
+          case NEVENT_KIND.ZAP_RECEIPT:
+            if (!existingZapIds.has(rel.id)) {
+              existingZapIds.add(rel.id); // Add to set to avoid duplicates
               try {
-                const extractedInvoice = decodeLightnightPayRequest(invoice[1]);
-                const amount = extractedInvoice.sections.find(
-                  (s) => s.name === "amount"
-                )?.value as number;
-                zapReceipts.push({
-                  id: receipt.id,
-                  pubkey: receipt.pubkey,
-                  amount,
-                });
+                const invoiceTag = rel.tags?.find((tag) => tag[0] === "bolt11");
+                if (invoiceTag) {
+                  const extractedInvoice = decodeLightnightPayRequest(
+                    invoiceTag[1]
+                  );
+                  const amount = extractedInvoice.sections.find(
+                    (s) => s.name === "amount"
+                  )?.value as number;
+                  zapReceipts.push({
+                    id: rel.id,
+                    pubkey: rel.pubkey,
+                    amount,
+                  });
+                }
               } catch (e) {
                 console.log(`=> WORKER: Error decoding invoice`, e);
               }
             }
-          }
-        });
+            break;
+        }
+      }
+
+      event.reactions = [...event.reactions, ...newReactions];
+      event.replies = [...event.replies, ...newReplies];
+      event.zapReceipts = [...event.zapReceipts, ...zapReceipts];
 
       const userData = await this.getUser(event.event.pubkey);
 
@@ -468,6 +478,9 @@ class WorkerClass implements NClientWorker {
         user: userData ? userData.user : undefined,
       });
     } else {
+      if (options?.retryCount && options.retryCount > 0) {
+        return;
+      }
       await this.subscribe({
         type: CLIENT_MESSAGE_TYPE.REQ,
         filters: new NFilters({
@@ -475,7 +488,7 @@ class WorkerClass implements NClientWorker {
         }),
         options: {
           timeoutIn: 10000,
-          view,
+          view: options?.view,
         },
       });
     }
@@ -517,9 +530,10 @@ class WorkerClass implements NClientWorker {
     const offset = params.offset || 0;
     const selectedEvents = this.events.slice(offset, offset + limit);
 
-    const processEvent = async (event: ProcessedEventWithEvents) => {
-      const ev = await this.getEvent(event.event.id, params.view);
-
+    for (const event of selectedEvents) {
+      const ev = await this.getEvent(event.event.id, {
+        view: params.view,
+      });
       if (ev) {
         const workerEvent: WorkerEvent = {
           data: {
@@ -531,9 +545,7 @@ class WorkerClass implements NClientWorker {
 
         postMessage(workerEvent.data);
       }
-    };
-
-    await Promise.all(selectedEvents.map(processEvent));
+    }
 
     // Request related data
     await this.processSelectedEvents(params.view, selectedEvents);
@@ -548,55 +560,65 @@ class WorkerClass implements NClientWorker {
     view?: string
   ) {
     if (event.kind === NEVENT_KIND.ZAP_RECEIPT) {
+      /**
+       * ZAP RECEIPT
+       */
       const tags = new NEvent(event).hasEventTags();
       const hasRootTag = tags?.find((tag) => tag.marker === "root");
       const invoice = event.tags?.find((tag) => tag[0] === "bolt11");
       if (hasRootTag && invoice) {
-        for (const e of this.events) {
-          if (e.event.id === hasRootTag.eventId) {
-            try {
-              const extractedInvoice = decodeLightnightPayRequest(invoice[1]);
-              const amount = extractedInvoice.sections.find(
-                (s) => s.name === "amount"
-              )?.value as number;
+        for (const ev of this.events) {
+          if (ev.event.id !== hasRootTag.eventId) continue;
 
-              const data = {
-                id: event.id,
-                pubkey: event.pubkey,
-                amount,
-              };
+          try {
+            const extractedInvoice = decodeLightnightPayRequest(invoice[1]);
+            const amount = extractedInvoice.sections.find(
+              (s) => s.name === "amount"
+            )?.value as number;
 
-              if (e.zapReceipts) {
-                e.zapReceipts.push(data);
-              } else {
-                e.zapReceipts = [data];
-              }
+            const data = {
+              id: event.id,
+              pubkey: event.pubkey,
+              amount,
+            };
 
-              this.updatedUsedEvent(e, view);
-              return;
-            } catch (e) {
-              console.log(`=> WORKER: Error decoding invoice`, e);
+            if (ev.zapReceipts) {
+              if (ev.zapReceipts.find((r) => r.id === data.id)) return;
+              ev.zapReceipts.push(data);
+            } else {
+              ev.zapReceipts = [data];
             }
+
+            this.updatedUsedEvent(ev, view);
+            return;
+          } catch (err) {
+            console.log(`=> WORKER: Error decoding invoice`, err);
           }
         }
       }
     } else if (event.kind === NEVENT_KIND.METADATA) {
+      /**
+       * METADATA
+       */
       const data = {
         user: new NUserBase(),
         relayUrls: [relayUrl],
       };
       data.user.fromEvent(event);
 
-      this.events.map((e) => {
-        if (e.event.pubkey === event.pubkey) {
+      for (const ev of this.events) {
+        if (ev.event.pubkey === event.pubkey) {
           this.updatedUsedEvent({
-            ...e,
+            ...ev,
             user: data.user,
             eventRelayUrls: data.relayUrls,
           });
         }
-      });
+      }
     } else if (event.kind === NEVENT_KIND.REACTION) {
+      /**
+       * REACTION
+       */
       const tags = new NEvent(event).hasEventTags();
       if (!tags) {
         return;
@@ -605,25 +627,28 @@ class WorkerClass implements NClientWorker {
         ?.filter((tag) => tag.eventId)
         .map((tag) => tag.eventId);
 
-      this.events.map((e) => {
-        eventIds?.map((id) => {
-          if (e.event.id === id) {
-            const data = {
-              id: event.id,
-              pubkey: event.pubkey,
-              content: event.content,
-            };
-            if (e.reactions) {
-              e.reactions.push(data);
-            } else {
-              e.reactions = [data];
-            }
+      for (const ev of this.events) {
+        if (!eventIds.includes(ev.event.id)) continue;
 
-            this.updatedUsedEvent(e, view);
-          }
-        });
-      });
+        const data = {
+          id: event.id,
+          pubkey: event.pubkey,
+          content: event.content,
+        };
+        if (ev.reactions) {
+          if (ev.reactions.find((r) => r.id === data.id)) return;
+          ev.reactions.push(data);
+        } else {
+          ev.reactions = [data];
+        }
+
+        this.updatedUsedEvent(ev, view);
+        return;
+      }
     } else if (event.kind === NEVENT_KIND.REPOST) {
+      /**
+       * REPOST
+       */
       const tags = new NEvent(event).hasEventTags();
       if (!tags) {
         return;
@@ -632,77 +657,75 @@ class WorkerClass implements NClientWorker {
         ?.filter((tag) => tag.eventId)
         .map((tag) => tag.eventId);
 
-      this.events.map((e) => {
-        eventIds?.map((id) => {
-          if (e.event.id === id) {
-            const data = {
-              id: event.id,
-              pubkey: event.pubkey,
-            };
-            if (e.reposts) {
-              e.reposts.push(data);
-            } else {
-              e.reposts = [data];
-            }
+      for (const ev of this.events) {
+        if (!eventIds.includes(ev.event.id)) continue;
 
-            this.updatedUsedEvent(e, view);
-            return;
-          }
-        });
-      });
+        const data = {
+          id: event.id,
+          pubkey: event.pubkey,
+        };
+        if (ev.reposts) {
+          if (ev.reposts.find((r) => r.id === data.id)) return;
+          ev.reposts.push(data);
+        } else {
+          ev.reposts = [data];
+        }
+
+        this.updatedUsedEvent(ev, view);
+        return;
+      }
     } else if (event.kind === NEVENT_KIND.SHORT_TEXT_NOTE) {
       /**
-       * Event is a reply
+       * SHORT TEXT NOTE
+       * can also be reply
        */
       const hasPositional = eventHasPositionalEventTag(event);
       const tags = hasPositional
         ? eventHasPositionalEventTags(event)
         : eventHasEventTags(event);
       if (tags) {
-        // TODO
-        // Reply to a reply
-        // const hasReplyTag = tags?.find((tag) => tag.marker === "reply");
-
         const hasRootTag = tags?.find((tag) => tag.marker === "root");
         if (hasRootTag) {
           // Reply to existing event
-          for (const e of this.events) {
-            if (e.event.id === hasRootTag.eventId) {
-              const data = {
-                id: event.id,
-                pubkey: event.pubkey,
-                content: event.content,
-              };
-              if (e.replies) {
-                e.replies.push(data);
-              } else {
-                e.replies = [data];
-              }
+          for (const ev of this.events) {
+            if (ev.event.id !== hasRootTag.eventId) continue;
 
-              this.updatedUsedEvent(e, view);
-              return;
+            const data = {
+              id: event.id,
+              pubkey: event.pubkey,
+              content: event.content,
+            };
+            if (ev.replies) {
+              if (ev.replies.find((r) => r.id === data.id)) return;
+              ev.replies.push(data);
+            } else {
+              ev.replies = [data];
             }
+
+            this.updatedUsedEvent(ev, view);
+            return;
           }
         }
         const hasReplyTag = tags?.find((tag) => tag.marker === "reply");
         if (hasReplyTag) {
           // Reply to existing reply
-          for (const e of this.events) {
-            if (e.event.id === hasReplyTag.eventId) {
-              const data = {
-                id: event.id,
-                pubkey: event.pubkey,
-                content: event.content,
-              };
-              if (e.replies) {
-                e.replies.push(data);
-              } else {
-                e.replies = [data];
-              }
+          for (const ev of this.events) {
+            if (ev.event.id !== hasReplyTag.eventId) continue;
 
-              this.updatedUsedEvent(e, view);
-              return;
+            const data = {
+              id: event.id,
+              pubkey: event.pubkey,
+              content: event.content,
+            };
+            if (ev.replies) {
+              if (ev.replies.find((r) => r.id === data.id)) return;
+              ev.replies.push(data);
+            } else {
+              ev.replies = [data];
             }
+
+            this.updatedUsedEvent(ev, view);
+            return;
           }
         }
       }
@@ -713,7 +736,7 @@ class WorkerClass implements NClientWorker {
       }
 
       // If not reply, check if exists; if not add
-      const exists = this.events.find((e) => e.event.id === event.id);
+      const exists = this.events.find((ev) => ev.event.id === event.id);
       if (!exists) {
         // TODO: This is probably not needed
         const userData = await this.getUser(event.pubkey);
@@ -950,6 +973,8 @@ class WorkerClass implements NClientWorker {
         NEVENT_KIND.SHORT_TEXT_NOTE,
         NEVENT_KIND.LONG_FORM_CONTENT,
         NEVENT_KIND.RECOMMEND_RELAY,
+        NEVENT_KIND.REACTION,
+        NEVENT_KIND.REPOST,
       ];
       if (queued.includes(kind)) {
         // Set event
@@ -959,16 +984,17 @@ class WorkerClass implements NClientWorker {
         //   eventRelayUrls: result.map((r) => r.relayUrl),
         // });
         // Set queue item
+        this.mergeEventWithActive(payload.event, result[0].relayUrl);
       }
 
       // TODO: This is bad
       this.addQueueItems(result);
 
-      result.map((item) => {
+      for (const item of result) {
         this.updateQueueItem({
           ...item,
         });
-      });
+      }
       return result;
     } else {
       throw new Error("Failed to send event");

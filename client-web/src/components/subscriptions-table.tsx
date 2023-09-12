@@ -1,48 +1,29 @@
 import {
-  Box,
-  Button,
-  Heading,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
-  Table,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr,
   useDisclosure,
   Text,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  Tr,
+  Td,
   Tooltip,
+  Button,
+  Table,
+  Thead,
+  Th,
+  Tbody,
+  Box,
 } from "@chakra-ui/react";
-import { useNClient } from "../state/client";
-import { useEffect, useState } from "react";
-import { RelaySubscription, NEVENT_KIND } from "@nostr-ts/common";
+import { RelaySubscription } from "@nostr-ts/common";
+import { useState, useEffect } from "react";
 import { excerpt } from "../lib/excerpt";
+import { useNClient } from "../state/client";
+import { nEventKindToName } from "../lib/kinds";
 
-const kinds = Object.keys(NEVENT_KIND).map((k) => {
-  return {
-    name: k,
-    value: NEVENT_KIND[k as keyof typeof NEVENT_KIND],
-  };
-});
-
-const kindToName = (kind: NEVENT_KIND) => {
-  const kindObj = kinds.find((k) => k.value === kind);
-  if (kindObj) {
-    return kindObj.name;
-  }
-  return "Unknown";
-};
-
-const kindsToName = (kinds: NEVENT_KIND[]) => {
-  return kinds.map(kindToName).join(", ");
-};
-
-export function SubscriptionsRoute() {
+export function SubscriptionsTable() {
   const [subscriptions, setSubscriptions] = useState<RelaySubscription[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<null | string>(null);
 
@@ -89,6 +70,7 @@ export function SubscriptionsRoute() {
     const view = sub.options && sub.options.view ? sub.options.view : "";
     return (
       <Tr key={sub.id}>
+        <Td>{sub.type}</Td>
         <Td>
           <Tooltip label={sub.id}>{excerpt(sub.id, 5)}</Tooltip>
         </Td>
@@ -97,7 +79,9 @@ export function SubscriptionsRoute() {
         </Td>
         <Td>
           <Text fontSize="sm">
-            {sub.filters && sub.filters.kinds && kindsToName(sub.filters.kinds)}
+            {sub.filters &&
+              sub.filters.kinds &&
+              nEventKindToName(sub.filters.kinds)}
           </Text>
         </Td>
         <Td>
@@ -128,10 +112,10 @@ export function SubscriptionsRoute() {
 
   return (
     <Box>
-      <Heading size="lg">Subscriptions</Heading>
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>
+            <Th>Type</Th>
             <Th>ID</Th>
             <Th>Relay</Th>
             <Th>Kind</Th>
@@ -146,16 +130,6 @@ export function SubscriptionsRoute() {
           })}
         </Tbody>
       </Table>
-      <Heading size="md" marginBottom={2}>
-        Legend
-      </Heading>
-      {kinds.map((k) => {
-        return (
-          <Text key={k.name}>
-            {k.name} - {k.value}
-          </Text>
-        );
-      })}
       {FilterModal}
     </Box>
   );

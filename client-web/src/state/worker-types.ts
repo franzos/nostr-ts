@@ -27,7 +27,10 @@ export interface NClientWorker extends NClientBase {
   countEvents: () => number;
   getEvent: (
     id: string,
-    view?: string
+    options?: {
+      view?: string;
+      retryCount?: number;
+    }
   ) => Promise<LightProcessedEvent | undefined>;
   getEvents: (params: {
     view: string;

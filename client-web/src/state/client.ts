@@ -31,7 +31,7 @@ import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
 import { CreateListRecord, WorkerEvent } from "./base-types";
 
-const throttleDelayInMs = 500;
+const throttleDelayInMs = 150;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -76,45 +76,54 @@ function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
 
 export const useNClient = create<NClient>((set, get) => ({
   store: wrap<NClientWorker>(worker),
-  init: async (config?: { maxEvents?: number }) => {
-    await get().loadKeyStore();
-    await get().store.init(config);
+  _processEvents: (events: WorkerEvent[]) => {
+    events.forEach((event) => {
+      const payload = event.data;
+      if (payload.type === "RAW") return;
+      const isActiveView = get().activeView === payload.view;
 
-    const processEvents = (events: WorkerEvent[]) => {
-      events.map((event) => {
-        const payload = event.data;
-        if (payload.type === "event:new" || payload.type === "event:update") {
-          const sameView = get().activeView === payload.view;
-          if (sameView) {
-            if (payload.type === "event:new") {
-              get().addEvent(payload.data as LightProcessedEvent);
-            } else if (payload.type === "event:update") {
-              get().updateEvent(payload.data as LightProcessedEvent);
-            }
-          } else {
-            if (payload.type === "event:new") {
-              console.log(
-                `Meant for view ${payload.view}, but not active (${
-                  get().activeView
-                })`
-              );
-            }
-          }
-        } else if (payload.type === "relay:message") {
-          const data = payload.data as WebSocketEvent;
+      if (payload.type === "event:new" && !isActiveView) {
+        console.log(
+          `New event for view ${payload.view} but not active (${
+            get().activeView
+          })`
+        );
+        return;
+      }
+
+      switch (payload.type) {
+        case "event:new":
+          // console.log(0);
+          get().addEvent(payload.data as LightProcessedEvent);
+          break;
+        case "event:update":
+          // console.log(1, (payload.data as LightProcessedEvent).event.content);
+          get().updateEvent(payload.data as LightProcessedEvent);
+          break;
+        case "relay:message":
           set({
-            relayEvents: [...get().relayEvents, data],
+            relayEvents: [...get().relayEvents, payload.data as WebSocketEvent],
           });
-        }
-      });
-    };
+          break;
+        default:
+          console.log(`Unsupported payload type: ${payload.type}`);
+      }
+    });
+  },
+  init: async (config?: { maxEvents?: number }) => {
+    try {
+      await get().loadKeyStore();
+      await get().store.init(config);
 
-    const throttledEvents = throttle(processEvents, throttleDelayInMs);
-    worker.addEventListener("message", throttledEvents);
+      const throttledEvents = throttle(get()._processEvents, throttleDelayInMs);
+      worker.addEventListener("message", throttledEvents);
 
-    const following = await get().store.getAllUsersFollowing();
-    if (following) {
-      set({ followingUserIds: following.map((u) => u.user.pubkey) });
+      const following = await get().store.getAllUsersFollowing();
+      if (following) {
+        set({ followingUserIds: following.map((u) => u.user.pubkey) });
+      }
+    } catch (err) {
+      console.error("Initialization failed:", err);
     }
   },
   connected: false,
@@ -187,6 +196,10 @@ export const useNClient = create<NClient>((set, get) => ({
       type: CLIENT_MESSAGE_TYPE.AUTH,
       signedEvent: ev.ToObj(),
       relayUrls: [relayUrl],
+      options: {
+        // 5 minutes
+        timeoutIn: 300000,
+      },
     });
   },
   relayEvents: [],
@@ -284,8 +297,14 @@ export const useNClient = create<NClient>((set, get) => ({
   countEvents: async () => {
     return get().store.countEvents();
   },
-  getEvent: async (id: string, view?: string) => {
-    return get().store.getEvent(id, view);
+  getEvent: async (
+    id: string,
+    options?: {
+      view?: string;
+      retryCount?: number;
+    }
+  ) => {
+    return get().store.getEvent(id, options);
   },
   getEvents: async (params: {
     view: string;
@@ -311,26 +330,28 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   updateEvent: (payload: LightProcessedEvent) => {
-    set({
-      events: get().events.map((event) => {
-        if (event.event.id === payload.event.id) {
-          return payload;
-        }
-        return event;
-      }),
-    });
+    const events = [...get().events]; // copy existing array
+    const indexToUpdate = events.findIndex(
+      (event) => event.event.id === payload.event.id
+    );
+
+    if (indexToUpdate !== -1) {
+      events[indexToUpdate] = payload;
+    }
+
+    set({ events });
   },
   updateEvents: (payload: LightProcessedEvent[]) => {
-    set({
-      events: get().events.map((event) => {
-        payload.map((p) => {
-          if (event.event.id === p.event.id) {
-            return p;
-          }
-        });
-        return event;
-      }),
-    });
+    const events = [...get().events];
+    const payloadMap = Object.fromEntries(payload.map((p) => [p.event.id, p]));
+
+    for (let i = 0; i < events.length; i++) {
+      if (payloadMap[events[i].event.id]) {
+        events[i] = payloadMap[events[i].event.id];
+      }
+    }
+
+    set({ events });
   },
   maxEvents: MAX_EVENTS,
   setMaxEvents: async (max: number) => {
@@ -657,5 +678,10 @@ export const useNClient = create<NClient>((set, get) => ({
    */
   removeViewSubscription: async (view: string) => {
     await get().store.removeViewSubscription(view);
+    // .then(() => {
+    //   set({ activeView: "" });
+    //   set({ maxEvents: MAX_EVENTS });
+    //   set({ events: [] });
+    // });
   },
 }));

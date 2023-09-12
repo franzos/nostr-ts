@@ -11,11 +11,12 @@ import {
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
 import { NClientWorker } from "./worker-types";
-import { NClientBase } from "./base-types";
+import { NClientBase, WorkerEvent } from "./base-types";
 import { NClientKeystore } from "./keystore";
 
 export interface NClient extends NClientBase {
   store: Remote<NClientWorker>;
+  _processEvents: (events: WorkerEvent[]) => void;
   getRelays: () => Promise<WebSocketClientInfo[] | undefined>;
   updateRelay: (
     url: string,
@@ -50,7 +51,10 @@ export interface NClient extends NClientBase {
   countEvents: () => Promise<number>;
   getEvent: (
     id: string,
-    view?: string
+    options?: {
+      view?: string;
+      retryCount?: number;
+    }
   ) => Promise<LightProcessedEvent | undefined>;
   getEvents: (params: {
     view: string;

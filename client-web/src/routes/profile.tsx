@@ -1,5 +1,5 @@
 import { Heading, Box, Text, Grid } from "@chakra-ui/react";
-import { NFilters, UserRecord, decodeBech32 } from "@nostr-ts/common";
+import { UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
@@ -14,23 +14,26 @@ export function ProfileRoute() {
 
   const isInitDone = useRef<boolean>(false);
 
-  const activeFilters = useRef<NFilters | null>(null);
-
   const pubkey = useRef("");
   const [userData, setUserData] = useState<UserRecord | null>(null);
 
   // URL params
-  const { nprofile } = useParams();
+  const { npub } = useParams();
 
-  const view = `profile-${nprofile}`;
+  const view = `profile-${npub}`;
 
-  const getUser = async () => {
+  const getUser = async (retryCount = 0) => {
     await useNClient
       .getState()
       .getUser(pubkey.current)
       .then((r) => {
         if (r) {
           setUserData(r);
+        } else {
+          setTimeout(async () => {
+            if (retryCount > 10) return;
+            await getUser(retryCount + 1);
+          }, 1000);
         }
       });
   };
@@ -42,46 +45,35 @@ export function ProfileRoute() {
   const onMount = async (nprofileString: string) => {
     if (!useNClient.getState().connected || isInitDone.current) return;
     isInitDone.current = true;
-    const decoded = decodeBech32(nprofileString);
-    const relayUrls: string[] = [];
-    let key: string = "";
-    decoded.tlvItems.map((item) => {
-      if (item.type === 0) {
-        key = item.value as string;
-        return;
+    try {
+      const decoded = decodeBech32(nprofileString);
+      for (const item of decoded.tlvItems) {
+        if (item.type === 0) {
+          pubkey.current = item.value as string;
+          break;
+        }
       }
-      if (item.type === 1) {
-        relayUrls.push(item.value as string);
-      }
-    });
-    pubkey;
-    setUserData({
-      user: {
-        pubkey: key,
-      },
-      relayUrls: relayUrls,
-    });
-    pubkey.current = key;
-    await getUser();
-    activeFilters.current = filterByAuthor([key]);
-    await useNClient
-      .getState()
-      .setViewSubscription(view, activeFilters.current, {
-        reset: true,
-        limit: MAX_EVENTS,
-        offset: 0,
-      });
-    await count(key);
+    } catch (e) {
+      console.log(e);
+      return;
+    }
+    await Promise.all([
+      getUser(),
+      useNClient
+        .getState()
+        .setViewSubscription(view, filterByAuthor([pubkey.current]), {
+          reset: true,
+          limit: MAX_EVENTS,
+          offset: 0,
+        }),
+    ]);
+    await count(pubkey.current);
   };
 
   useEffect(() => {
     useNClient.getState().setView(view);
-    try {
-      if (nprofile) {
-        onMount(nprofile);
-      }
-    } catch (e) {
-      console.log(e);
+    if (npub) {
+      onMount(npub);
     }
 
     return () => {
@@ -91,8 +83,8 @@ export function ProfileRoute() {
 
   useEffect(() => {
     if (connected) {
-      if (nprofile) {
-        onMount(nprofile);
+      if (npub) {
+        onMount(npub);
       }
     }
   }, [connected]);
@@ -116,11 +108,7 @@ export function ProfileRoute() {
         )}
         <Box overflowY="auto">
           <Box>
-            {connected && activeFilters.current ? (
-              <Events view={view} />
-            ) : (
-              <Text>Not connected.</Text>
-            )}
+            {connected ? <Events view={view} /> : <Text>Not connected.</Text>}
           </Box>
         </Box>
       </Box>

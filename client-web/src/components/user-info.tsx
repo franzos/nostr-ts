@@ -34,18 +34,14 @@ export function UserInfo({
 
   // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
 
-  const bech32ProfileLink = encodeBech32(BECH32_PREFIX.Profile, [
+  const npub = encodeBech32(BECH32_PREFIX.PublicKeys, [
     {
       type: 0,
       value: pubkey,
     },
-    ...relayUrls.map((url) => ({
-      type: 1,
-      value: url,
-    })),
   ]);
 
-  const profileLink = `/p/${bech32ProfileLink}`;
+  const profileLink = `/p/${npub}`;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 

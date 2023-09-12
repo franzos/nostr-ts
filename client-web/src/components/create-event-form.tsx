@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   FormControl,
@@ -10,16 +10,10 @@ import {
   Textarea,
   IconButton,
   HStack,
+  useDisclosure,
+  ButtonGroup,
 } from "@chakra-ui/react";
-import {
-  EventBase,
-  NEvent,
-  NewLongFormContent,
-  NewQuoteRepost,
-  NewRecommendRelay,
-  NewShortTextNote,
-  NewShortTextNoteResponse,
-} from "@nostr-ts/common";
+import { EventBase, NEvent, WebSocketClientInfo } from "@nostr-ts/common";
 import SendIcon from "mdi-react/SendIcon";
 import { useNClient } from "../state/client";
 
@@ -29,13 +23,9 @@ import ReplyIcon from "mdi-react/ReplyIcon";
 import WifiStarIcon from "mdi-react/WifiStarIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { excerpt } from "../lib/excerpt";
-
-type NKIND =
-  | "NewShortTextNote"
-  | "NewLongFormContent"
-  | "NewShortTextNoteResponse"
-  | "NewRecommendRelay"
-  | "NewQuoteRepost";
+import { createNewEventForSubmission } from "../lib/new-event-for-submission";
+import { NKIND } from "../lib/nkind";
+import { RelaySelection } from "./relay-selection";
 
 interface CreateEventFormProps {
   isResponse?: boolean;
@@ -105,66 +95,63 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
 
   const toast = useToast();
 
-  const relayUrls = props.relayUrls ? props.relayUrls : undefined;
+  // Relay selection
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [relays, setRelays] = useState<
+    {
+      data: WebSocketClientInfo;
+      isAssigned: boolean;
+    }[]
+  >([]);
 
-  const relayUrl = relayUrls && relayUrls.length > 0 ? relayUrls[0] : "";
+  const availableRelaysCount = relays.filter((item) => item.isAssigned).length;
 
-  /**
-   * Create event from inputs
-   */
-  const assembleEvent = (): {
-    event?: NEvent;
-    error?: string;
-  } => {
-    switch (eventKind) {
-      case "NewShortTextNote":
-        return {
-          event: NewShortTextNote({
-            text: eventContent,
-          }),
-        };
-      case "NewLongFormContent":
-        return {
-          event: NewLongFormContent({
-            text: eventContent,
-          }),
-        };
-      case "NewShortTextNoteResponse":
-        if (!props.inResponseTo) {
+  const onRelaySelection = (url: string, action: "add" | "remove") => {
+    setRelays(
+      relays.map((item) => {
+        if (item.data.url === url) {
           return {
-            error: "Response requires inResponseTo",
+            ...item,
+            isAssigned: action === "add" ? true : false,
           };
         }
-        return {
-          event: NewShortTextNoteResponse({
-            text: eventContent,
-            inResponseTo: props.inResponseTo,
-          }),
-        };
-      case "NewRecommendRelay":
-        return {
-          event: NewRecommendRelay({
-            relayUrl: relayUrl,
-          }),
-        };
-      case "NewQuoteRepost":
-        if (!props.inResponseTo) {
-          return {
-            error: "Quote repost requires inResponseTo",
-          };
-        }
-        return {
-          event: NewQuoteRepost({
-            inResponseTo: props.inResponseTo,
-            relayUrl: relayUrl,
-          }),
-        };
-      default:
-        return {
-          error: "Invalid event type",
-        };
-    }
+        return item;
+      })
+    );
   };
+
+  useEffect(() => {
+    // Urls from props; for ex. event
+    const relayUrls = props.relayUrls ? props.relayUrls : undefined;
+    // Try to get the first relay url from the list
+    const relayUrl = relayUrls && relayUrls.length > 0 ? relayUrls[0] : "";
+
+    console.log("relayUrls", relayUrls);
+
+    if (isOpen) {
+      useNClient
+        .getState()
+        .getRelays()
+        .then((r) => {
+          if (r) {
+            setRelays(
+              r.map((item) => {
+                if (relayUrl === item.url) {
+                  return {
+                    data: item,
+                    isAssigned: true,
+                  };
+                }
+                return {
+                  data: item,
+                  isAssigned: false,
+                };
+              })
+            );
+          }
+        });
+    }
+  }, [isOpen]);
 
   /**
    * Check environment for errors
@@ -194,32 +181,52 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     setErrors([]);
   };
 
+  const handleError = (error: string) => {
+    setErrors([error]);
+    toast({
+      title: "Error",
+      description: error,
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  const handleSuccess = (message: string) => {
+    toast({
+      title: "Success",
+      description: message,
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  /**
+   * Submit event
+   */
   const submit = async () => {
     setBusy(true);
     setErrors([]);
-    const assem = assembleEvent();
-    if (assem.error) {
-      setErrors([assem.error]);
-      toast({
-        title: "Error",
-        description: assem.error,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+    const relayUrls = relays.map((item) => item.data.url);
+    if (relayUrls.length === 0) {
+      handleError("Select at least one relay");
       return;
     }
-    const event = assem.event as NEvent;
+    const newEvent = createNewEventForSubmission(
+      eventKind,
+      eventContent,
+      relayUrls[0],
+      props
+    );
+    if (newEvent.error) {
+      handleError(newEvent.error);
+      return;
+    }
+    const event = newEvent.event as NEvent;
     const check = checkEvent(event);
     if (check?.error) {
-      setErrors([check.error]);
-      toast({
-        title: "Error",
-        description: check.error,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(check.error);
       return;
     }
 
@@ -229,13 +236,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         relayUrls,
       });
       if (evId) {
-        toast({
-          title: "Success",
-          description: `Event ${excerpt(evId, 5)} submitted`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
+        handleSuccess(`Event sent: ${excerpt(event.content, 20)}`);
 
         reset();
         setBusy(false);
@@ -250,41 +251,17 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
       } else {
         error = e ? e.toString() : "Unknown error";
       }
-      setErrors([error]);
-      toast({
-        title: "Error",
-        description: error,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(error);
       setBusy(false);
       return;
     }
   };
 
-  // const translateNameToLabel = (name: string) => {
-  //   switch (name) {
-  //     case "NewShortTextNote":
-  //       return "Short Text Note";
-  //     case "NewRecommendRelay":
-  //       return "Recommend Relay";
-  //     case "NewLongFormContent":
-  //       return "Long Form Content";
-  //     case "NewShortTextNoteResponse":
-  //       return "Short Text Note Response";
-  //     case "NewQuoteRepost":
-  //       return "Quote Repost";
-  //     default:
-  //       return "";
-  //   }
-  // };
-
+  /**
+   * Render
+   */
   return (
     <Box width="100%">
-      {/* <FormControl marginBottom={4}>
-        <FormLabel>Type: {translateNameToLabel(eventKind)}</FormLabel>
-      </FormControl> */}
       <FormControl marginBottom={4}>
         <FormLabel>Content</FormLabel>
         <Input
@@ -319,16 +296,22 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
           {message}
         </Box>
       )}
-      <Button
-        type="submit"
-        variant={"solid"}
-        onClick={submit}
-        leftIcon={<Icon as={SendIcon} />}
-        isDisabled={!isReady}
-        isLoading={isBusy}
-      >
-        Send
-      </Button>
+      {isOpen && <RelaySelection relays={relays} onChange={onRelaySelection} />}
+      <ButtonGroup>
+        <Button
+          type="submit"
+          variant={"solid"}
+          onClick={submit}
+          leftIcon={<Icon as={SendIcon} />}
+          isDisabled={!isReady || availableRelaysCount === 0}
+          isLoading={isBusy}
+        >
+          Send
+        </Button>
+        <Button variant={"outline"} onClick={isOpen ? onClose : onOpen}>
+          Select relays ({availableRelaysCount})
+        </Button>
+      </ButtonGroup>
     </Box>
   );
 };

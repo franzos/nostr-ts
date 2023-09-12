@@ -94,7 +94,8 @@ export interface WorkerEvent {
       | "event:update"
       | "relay:message"
       | "event:queue:new"
-      | "event:queue:update";
+      | "event:queue:update"
+      | "RAW";
     view: string;
     data: LightProcessedEvent | WebSocketEvent | PublishingQueueItem;
   };

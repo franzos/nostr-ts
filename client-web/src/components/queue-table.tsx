@@ -12,7 +12,6 @@ import {
   Td,
   Tooltip,
   Button,
-  Heading,
   Table,
   Thead,
   Th,
@@ -27,7 +26,7 @@ import CircleOutlineIcon from "mdi-react/CircleOutlineIcon";
 import { PublishingQueueItem } from "@nostr-ts/common";
 import { excerpt } from "../lib/excerpt";
 
-export function PublishingQueueRoute() {
+export function PublishingQueueTable() {
   const [queue, setQueue] = useState<PublishingQueueItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<null | PublishingQueueItem>(
     null
@@ -119,7 +118,6 @@ export function PublishingQueueRoute() {
 
   return (
     <Box>
-      <Heading size="lg">Queue</Heading>
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>

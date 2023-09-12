@@ -7,14 +7,12 @@ import { AccountRoute } from "./routes/account.tsx";
 import { PrimaryLayout } from "./layouts/primary.tsx";
 import { WelcomeRoute } from "./routes/welcome.js";
 import { FollowingUsersRoute } from "./routes/following.tsx";
-import { SubscriptionsRoute } from "./routes/subscriptions.tsx";
 import { ProfileRoute } from "./routes/profile.tsx";
 import { MAX_EVENTS } from "./defaults.ts";
-import { RelaysRoute } from "./routes/relays.tsx";
-import { PublishingQueueRoute } from "./routes/queue.tsx";
 import { UserProfileRoute } from "./routes/user-profile.tsx";
 import { BlockedUsersRoute } from "./routes/blocked.tsx";
 import { ListsRoute } from "./routes/lists.tsx";
+import { EventRoute } from "./routes/event.tsx";
 import "./index.css";
 import theme from "./theme.ts";
 
@@ -38,11 +36,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/profile" element={<UserProfileRoute />} />
             <Route path="/following" element={<FollowingUsersRoute />} />
             <Route path="/blocked" element={<BlockedUsersRoute />} />
-            <Route path="/subscriptions" element={<SubscriptionsRoute />} />
             <Route path="/lists" element={<ListsRoute />} />
-            <Route path="/relays" element={<RelaysRoute />} />
-            <Route path="/queue" element={<PublishingQueueRoute />} />
-            <Route path="/p/:nprofile" element={<ProfileRoute />} />
+            <Route path="/p/:npub" element={<ProfileRoute />} />
+            <Route path="/e/:note" element={<EventRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

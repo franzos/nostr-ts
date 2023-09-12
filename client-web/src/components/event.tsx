@@ -21,6 +21,8 @@ import {
   ModalCloseButton,
   Spacer,
   IconButton,
+  LinkBox,
+  LinkOverlay,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -29,6 +31,8 @@ import {
   eventHasContentWarning,
   LightProcessedEvent,
   ReactionsCount,
+  encodeBech32,
+  BECH32_PREFIX,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
@@ -41,6 +45,8 @@ import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
 import { CreateEventForm } from "./create-event-form";
 import { User } from "./user";
+import { processEventContentFrontend } from "../lib/process-event-content";
+import { NavLink } from "react-router-dom";
 
 export interface EventProps {
   data: LightProcessedEvent;
@@ -57,12 +63,21 @@ export function Event({ data, level }: EventProps) {
   const [replies, setReplies] = useState<LightProcessedEvent[]>();
 
   const loadReplies = async () => {
-    const evData = await useNClient
-      .getState()
-      .getEvent(data.event.id, "replies");
-    if (evData && evData.replies) {
-      setReplies(evData.replies);
+    const evData = await useNClient.getState().getEventReplies(data.event.id);
+    if (evData) {
+      setReplies(evData);
     }
+    // TODO: Currently useless because assignment is not implemented
+    // await useNClient.getState().requestInformation(
+    //   {
+    //     source: "events",
+    //     idsOrKeys: [data.event.id],
+    //     relayUrl: data.eventRelayUrls[0],
+    //   },
+    //   {
+    //     timeoutIn: 5000,
+    //   }
+    // );
   };
 
   const hasContentWarning = eventHasContentWarning(data.event);
@@ -70,9 +85,8 @@ export function Event({ data, level }: EventProps) {
     hasContentWarning == undefined ? true : false
   );
 
-  const images = data.event?.content?.match(
-    /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif)\b/gi
-  );
+  const content = processEventContentFrontend(data);
+  const hasContent = content.content !== "";
 
   // Image handling
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -94,6 +108,15 @@ export function Event({ data, level }: EventProps) {
     }
   }, [isReplyOpen]);
 
+  const note = encodeBech32(BECH32_PREFIX.NoteIDs, [
+    {
+      type: 0,
+      value: data.event.id,
+    },
+  ]);
+
+  const eventLink = `/e/${note}`;
+
   const openImage = (imageSrc: string) => {
     setSelectedImage(imageSrc);
     onOpen();
@@ -107,17 +130,6 @@ export function Event({ data, level }: EventProps) {
     const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay) return relay;
-
-    toast({
-      title: "Error",
-      description: `None of the required relays are active ${data.eventRelayUrls.join(
-        ", "
-      )}.`,
-      status: "error",
-      duration: 5000,
-      isClosable: true,
-    });
-    return;
   };
 
   /**
@@ -153,10 +165,21 @@ export function Event({ data, level }: EventProps) {
         return;
     }
 
+    const relayIsRelay = relay.isReady && relay.write;
+    if (!relayIsRelay) {
+      toast({
+        title: "Error",
+        description: `Relay ${relay.url} is not ready. Will use other relays to publish,`,
+        status: "info",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+
     try {
       const evId = await useNClient.getState().signAndSendEvent({
         event: ev,
-        relayUrls: [relay.url],
+        relayUrls: relayIsRelay ? [relay.url] : undefined,
       });
       if (evId) {
         toast({
@@ -179,7 +202,6 @@ export function Event({ data, level }: EventProps) {
           );
         }, 1000);
       }
-      onReplyClose();
     } catch (e) {
       let error = "";
       if (e instanceof Error) {
@@ -310,6 +332,7 @@ export function Event({ data, level }: EventProps) {
             pubkey: data.event.pubkey,
           }}
           options={{
+            showFollowing: true,
             relayUrls: data.eventRelayUrls,
             showBlock: true,
           }}
@@ -359,7 +382,7 @@ export function Event({ data, level }: EventProps) {
       (url) =>
         `<a href="${url}" target="_blank" class="is-inline">${excerpt(
           url,
-          20
+          30
         )}</a>`
     );
   }
@@ -369,10 +392,10 @@ export function Event({ data, level }: EventProps) {
       <CardHeader p={0}>
         <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
           {showContent ? (
-            images &&
-            images.length > 0 && (
+            content.images &&
+            content.images.length > 0 && (
               <Box marginBottom={4}>
-                {images.map((i, index) => (
+                {content.images.map((i, index) => (
                   <Image
                     width={"100%"}
                     key={index}
@@ -401,19 +424,23 @@ export function Event({ data, level }: EventProps) {
         p={0}
         style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
       >
-        {showContent && (
-          <Box
-            pl={4}
-            pr={4}
-            pt={2}
-            pb={2}
-            background={"blackAlpha.100"}
-            borderRadius={4}
-            style={{ overflowWrap: "anywhere" }}
-            dangerouslySetInnerHTML={{
-              __html: makeLinksClickable(data.event.content),
-            }}
-          />
+        {hasContent && showContent && (
+          <LinkBox>
+            <LinkOverlay as={NavLink} to={eventLink}>
+              <Box
+                pl={4}
+                pr={4}
+                pt={2}
+                pb={2}
+                background={"blackAlpha.100"}
+                borderRadius={4}
+                style={{ overflowWrap: "anywhere" }}
+                dangerouslySetInnerHTML={{
+                  __html: makeLinksClickable(content.content),
+                }}
+              />
+            </LinkOverlay>
+          </LinkBox>
         )}
         <Box
           ml={4}
@@ -474,79 +501,6 @@ export function Event({ data, level }: EventProps) {
           />
         </Box>
       )}
-      {/* <HStack padding={2} flexWrap="wrap">
-        {reactions && (
-          <>
-            <Text>Reactions</Text>
-            {reactions.map((r, index) => {
-              const user = r.user || { pubkey: r.event.pubkey };
-              return (
-                <Box key={`${index}_${r.event.id}_${user.pubkey}_reactions`}>
-                  <UserIcon
-                    user={user}
-                    options={{
-                      title: "Reaction",
-                      showAbout: true,
-                      showBanner: true,
-                      relayUrls: eventRelayUrls,
-                      reaction: r.event.content,
-                      avatarSize: "xs",
-                      lists: lists,
-                    }}
-                  />
-                </Box>
-              );
-            })}
-          </>
-        )}
-        {reposts && (
-          <>
-            <Text>Reposts</Text>
-            {reposts.map((r, index) => {
-              const user = r.user ? r.user : { pubkey: r.event.pubkey };
-              return (
-                <Box key={`${index}_${r.event.id}_${user.pubkey}_reposts`}>
-                  <UserIcon
-                    user={user}
-                    options={{
-                      title: "Repost",
-                      showAbout: true,
-                      showBanner: true,
-                      relayUrls: eventRelayUrls,
-                      avatarSize: "xs",
-                      lists: lists,
-                    }}
-                  />
-                  <Icon as={RepeatIcon} />
-                </Box>
-              );
-            })}
-          </>
-        )}
-        {
-          // TODO: Relay urls
-          mentions && (
-            <>
-              <Text>Mentions</Text>
-              {mentions.map((u, index) => (
-                <Box key={`${index}_${event.id}_${u.pubkey}_mention`}>
-                  <UserIcon
-                    user={u}
-                    options={{
-                      title: "Mentioned",
-                      showAbout: true,
-                      showBanner: true,
-                      relayUrls: eventRelayUrls,
-                      avatarSize: "xs",
-                      lists: lists,
-                    }}
-                  />
-                </Box>
-              ))}
-            </>
-          )
-        }
-      </HStack>*/}
 
       {replies &&
         isReplyOpen &&

@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Heading,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -16,12 +15,15 @@ import {
   Tr,
   useDisclosure,
   Switch,
+  Icon,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { WebSocketClientInfo } from "@nostr-ts/common";
+import CircleOutlineIcon from "mdi-react/CircleOutlineIcon";
+import CircleSlice8Icon from "mdi-react/CircleSlice8Icon";
 
-export function RelaysRoute() {
+export function RelaysTable() {
   const [relays, setRelays] = useState<WebSocketClientInfo[]>([]);
   const [selectedRelay, setSelectedRelay] =
     useState<null | WebSocketClientInfo>(null);
@@ -87,8 +89,13 @@ export function RelaysRoute() {
   const TableRow = (rl: WebSocketClientInfo) => {
     return (
       <Tr key={rl.url}>
+        <Td>
+          <Icon
+            as={rl.isReady ? CircleSlice8Icon : CircleOutlineIcon}
+            color={rl.isReady ? "green.500" : "red.500"}
+          />
+        </Td>
         <Td>{rl.url}</Td>
-        <Td>{rl.isReady ? "Ready" : "Not Ready"}</Td>
         <Td>
           <Button
             size={"sm"}
@@ -121,7 +128,6 @@ export function RelaysRoute() {
 
   return (
     <Box>
-      <Heading size="lg">Relays</Heading>
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>

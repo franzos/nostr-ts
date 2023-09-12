@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Button, Text } from "@chakra-ui/react";
+import { Box, Button, Progress, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useRef, useState } from "react";
@@ -139,6 +139,7 @@ export function Events({ view, changingView }: EventsProps) {
       ))}
       {events.length === 0 && (
         <Box marginTop={5} marginBottom={5} textAlign={"center"}>
+          <Progress size="xs" mb={2} hasStripe isIndeterminate />
           <Text>Waiting for fresh content ... hold on.</Text>
         </Box>
       )}

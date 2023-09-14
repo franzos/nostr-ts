@@ -44,7 +44,9 @@ export function ListSelection({
   };
 
   useEffect(() => {
-    onMount();
+    setTimeout(() => {
+      onMount();
+    }, 100);
     return onUnmount;
   }, []);
 

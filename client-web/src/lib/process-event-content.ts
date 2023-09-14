@@ -27,11 +27,6 @@ export function processEventContentFrontend(data: LightProcessedEvent) {
   // Remove trailing and leading whitespaces
   content = content.trim();
 
-  // Check if content is empty after removing whitespaces
-  if (content === "") {
-    content = "";
-  }
-
   return {
     images,
     videos,

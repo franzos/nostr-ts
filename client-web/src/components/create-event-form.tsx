@@ -211,6 +211,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     const relayUrls = relays.map((item) => item.data.url);
     if (relayUrls.length === 0) {
       handleError("Select at least one relay");
+      setBusy(false);
       return;
     }
     const newEvent = createNewEventForSubmission(
@@ -221,12 +222,14 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     );
     if (newEvent.error) {
       handleError(newEvent.error);
+      setBusy(false);
       return;
     }
     const event = newEvent.event as NEvent;
     const check = checkEvent(event);
     if (check?.error) {
       handleError(check.error);
+      setBusy(false);
       return;
     }
 

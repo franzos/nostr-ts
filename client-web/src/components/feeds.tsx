@@ -1,5 +1,5 @@
 import { NFilters } from "@nostr-ts/common";
-import { Box, Text } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { useRef, useEffect, useState } from "react";
 import { MAX_EVENTS } from "../defaults";
 import { useNClient } from "../state/client";
@@ -11,22 +11,20 @@ import {
   filterDefault,
 } from "../lib/default-filters";
 
-interface EventsFeedsProps {
-  connected: boolean;
-}
-
-export function EventsFeeds({ connected }: EventsFeedsProps) {
-  const [followingUserIds, keypairIsLoaded, keypair] = useNClient((state) => [
-    state.followingUserIds,
-    state.keypairIsLoaded,
-    state.keypair,
-  ]);
+export function EventsFeeds() {
+  const [connected, followingUserIds, keypairIsLoaded, keypair] = useNClient(
+    (state) => [
+      state.connected,
+      state.followingUserIds,
+      state.keypairIsLoaded,
+      state.keypair,
+    ]
+  );
 
   const isInitDone = useRef<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const activeFilters = useRef<NFilters>(filterDefault());
-  const view = useRef<string>("global");
+  const [view, setView] = useState<string>("global"); // ["global", "following", "mentions", "list"
   const changingView = useRef<boolean>(false);
 
   const onMount = async () => {
@@ -38,14 +36,19 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
 
     await useNClient
       .getState()
-      .setViewSubscription(view.current, activeFilters.current, {
+      .setViewSubscription(view, activeFilters.current, {
         reset: true,
         limit: MAX_EVENTS,
         offset: 0,
       });
     isInitDone.current = true;
-    setIsLoading(false);
   };
+
+  useEffect(() => {
+    return () => {
+      useNClient.getState().removeViewSubscription(view);
+    };
+  }, []);
 
   /**
    * Handle initial load
@@ -54,29 +57,13 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
     if (connected) {
       onMount();
     }
-    return () => {
-      useNClient.getState().removeViewSubscription(view.current);
-    };
   }, [connected]);
-
-  /**
-   * Handle the connection status change
-   */
-  // useEffect(() => {
-  //   if (connected) {
-  //     onMount();
-  //   }
-  //   return () => {
-  //     useNClient.getState().setView("");
-  //   };
-  // }, [connected]);
 
   const changeFeed = async (feedName: string) => {
     if (!useNClient.getState().connected) return;
-    setIsLoading(true);
     changingView.current = true;
     useNClient.getState().setView(feedName);
-    view.current = feedName;
+    setView(feedName);
 
     if (feedName === "global") {
       activeFilters.current = filterDefault();
@@ -90,6 +77,7 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
         activeFilters.current = filterByAuthor(list.userPubkeys);
       } else {
         console.warn("List not found.");
+        changingView.current = false;
         return;
       }
     }
@@ -102,18 +90,7 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
         offset: 0,
       });
     changingView.current = false;
-    setIsLoading(false);
   };
-
-  const InfoText = connected ? (
-    <Text textAlign="center" marginTop={4}>
-      Changing feed ...
-    </Text>
-  ) : (
-    <Text textAlign="center" marginTop={4}>
-      Not connected to the network
-    </Text>
-  );
 
   return (
     <Box>
@@ -124,15 +101,7 @@ export function EventsFeeds({ connected }: EventsFeedsProps) {
           changeFeed={changeFeed}
         />
       </Box>
-      <Box overflowY="auto">
-        {!isLoading ? (
-          <Events view={view.current} changingView={changingView.current} />
-        ) : (
-          <Box marginTop={5} marginBottom={5} textAlign={"center"}>
-            {InfoText}
-          </Box>
-        )}
-      </Box>
+      <Events changingView={changingView.current} />
     </Box>
   );
 }

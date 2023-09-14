@@ -63,6 +63,10 @@ export interface NClientBase {
       | RelayOK;
     meta: WebSocketClientInfo;
   }) => void;
+
+  getPopularUsers: () => Promise<UserRecord[] | undefined>;
+  getPopularEvents: () => Promise<LightProcessedEvent[] | undefined>;
+
   followUser(payload: UserPublicKeyAndRelays): Promise<void>;
   unfollowUser(pubkey: string): Promise<void>;
   followingUser(pubkey: string): Promise<boolean>;

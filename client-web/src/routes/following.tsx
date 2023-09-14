@@ -12,7 +12,7 @@ export function FollowingUsersRoute() {
       .getState()
       .getAllUsersFollowing()
       .then((following) => {
-        if (following) {
+        if (following && following.length > 0) {
           setFollowingUsers(following);
         }
       });

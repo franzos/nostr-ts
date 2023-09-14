@@ -6,11 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { EVENTS_PER_PAGE } from "../defaults";
 
 interface EventsProps {
-  view: string;
   changingView?: boolean;
 }
 
-export function Events({ view, changingView }: EventsProps) {
+export function Events({ changingView }: EventsProps) {
   const [events, maxEvents] = useNClient((state) => [
     state.events,
     state.maxEvents,
@@ -48,7 +47,7 @@ export function Events({ view, changingView }: EventsProps) {
       await useNClient.getState().getEvents({
         limit: loadCount,
         offset: currCount,
-        view,
+        view: useNClient.getState().activeView,
       });
     }
   };
@@ -58,7 +57,7 @@ export function Events({ view, changingView }: EventsProps) {
       await calculateTotalPages().then(async () => {
         await loadEvents();
       });
-    }, 250);
+    }, 0);
 
     const loadEventsInterval = setInterval(async () => {
       await loadEvents();
@@ -67,7 +66,7 @@ export function Events({ view, changingView }: EventsProps) {
     // Activate button after 3s
     const buttonTimeout = setTimeout(() => {
       setButtonTimeoutPassed(true);
-    }, 3000);
+    }, 5000);
 
     return () => {
       clearTimeout(initialLoad);
@@ -146,7 +145,7 @@ export function Events({ view, changingView }: EventsProps) {
       {showButtons && (
         <Box display="flex" justifyContent="space-between" padding={2}>
           <Button flex="1" marginRight={2} onClick={nextPage}>
-            Load more
+            Load more {useNClient.getState().activeView}
           </Button>
           {/* <Button flex="1" marginLeft={2} onClick={newEvents}>
             Clear and load new

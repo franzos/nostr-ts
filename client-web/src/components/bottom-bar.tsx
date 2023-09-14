@@ -111,7 +111,13 @@ export function BottomBar() {
             }: ${JSON.stringify(event.data[2])} events`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.AUTH) {
             description = `Relay ${event.meta.url}: requested authentication`;
-            handleAuth(event.meta.url, event.data[1]);
+            const keystore = useNClient.getState().keystore;
+            if (!keystore || keystore === "none") {
+              description +=
+                " but no account is available to sign the challenge.";
+            } else {
+              handleAuth(event.meta.url, event.data[1]);
+            }
           }
           if (description !== "") {
             toast({

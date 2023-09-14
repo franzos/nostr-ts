@@ -77,6 +77,12 @@ class WorkerClass implements NClientWorker {
 
   eventsPublishingQueue: PublishingQueueItem[] = [];
 
+  popularUsers: {
+    [pubkey: string]: number;
+  } = {};
+  popularEvents: {
+    [id: string]: number;
+  } = {};
   followingUserIds: string[] = [];
 
   constructor(config?: { maxEvents?: number }) {
@@ -395,6 +401,81 @@ class WorkerClass implements NClientWorker {
     return await this.db.count("users");
   }
 
+  private mergeWithPopularUsers(pubkey: string) {
+    if (this.popularUsers[pubkey]) {
+      this.popularUsers[pubkey] += 1;
+    } else {
+      this.popularUsers[pubkey] = 1;
+    }
+    // sort
+    const sorted = Object.entries(this.popularUsers).sort((a, b) => {
+      return b[1] - a[1];
+    });
+    // remove
+    const top = sorted.slice(0, 10);
+    // update
+    this.popularUsers = {};
+    for (const item of top) {
+      this.popularUsers[item[0]] = item[1];
+    }
+  }
+
+  async getPopularUsers() {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const pubkeys = Object.entries(this.popularUsers).map((p) => p[0]);
+    const users: UserRecord[] = [];
+    for (const pubkey of pubkeys) {
+      const user = await this.getUser(pubkey);
+      if (user) {
+        users.push(user);
+      } else {
+        users.push({
+          user: new NUserBase({
+            pubkey,
+          }),
+          relayUrls: [],
+        });
+      }
+    }
+    return users ? users : undefined;
+  }
+
+  private mergeWithPopularEvents(id: string) {
+    if (this.popularEvents[id]) {
+      this.popularEvents[id] += 1;
+    } else {
+      this.popularEvents[id] = 1;
+    }
+    // sort
+    const sorted = Object.entries(this.popularEvents).sort((a, b) => {
+      return b[1] - a[1];
+    });
+    // remove
+    const top = sorted.slice(0, 10);
+    // update
+    this.popularEvents = {};
+    for (const item of top) {
+      this.popularEvents[item[0]] = item[1];
+    }
+  }
+
+  async getPopularEvents() {
+    if (!this.db) {
+      throw new Error("DB not initialized");
+    }
+    const ids = Object.entries(this.popularEvents).map((p) => p[0]);
+    const events: LightProcessedEvent[] = [];
+    for (const id of ids) {
+      const event = await this.getEvent(id);
+      if (event) {
+        events.push(event);
+      }
+    }
+    return events ? events : undefined;
+  }
+
   count(pubkey: string) {
     return this.client?.count({
       type: CLIENT_MESSAGE_TYPE.COUNT,
@@ -590,6 +671,8 @@ class WorkerClass implements NClientWorker {
             }
 
             this.updatedUsedEvent(ev, view);
+            this.mergeWithPopularUsers(ev.event.pubkey);
+            this.mergeWithPopularEvents(ev.event.id);
             return;
           } catch (err) {
             console.log(`=> WORKER: Error decoding invoice`, err);
@@ -643,6 +726,8 @@ class WorkerClass implements NClientWorker {
         }
 
         this.updatedUsedEvent(ev, view);
+        this.mergeWithPopularUsers(ev.event.pubkey);
+        this.mergeWithPopularEvents(ev.event.id);
         return;
       }
     } else if (event.kind === NEVENT_KIND.REPOST) {
@@ -672,6 +757,8 @@ class WorkerClass implements NClientWorker {
         }
 
         this.updatedUsedEvent(ev, view);
+        this.mergeWithPopularUsers(ev.event.pubkey);
+        this.mergeWithPopularEvents(ev.event.id);
         return;
       }
     } else if (event.kind === NEVENT_KIND.SHORT_TEXT_NOTE) {
@@ -703,6 +790,7 @@ class WorkerClass implements NClientWorker {
             }
 
             this.updatedUsedEvent(ev, view);
+            this.mergeWithPopularEvents(ev.event.id);
             return;
           }
         }
@@ -725,6 +813,7 @@ class WorkerClass implements NClientWorker {
             }
 
             this.updatedUsedEvent(ev, view);
+            this.mergeWithPopularEvents(ev.event.id);
             return;
           }
         }
@@ -893,10 +982,11 @@ class WorkerClass implements NClientWorker {
       const kind = payload.data[2].kind;
       if (
         kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-        kind === NEVENT_KIND.LONG_FORM_CONTENT
+        kind === NEVENT_KIND.LONG_FORM_CONTENT ||
+        kind === NEVENT_KIND.METADATA
       ) {
         incomingQueue.enqueuePriority(async () => {
-          if (this.events.length >= this.maxEvents * 2) {
+          if (this.events.length >= this.maxEvents * 4) {
             return;
           }
 
@@ -910,6 +1000,20 @@ class WorkerClass implements NClientWorker {
 
           await this.saveEventToDB(ev);
 
+          if (kind === NEVENT_KIND.METADATA) {
+            const newUser = new NUserBase();
+            newUser.fromEvent(ev);
+            const data = {
+              user: newUser,
+              relayUrls: [payload.meta.url],
+            };
+            if (userRecord) {
+              await this.updateUser(ev.pubkey, data);
+            } else {
+              await this.addUser(data);
+            }
+          }
+
           await this.mergeEventWithActive(
             ev,
             payload.meta.url,
@@ -919,8 +1023,7 @@ class WorkerClass implements NClientWorker {
       } else if (
         kind === NEVENT_KIND.ZAP_RECEIPT ||
         kind === NEVENT_KIND.REACTION ||
-        kind === NEVENT_KIND.REPOST ||
-        kind === NEVENT_KIND.METADATA
+        kind === NEVENT_KIND.REPOST
       ) {
         incomingQueue.enqueueBackground(async () => {
           const ev = payload.data[2] as EventBaseSigned;
@@ -937,20 +1040,6 @@ class WorkerClass implements NClientWorker {
             payload.meta.url,
             associatedWithView
           );
-
-          if (kind === NEVENT_KIND.METADATA) {
-            const newUser = new NUserBase();
-            newUser.fromEvent(ev);
-            const data = {
-              user: newUser,
-              relayUrls: [payload.meta.url],
-            };
-            if (userRecord) {
-              await this.updateUser(ev.pubkey, data);
-            } else {
-              await this.addUser(data);
-            }
-          }
         });
       }
     }
@@ -1307,7 +1396,7 @@ class WorkerClass implements NClientWorker {
       filters: {
         ...filters,
         limit: filters.limit
-          ? Math.round(filters.limit / Math.round(relaysCount * 0.25))
+          ? Math.round(filters.limit / Math.round(relaysCount * 0.75))
           : undefined,
       },
       options: {
@@ -1456,7 +1545,7 @@ class WorkerClass implements NClientWorker {
       } else if (payload.source === "events:related") {
         filters = new NFilters({
           kinds: [
-            // NEVENT_KIND.SHORT_TEXT_NOTE,
+            NEVENT_KIND.SHORT_TEXT_NOTE,
             NEVENT_KIND.REACTION,
             NEVENT_KIND.REPOST,
             NEVENT_KIND.ZAP_RECEIPT,

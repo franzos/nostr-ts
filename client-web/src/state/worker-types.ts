@@ -14,6 +14,12 @@ import {
 import { ListRecord, NClientBase } from "./base-types";
 
 export interface NClientWorker extends NClientBase {
+  popularUsers: {
+    [pubkey: string]: number;
+  };
+  popularEvents: {
+    [id: string]: number;
+  };
   eventsPublishingQueue: PublishingQueueItem[];
   addQueueItems: (payload: PublishingQueueItem[]) => void;
   updateQueueItem: (payload: PublishingQueueItem) => void;

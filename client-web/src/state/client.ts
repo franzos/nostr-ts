@@ -31,7 +31,7 @@ import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
 import { CreateListRecord, WorkerEvent } from "./base-types";
 
-const throttleDelayInMs = 150;
+const throttleDelayInMs = 250;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -291,6 +291,12 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
+  getPopularEvents: async () => {
+    return get().store.getPopularEvents();
+  },
+  getPopularUsers: async () => {
+    return get().store.getPopularUsers();
+  },
   count: async (pubkey: string) => {
     return get().store.count(pubkey);
   },
@@ -660,6 +666,7 @@ export const useNClient = create<NClient>((set, get) => ({
       offset: number;
     }
   ) => {
+    console.log("setViewSubscription", view);
     set({ activeView: view });
     await get()
       .store.setViewSubscription(view, filters, options)
@@ -677,6 +684,7 @@ export const useNClient = create<NClient>((set, get) => ({
    * @returns
    */
   removeViewSubscription: async (view: string) => {
+    console.log("removeViewSubscription", view);
     await get().store.removeViewSubscription(view);
     // .then(() => {
     //   set({ activeView: "" });

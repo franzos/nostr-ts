@@ -1,4 +1,4 @@
-import { Heading, Box, Text, Grid } from "@chakra-ui/react";
+import { Heading, Box, Grid } from "@chakra-ui/react";
 import { UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
@@ -15,6 +15,7 @@ export function ProfileRoute() {
   const isInitDone = useRef<boolean>(false);
 
   const pubkey = useRef("");
+  const userLoadTimeout = useRef<number | null>(null);
   const [userData, setUserData] = useState<UserRecord | null>(null);
 
   // URL params
@@ -30,8 +31,13 @@ export function ProfileRoute() {
         if (r) {
           setUserData(r);
         } else {
-          setTimeout(async () => {
-            if (retryCount > 10) return;
+          userLoadTimeout.current = setTimeout(async () => {
+            if (retryCount > 20) {
+              if (userLoadTimeout.current) {
+                clearTimeout(userLoadTimeout.current);
+              }
+              return;
+            }
             await getUser(retryCount + 1);
           }, 1000);
         }
@@ -77,6 +83,9 @@ export function ProfileRoute() {
     }
 
     return () => {
+      if (userLoadTimeout.current) {
+        clearTimeout(userLoadTimeout.current);
+      }
       useNClient.getState().removeViewSubscription(view);
     };
   }, []);
@@ -107,9 +116,7 @@ export function ProfileRoute() {
           </Box>
         )}
         <Box overflowY="auto">
-          <Box>
-            {connected ? <Events view={view} /> : <Text>Not connected.</Text>}
-          </Box>
+          <Events />
         </Box>
       </Box>
 

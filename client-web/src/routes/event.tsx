@@ -1,4 +1,4 @@
-import { Heading, Box, Grid } from "@chakra-ui/react";
+import { Heading, Box, Grid, Progress } from "@chakra-ui/react";
 import { LightProcessedEvent, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
@@ -12,6 +12,8 @@ export function EventRoute() {
   const isInitDone = useRef<boolean>(false);
 
   const eventId = useRef("");
+  const eventLoadTimeout = useRef<number | null>(null);
+  const [hasTimeout, setHasTimeout] = useState<boolean>(false);
   const [eventData, setEventData] = useState<LightProcessedEvent | null>(null);
 
   // URL params
@@ -23,15 +25,22 @@ export function EventRoute() {
     await useNClient
       .getState()
       .getEvent(eventId.current, {
+        view,
         retryCount,
       })
       .then((r) => {
         if (r) {
-          console.log(`Event: ${JSON.stringify(r)}`);
           setEventData(r);
         } else {
           console.log(`Could not get event. Retrying...`);
-          setTimeout(async () => {
+          eventLoadTimeout.current = setTimeout(async () => {
+            if (retryCount > 20) {
+              setHasTimeout(true);
+              if (eventLoadTimeout.current) {
+                clearTimeout(eventLoadTimeout.current);
+              }
+              return;
+            }
             await getEvent(retryCount + 1);
           }, 1000);
         }
@@ -73,9 +82,12 @@ export function EventRoute() {
     //   loadReplies();
     // }, 3000);
 
-    // return () => {
-    //   clearTimeout(replyCheckTimeout);
-    // };
+    return () => {
+      if (eventLoadTimeout.current) {
+        clearTimeout(eventLoadTimeout.current);
+      }
+      useNClient.getState().removeViewSubscription(view);
+    };
   }, []);
 
   useEffect(() => {
@@ -89,10 +101,26 @@ export function EventRoute() {
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
-        {eventData && (
+        {eventData ? (
           <Box mb={4}>
             <Event data={eventData} level={0} />
           </Box>
+        ) : (
+          <>
+            {hasTimeout ? (
+              <Heading as="h2" size="md" marginBottom={4}>
+                It looks like the event is not available on any of the connected
+                relays.
+              </Heading>
+            ) : (
+              <>
+                <Heading as="h2" size="md" marginBottom={4}>
+                  Loading event...
+                </Heading>
+                <Progress size="xs" mb={2} hasStripe isIndeterminate />
+              </>
+            )}
+          </>
         )}
       </Box>
 

@@ -32,6 +32,8 @@ export function UserInfo({
   const banner = data && data.banner ? data.banner : undefined;
   const about = data && data.about ? data.about : undefined;
 
+  const displayNameEqName = displayName === name;
+
   // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
 
   const npub = encodeBech32(BECH32_PREFIX.PublicKeys, [
@@ -62,7 +64,7 @@ export function UserInfo({
           <Link to={profileLink}>
             <Text size="sm">{name}</Text>
           </Link>
-          <Text size="xs">{displayName}</Text>
+          {!displayNameEqName && <Text size="xs">{displayName}</Text>}
         </Box>
 
         <Spacer />

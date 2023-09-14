@@ -986,8 +986,10 @@ class WorkerClass implements NClientWorker {
         kind === NEVENT_KIND.METADATA
       ) {
         incomingQueue.enqueuePriority(async () => {
-          if (this.events.length >= this.maxEvents * 4) {
-            return;
+          if (kind !== NEVENT_KIND.METADATA) {
+            if (this.events.length >= this.maxEvents * 4) {
+              return;
+            }
           }
 
           const ev = payload.data[2] as EventBaseSigned;

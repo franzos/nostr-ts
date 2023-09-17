@@ -9,7 +9,6 @@ import {
   WebSocketClientInfo,
   Subscription,
   PublishingQueueItem,
-  RelaysWithIdsOrKeys,
   SubscriptionOptions,
   AuthRequest,
   CloseRequest,
@@ -36,7 +35,7 @@ export interface NClientBase {
    * @returns
    */
   connect: (
-    relays?: Relay[],
+    relays: Relay[],
     options?: {
       autoLoadInfo?: boolean;
     }
@@ -66,6 +65,7 @@ export interface NClientBase {
 
   getPopularUsers: () => Promise<UserRecord[] | undefined>;
   getPopularEvents: () => Promise<LightProcessedEvent[] | undefined>;
+  calculatePopular: () => Promise<void>;
 
   followUser(payload: UserPublicKeyAndRelays): Promise<void>;
   unfollowUser(pubkey: string): Promise<void>;
@@ -86,10 +86,15 @@ export interface NClientBase {
   addUserToList(id: string, pubkey: string): Promise<void>;
   removeUserFromList(id: string, pubkey: string): Promise<void>;
   requestInformation(
-    payload: RelaysWithIdsOrKeys,
+    payload: {
+      source: "users" | "events" | "events:related";
+      idsOrKeys: string[];
+    },
     options: SubscriptionOptions
   ): Promise<void>;
 }
+
+export type SystemStatus = "online" | "offline" | "loading";
 
 export interface WorkerEvent {
   data: {
@@ -99,9 +104,14 @@ export interface WorkerEvent {
       | "relay:message"
       | "event:queue:new"
       | "event:queue:update"
+      | "status:change"
       | "RAW";
     view: string;
-    data: LightProcessedEvent | WebSocketEvent | PublishingQueueItem;
+    data:
+      | LightProcessedEvent
+      | WebSocketEvent
+      | PublishingQueueItem
+      | SystemStatus;
   };
 }
 

@@ -1,37 +1,25 @@
 import React from "react";
-import { Box, Button, Progress, Text } from "@chakra-ui/react";
+import { Box, Button, Progress, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useRef, useState } from "react";
-import { EVENTS_PER_PAGE } from "../defaults";
 
 interface EventsProps {
   changingView?: boolean;
 }
 
 export function Events({ changingView }: EventsProps) {
-  const [events, maxEvents] = useNClient((state) => [
+  const [events, hasNewerEvents] = useNClient((state) => [
     state.events,
-    state.maxEvents,
+    state.hasNewerEvents,
   ]);
-
-  const currentPage = useRef(1);
-  const totalPages = useRef(1);
 
   const loadMoreRef = useRef<HTMLDivElement[]>([]);
 
   const throttleTimestamp = useRef(Date.now());
 
+  const [isLoading, setIsLoading] = useState(false);
   const [buttonTimeoutPassed, setButtonTimeoutPassed] = useState(false);
-
-  const calculateTotalPages = async () => {
-    await useNClient
-      .getState()
-      .countEvents()
-      .then((r) => {
-        totalPages.current = Math.ceil(r / EVENTS_PER_PAGE);
-      });
-  };
 
   const loadEvents = async () => {
     if (
@@ -40,28 +28,38 @@ export function Events({ changingView }: EventsProps) {
     ) {
       return;
     }
+    setIsLoading(true);
     throttleTimestamp.current = Date.now();
-    const currCount = useNClient.getState().events.length;
-    const loadCount = currentPage.current * EVENTS_PER_PAGE - currCount;
-    if (loadCount > 0) {
-      await useNClient.getState().getEvents({
-        limit: loadCount,
-        offset: currCount,
-        view: useNClient.getState().activeView,
-      });
-    }
+    await useNClient.getState().getEvents();
+    setIsLoading(false);
+  };
+
+  const loadNewerEvents = async () => {
+    setIsLoading(true);
+    throttleTimestamp.current = Date.now();
+    const nextQuery = useNClient.getState().nextQuery;
+    if (!nextQuery) return;
+    await useNClient.getState().getEvents(
+      {
+        token: nextQuery.token,
+        query: {
+          ...nextQuery.next,
+          filters: {
+            ...nextQuery.next.filters,
+            since: Math.round(Date.now() / 1000 - 60 * 60 * 24 * 2),
+            until: Math.round(Date.now() / 1000),
+          },
+        },
+      },
+      "replace"
+    );
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    const initialLoad = setTimeout(async () => {
-      await calculateTotalPages().then(async () => {
-        await loadEvents();
-      });
-    }, 0);
-
-    const loadEventsInterval = setInterval(async () => {
-      await loadEvents();
-    }, 2000);
+    if (useNClient.getState().nextQuery) {
+      loadEvents();
+    }
 
     // Activate button after 3s
     const buttonTimeout = setTimeout(() => {
@@ -69,8 +67,8 @@ export function Events({ changingView }: EventsProps) {
     }, 5000);
 
     return () => {
-      clearTimeout(initialLoad);
-      clearInterval(loadEventsInterval);
+      // clearTimeout(initialLoad);
+      // clearInterval(loadEventsInterval);
       clearTimeout(buttonTimeout);
     };
   }, []);
@@ -80,7 +78,7 @@ export function Events({ changingView }: EventsProps) {
     const observer = new IntersectionObserver((entries) => {
       const first = entries[0];
       if (first.isIntersecting) {
-        nextPage();
+        loadEvents();
       }
     }, {});
 
@@ -99,27 +97,43 @@ export function Events({ changingView }: EventsProps) {
     };
   }, [events.length]); // Depend on `events.length`
 
-  const nextPage = async () => {
-    const total = useNClient.getState().events.length;
-    const expected = currentPage.current * EVENTS_PER_PAGE;
+  // const showButtons = events.length >= maxEvents || buttonTimeoutPassed;
 
-    const diff = expected - total;
-    if (diff === 0) {
-      await calculateTotalPages();
-      currentPage.current = currentPage.current + 1;
-      if (currentPage.current < totalPages.current) {
-        await calculateTotalPages();
-        await loadEvents();
-      }
-    } else {
-      await loadEvents();
-    }
+  const LoadingSkeleton = (
+    <Stack>
+      {Array.from({ length: 3 }).map((_, index) => (
+        <Skeleton height="160px" mb={2} key={index} />
+      ))}
+    </Stack>
+  );
+
+  const NewerEventsPrompt = (
+    <>
+      {hasNewerEvents && (
+        <Button onClick={loadNewerEvents} width="100%" isLoading={isLoading}>
+          There are newer events, click here to load them.
+        </Button>
+      )}
+    </>
+  );
+
+  const LoadMoreButton = ({ loadMore }: { loadMore: () => Promise<void> }) => {
+    const hasNextQuery = useNClient.getState().nextQuery;
+    const until = hasNextQuery ? hasNextQuery?.next?.filters?.until : undefined;
+    const since = hasNextQuery ? hasNextQuery?.next?.filters?.since : undefined;
+
+    return (
+      <Button flex="1" marginRight={2} onClick={loadMore}>
+        Load more {since && `${new Date(since * 1000).toLocaleString()}`}
+        {" - "}
+        {until && `${new Date(until * 1000).toLocaleString()}`}
+      </Button>
+    );
   };
-
-  const showButtons = events.length >= maxEvents || buttonTimeoutPassed;
 
   return (
     <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
+      {NewerEventsPrompt}
       {events.map((event, index) => (
         <React.Fragment key={`${event.event.id}-${index}`}>
           <Box mb={2}>
@@ -140,13 +154,12 @@ export function Events({ changingView }: EventsProps) {
         <Box marginTop={5} marginBottom={5} textAlign={"center"}>
           <Progress size="xs" mb={2} hasStripe isIndeterminate />
           <Text>Waiting for fresh content ... hold on.</Text>
+          {LoadingSkeleton}
         </Box>
       )}
-      {showButtons && (
+      {buttonTimeoutPassed && (
         <Box display="flex" justifyContent="space-between" padding={2}>
-          <Button flex="1" marginRight={2} onClick={nextPage}>
-            Load more {useNClient.getState().activeView}
-          </Button>
+          {LoadMoreButton({ loadMore: loadEvents })}
           {/* <Button flex="1" marginLeft={2} onClick={newEvents}>
             Clear and load new
           </Button> */}

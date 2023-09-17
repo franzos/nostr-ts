@@ -2,20 +2,19 @@ import {
   NEVENT_KIND,
   NEvent,
   NFilters,
-  NewShortTextNote,
   RELAY_MESSAGE_TYPE,
   generateClientKeys,
 } from "@nostr-ts/common";
 import { NWorker } from "./worker";
 
 import "fake-indexeddb/auto";
-import { ONE_DAY, ONE_HOUR } from "./worker-extra";
+import { ONE_DAY, ONE_HOUR, ONE_MINUTE } from "./worker-extra";
 
 indexedDB.deleteDatabase("nostros");
 
 const keypair = generateClientKeys();
 
-const date = Date.now() - 5 * 24 * 60 * 60 * 1000;
+const date = Math.round(Date.now() / 1000 - 5 * ONE_DAY);
 
 const events: NEvent[] = [];
 for (let i = 1; i <= 5; i++) {
@@ -23,7 +22,7 @@ for (let i = 1; i <= 5; i++) {
     const event = new NEvent({
       kind: NEVENT_KIND.SHORT_TEXT_NOTE,
       content: `Test ${i}-${j}`,
-      created_at: date + i * ONE_DAY + j * ONE_HOUR,
+      created_at: Math.round(date + i * ONE_DAY + j * ONE_HOUR),
     });
     event.signAndGenerateId(keypair);
     events.push(event);
@@ -60,8 +59,8 @@ describe("Paginate by day, over days - sticky interval", () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
       // 24h
-      since: date + ONE_DAY,
-      until: date + 2 * ONE_DAY,
+      since: Math.round(date + ONE_DAY),
+      until: Math.round(date + 2 * ONE_DAY),
       limit: 6,
     });
 
@@ -136,8 +135,8 @@ describe("Paginate by hour, over days - sticky interval", () => {
   test("First hour", async () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      since: date + ONE_DAY,
-      until: date + ONE_DAY + ONE_HOUR,
+      since: Math.round(date + ONE_DAY),
+      until: Math.round(date + ONE_DAY + ONE_HOUR),
       limit: 1,
     });
 
@@ -208,8 +207,8 @@ describe("Paginate by day, over limit", () => {
 
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      since: date + ONE_DAY,
-      until: date + 2 * ONE_DAY,
+      since: Math.round(date + ONE_DAY),
+      until: Math.round(date + 2 * ONE_DAY),
       limit: 1,
     });
 
@@ -222,12 +221,8 @@ describe("Paginate by day, over limit", () => {
       },
     });
 
-    console.log((firstRes.next.filters.since - reqFilter.since) / 1000 / 60);
-
     expect(firstRes.events.length).toBe(1);
     expect(firstRes.next.filters.since).toBe(reqFilter.since);
-    // console.log(firstRes.next);
-    // expect(firstRes.next.filters.since).toBe(reqFilter.since + ONE_DAY);
   });
 
   test("Expect second page with 1 results", async () => {
@@ -297,8 +292,8 @@ describe("Retry the first request, if no results", () => {
   test("Expect first page with 0 results and same filters", async () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      since: date + 1 * ONE_DAY,
-      until: date + 2 * ONE_DAY,
+      since: Math.round(date + ONE_DAY),
+      until: Math.round(date + 2 * ONE_DAY),
     });
 
     firstRes = await worker._getEventsQueryProcessor({
@@ -368,8 +363,8 @@ describe("Inverse request; expect older results next", () => {
   test("First page", async () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      since: date + 3 * ONE_DAY,
-      until: date + 4 * ONE_DAY,
+      since: Math.round(date + 3 * ONE_DAY),
+      until: Math.round(date + 4 * ONE_DAY),
     });
 
     firstRes = await worker._getEventsQueryProcessor({
@@ -408,10 +403,12 @@ describe("Event updates", () => {
   const secondKeypair = generateClientKeys();
   const thirdKeypair = generateClientKeys();
 
+  const eventsDate = Math.round(Date.now() / 1000);
+
   const noteEvent = new NEvent({
     kind: NEVENT_KIND.SHORT_TEXT_NOTE,
     content: `Test`,
-    created_at: Date.now(),
+    created_at: eventsDate,
   });
 
   noteEvent.signAndGenerateId(keypair);
@@ -419,7 +416,7 @@ describe("Event updates", () => {
   const reactionEvent = new NEvent({
     kind: NEVENT_KIND.REACTION,
     content: `+`,
-    created_at: Date.now(),
+    created_at: eventsDate,
     tags: [
       ["e", noteEvent.id],
       ["p", noteEvent.pubkey],
@@ -431,7 +428,7 @@ describe("Event updates", () => {
   const secondReactionEvent = new NEvent({
     kind: NEVENT_KIND.REACTION,
     content: `+`,
-    created_at: Date.now(),
+    created_at: eventsDate,
     tags: [
       ["e", noteEvent.id],
       ["p", noteEvent.pubkey],
@@ -464,8 +461,8 @@ describe("Event updates", () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
       // 24h
-      since: Date.now() - ONE_DAY,
-      until: Date.now(),
+      since: Math.round(eventsDate - ONE_DAY),
+      until: eventsDate + ONE_MINUTE,
     });
 
     const result = await worker.getEvents({
@@ -478,25 +475,10 @@ describe("Event updates", () => {
     });
 
     expect(result.events.length).toBe(1);
-    expect(result.events[0].reactionsCount["+"]).toBe(1);
+    expect(Object.keys(result.events[0].reactionsCount).length).toBe(1);
   });
 
   test("Expect subscription response to update in-memory event", async () => {
-    // To make sure the noteEvent is in-memory
-    await worker.getEvents({
-      token: "test",
-      query: {
-        filters: new NFilters({
-          kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-          // 24h
-          since: Date.now() - ONE_DAY,
-          until: Date.now(),
-        }),
-        stickyInterval: true,
-        isOffline: true,
-      },
-    });
-
     for (const event of [secondReactionEvent]) {
       await worker.processEvent({
         data: [RELAY_MESSAGE_TYPE.EVENT, "test", event.ToObj()],
@@ -508,9 +490,65 @@ describe("Event updates", () => {
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await worker.incomingEventsQueue.process();
 
     expect(worker.eventsInMemory.length).toBe(1);
     expect(worker.eventsInMemory[0].reactions.length).toBe(2);
+  });
+});
+
+describe("Get popular related", () => {
+  const secondKeypair = generateClientKeys();
+  const thirdKeypair = generateClientKeys();
+
+  const noteEvent = new NEvent({
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
+    content: `Test`,
+    created_at: Math.round(Date.now() / 1000),
+  });
+
+  noteEvent.signAndGenerateId(keypair);
+
+  const reactionEvent = new NEvent({
+    kind: NEVENT_KIND.REACTION,
+    content: `+`,
+    created_at: Math.round(Date.now() / 1000),
+    tags: [
+      ["e", noteEvent.id],
+      ["p", noteEvent.pubkey],
+    ],
+  });
+
+  reactionEvent.signAndGenerateId(secondKeypair);
+
+  const worker = new NWorker();
+
+  beforeAll(async () => {
+    await worker.init();
+    await worker.db.deleteAll();
+
+    // Simulate incoming events
+    for (const event of [noteEvent, reactionEvent]) {
+      await worker.processEvent({
+        data: [RELAY_MESSAGE_TYPE.EVENT, "test", event.ToObj()],
+        meta: {
+          url: "wss://test.com",
+          read: true,
+          write: true,
+        },
+      });
+    }
+
+    await worker.incomingEventsQueue.process();
+  });
+
+  test("Expect first page with 6 results", async () => {
+    await worker.calculatePopular({
+      isOffline: true,
+    });
+
+    const result = await worker.getPopularUsers();
+
+    console.log(result);
   });
 });

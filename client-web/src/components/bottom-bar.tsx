@@ -29,12 +29,8 @@ import { PublishingQueueTable } from "./queue-table";
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
   const [userCount, setUserCount] = useState(0);
-  const [eventsCount, relayEvents] = useNClient((state) => [
-    state.events.length,
-    state.relayEvents,
-  ]);
+  const [relayEvents] = useNClient((state) => [state.relayEvents]);
   const [blockedUsersCount, setBlockedUsersCount] = useState<number>(0);
-  const [totalEvents, setTotalEvents] = useState<number>(0);
   const [lastCount, setLastCount] = useState(0);
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [relaysCount, setRelaysCount] = useState<number>(0);
@@ -59,10 +55,6 @@ export function BottomBar() {
     const queue = await useNClient.getState().getQueueItems();
     if (queue) {
       setQueueItemsCount(queue.length);
-    }
-    const totalEvents = await useNClient.getState().countEvents();
-    if (totalEvents) {
-      setTotalEvents(totalEvents);
     }
     const blockedUsers = await useNClient.getState().getAllUsersBlocked();
     if (blockedUsers) {
@@ -219,12 +211,6 @@ export function BottomBar() {
           </Button>
           <EventFormModal buttonSize="sm" />
           <Spacer />
-          <HStack spacing={2}>
-            <Text fontSize="sm">Events:</Text>
-            <Text fontSize="xl" marginLeft={1}>
-              {eventsCount} / {totalEvents}
-            </Text>
-          </HStack>
           <HStack spacing={2}>
             <Text fontSize="sm">Users:</Text>
             <Text fontSize="xl">{userCount}</Text>

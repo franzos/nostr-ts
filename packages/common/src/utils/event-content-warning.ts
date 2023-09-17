@@ -7,6 +7,8 @@ import { EventBase } from "../types";
  * @returns reason for content warning or undefined
  */
 export function eventHasContentWarning(event: EventBase): string | undefined {
+  if (!event.tags) return undefined;
+
   let hasContentWarning = false;
   let contentWarningReason = "";
 
@@ -21,8 +23,14 @@ export function eventHasContentWarning(event: EventBase): string | undefined {
       }
 
       // Support ["l", "reason", "content-warning"] format
-      if (tag.length === 3 && tag[2] === "content-warning" && tag[0] === "l") {
+      else if (
+        tag.length === 3 &&
+        tag[2] === "content-warning" &&
+        tag[0] === "l"
+      ) {
         contentWarningReason = tag[1];
+      } else {
+        contentWarningReason = "N/A";
       }
     }
   }

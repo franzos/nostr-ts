@@ -2,6 +2,9 @@ import { CLIENT_MESSAGE_TYPE } from "./client-message";
 import { FiltersBase } from "./filter";
 
 export interface SubscriptionOptions {
+  /**
+   * Timeout in ms
+   */
   timeoutIn: number;
   /**
    * Set when the subscription is supposed to timeout

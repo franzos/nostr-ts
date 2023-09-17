@@ -10,7 +10,6 @@ import {
   Icon,
   useToast,
   HStack,
-  Image,
   useDisclosure,
   Spacer,
   IconButton,
@@ -21,7 +20,6 @@ import {
   NewReaction,
   eventHasContentWarning,
   LightProcessedEvent,
-  ReactionsCount,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import InformationOutlineIcon from "mdi-react/InformationOutlineIcon";
@@ -31,9 +29,10 @@ import { processEventContentFrontend } from "../lib/process-event-content";
 import { EventUser } from "./event/user";
 import { EventActionButtons } from "./event/action-buttons";
 import { EventInfoModal } from "./event/info-modal";
-import { EventImageModal } from "./event/image-modal";
 import { EventContent } from "./event/content";
 import { EventReplies } from "./event/replies";
+import { EventBanner } from "./event/banner";
+import { filterReactions } from "../lib/event-reactions-filter";
 
 export interface EventProps {
   data: LightProcessedEvent;
@@ -47,47 +46,26 @@ export function Event({ data, level }: EventProps) {
 
   const toast = useToast();
 
-  const [replies, setReplies] = useState<LightProcessedEvent[]>();
-
-  const loadReplies = async () => {
-    const evData = await useNClient.getState().getEventReplies(data.event.id);
-    if (evData) {
-      setReplies(evData);
-    }
-    // TODO: Currently useless because assignment is not implemented
-    // await useNClient.getState().requestInformation(
-    //   {
-    //     source: "events",
-    //     idsOrKeys: [data.event.id],
-    //     relayUrl: data.eventRelayUrls[0],
-    //   },
-    //   {
-    //     timeoutIn: 5000,
-    //   }
-    // );
-  };
-
   const hasContentWarning = eventHasContentWarning(data.event);
   const [showContent, setShowContent] = useState(
     hasContentWarning == undefined ? true : false
   );
 
   const content = processEventContentFrontend(data);
-  const hasContent = content.content !== "";
+  const filteredReactions = filterReactions(data.reactionsCount);
 
-  // Image handling
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [replies, setReplies] = useState<LightProcessedEvent[]>();
+
   const {
-    isOpen: isEventModalOpen,
-    onOpen: onEventModalOpen,
-    onClose: onEventModalClose,
+    isOpen: isInfoModalOpen,
+    onOpen: onInfoModalOpen,
+    onClose: onInfoModalClose,
   } = useDisclosure();
   const {
     isOpen: isReplyOpen,
     onOpen: onReplyOpen,
     onClose: onReplyClose,
   } = useDisclosure();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isReplyOpen) {
@@ -95,9 +73,11 @@ export function Event({ data, level }: EventProps) {
     }
   }, [isReplyOpen]);
 
-  const openImage = (imageSrc: string) => {
-    setSelectedImage(imageSrc);
-    onOpen();
+  const loadReplies = async () => {
+    const evData = await useNClient.getState().getEventReplies(data.event.id);
+    if (evData) {
+      setReplies(evData);
+    }
   };
 
   const sendCallback = () => {
@@ -105,12 +85,13 @@ export function Event({ data, level }: EventProps) {
   };
 
   const relatedRelay = async () => {
+    if (!data.eventRelayUrls) return;
     const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay) return relay;
   };
 
-  const handleError = (e: Error) => {
+  const handleError = (e: Error | unknown) => {
     let error = "";
     if (e instanceof Error) {
       error = e.message;
@@ -141,9 +122,6 @@ export function Event({ data, level }: EventProps) {
    */
   const newAction = async (type: "quote" | "reaction", reaction?: string) => {
     const relay = await relatedRelay();
-    if (!relay) {
-      return;
-    }
 
     let ev: NEvent;
 
@@ -151,7 +129,7 @@ export function Event({ data, level }: EventProps) {
       case "quote":
         ev = NewQuoteRepost({
           inResponseTo: data.event,
-          relayUrl: relay.url,
+          relayUrl: relay ? relay.url : undefined,
         });
         break;
       case "reaction":
@@ -162,22 +140,19 @@ export function Event({ data, level }: EventProps) {
             id: data.event.id,
             pubkey: data.event.pubkey,
           },
-          relayUrl: relay.url,
+          relayUrl: relay ? relay.url : undefined,
         });
         break;
       default:
         return;
     }
 
-    const relayIsRelay = relay.isReady && relay.write;
-    if (!relayIsRelay) {
-      handleError(new Error("Relay is not ready"));
-    }
+    const relayIsRelay = relay ? relay.isReady && relay.write : false;
 
     try {
       const evId = await useNClient.getState().signAndSendEvent({
         event: ev,
-        relayUrls: relayIsRelay ? [relay.url] : undefined,
+        relayUrls: relay && relayIsRelay ? [relay.url] : undefined,
       });
       if (evId) {
         handleSuccess(evId);
@@ -186,7 +161,6 @@ export function Event({ data, level }: EventProps) {
             {
               source: "events",
               idsOrKeys: [evId],
-              relayUrl: data.eventRelayUrls[0],
             },
             {
               timeoutIn: 10000,
@@ -195,74 +169,29 @@ export function Event({ data, level }: EventProps) {
         }, 1000);
       }
     } catch (e) {
-      let error = "";
-      if (e instanceof Error) {
-        error = e.message;
-      } else {
-        error = e ? e.toString() : "Unknown error";
-      }
-      toast({
-        title: "Error",
-        description: error,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(e);
       return;
     }
   };
 
-  const filterReactions = (obj?: ReactionsCount) => {
-    if (!obj) return {};
-    return Object.keys(obj)
-      .filter((key) => key !== "+" && key !== "-")
-      .reduce((newObj: ReactionsCount, key) => {
-        newObj[key] = obj[key];
-        return newObj;
-      }, {});
-  };
-
-  const filteredReactions = filterReactions(data.reactionsCount);
-
   const EventCard = (
-    <Card style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
+    <Card>
       <CardHeader p={0}>
-        <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
-          {showContent ? (
-            content.images &&
-            content.images.length > 0 && (
-              <Box marginBottom={4}>
-                {content.images.map((i, index) => (
-                  <Image
-                    width={"100%"}
-                    key={index}
-                    src={i}
-                    fallback={<Image src="/no-image.png" />}
-                    fallbackStrategy="onError"
-                    alt=""
-                    onClick={() => openImage(i)}
-                  />
-                ))}
-              </Box>
-            )
-          ) : (
-            <Button size="sm" width="100%" onClick={() => setShowContent(true)}>
-              Show Content ({hasContentWarning})
-            </Button>
-          )}
+        <Box overflowWrap={"break-word"} wordBreak={"break-word"}>
+          <EventBanner
+            extractedContent={content}
+            showContent={showContent}
+            hasContentWarning={hasContentWarning}
+            setShowContent={setShowContent}
+          />
           <Box p={4} paddingBottom={0}>
             <EventUser data={data} />
           </Box>
         </Box>
       </CardHeader>
       <CardBody p={0}>
-        {hasContent && showContent && (
-          <EventContent content={content.content} />
-        )}
-        <Box
-          ml={4}
-          style={{ overflowWrap: "break-word", wordWrap: "break-word" }}
-        >
+        {content && showContent && <EventContent content={content.text} />}
+        <Box ml={4} overflowWrap={"break-word"} wordBreak={"break-word"}>
           {filteredReactions &&
             Object.keys(filteredReactions).map((r) => (
               <Button
@@ -300,7 +229,7 @@ export function Event({ data, level }: EventProps) {
             variant="outline"
             icon={<Icon as={InformationOutlineIcon} />}
             onClick={() => {
-              onEventModalOpen();
+              onInfoModalOpen();
             }}
           ></IconButton>
         </HStack>
@@ -320,22 +249,8 @@ export function Event({ data, level }: EventProps) {
       />
       <EventInfoModal
         data={data}
-        isEventModalOpen={isEventModalOpen}
-        onEventModalClose={onEventModalClose}
-      />
-      <EventImageModal
-        data={data}
-        isOpen={isOpen}
-        onClose={onClose}
-        selectedImage={selectedImage}
-        isReady={connected}
-        isReplyOpen={isReplyOpen}
-        onReplyOpen={onReplyOpen}
-        onReplyClose={onReplyClose}
-        newAction={newAction}
-        level={level}
-        showAll={true}
-        filteredReactions={filteredReactions}
+        isOpen={isInfoModalOpen}
+        onClose={onInfoModalClose}
       />
     </>
   );

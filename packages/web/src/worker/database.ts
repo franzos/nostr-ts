@@ -95,20 +95,19 @@ export class Database {
     });
   }
 
-  async addUser(user: ProcessedUserBase) {
+  async addUser(data: ProcessedUserBase) {
     if (!this.db) throw new Error("DB not initialized");
 
-    return this.db.put("users", user);
+    return this.db.put("users", data);
   }
 
-  async updateUser(pubkey: string, user: ProcessedUserBase) {
+  async updateUser(pubkey: string, data: ProcessedUserBase) {
     if (!this.db) throw new Error("DB not initialized");
 
     return this.db.put("users", {
-      ...user,
+      ...data,
       user: {
-        ...user.user,
-        pubkey,
+        ...data.user,
       },
     });
   }
@@ -129,12 +128,93 @@ export class Database {
     return this.db.get("events", id);
   }
 
+  // async getEventsByPublicKeyAndKind(pubkey: string, kind: NEVENT_KIND, since: number, until: number) {
+  //   const tx = this.db?.transaction("events", "readonly");
+  //   const store = tx?.objectStore("events");
+  //   const index = store?.index("pubkeyAndKind");
+
+  //   const cursor = await index?.openCursor([pubkey, kind], "prev");
+
+  //   const events: NEvent[] = [];
+  //   let total = 0;
+  //   while (cursor) {
+  //     if (cursor.value.created_at > since && cursor.value.created_at < until) {
+  //       events.push(new NEvent(cursor.value));
+  //     }
+  //     total++;
+  //     if (total > 200) {
+  //       break;
+  //     }
+  //     cursor.continue();
+  //   }
+
+  //   return {
+  //     events,
+  //     total,
+  //   }
+  // }
+
+  isValidEvent(event: EventBaseSigned) {
+    if (
+      event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+      event.kind === NEVENT_KIND.LONG_FORM_CONTENT
+    ) {
+      // TODO: We need to be able to select these specifically
+      const hasTags = new NEvent(event).hasEventTags();
+      const hasRootOrReply = hasTags
+        ? hasTags.find((tag) => tag.marker === "root" || tag.marker === "reply")
+        : undefined;
+      if (hasRootOrReply) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async getEventsByPublicKeysAndKinds(
+    pubkeys: string[],
+    kinds: NEVENT_KIND[],
+    since: number,
+    until: number,
+    memoryIds?: string[]
+  ): Promise<[EventBaseSigned[], number]> {
+    const tx = this.db?.transaction("events", "readonly");
+    const store = tx?.objectStore("events");
+    const index = store?.index("kindAndPubkey");
+
+    const events: EventBaseSigned[] = [];
+    let total = 0;
+
+    for (const pubkey of pubkeys) {
+      for (const kind of kinds) {
+        let cursor = await index?.openCursor([kind, pubkey], "prev");
+        while (cursor) {
+          if (
+            cursor.value.created_at > since &&
+            cursor.value.created_at < until &&
+            (!memoryIds || !memoryIds.includes(cursor.value.id)) &&
+            this.isValidEvent(cursor.value)
+          ) {
+            events.push(new NEvent(cursor.value));
+          }
+          total++;
+          if (total > 500) {
+            break;
+          }
+          cursor = await cursor.continue();
+        }
+      }
+    }
+
+    return [events, total];
+  }
+
   async getEvents(
     filters: FiltersBase,
     memory?: {
       eventIds: string[];
     }
-  ): Promise<[NEvent[], number]> {
+  ): Promise<[EventBaseSigned[], number]> {
     if (!this.db) throw new Error("DB not initialized");
 
     const {
@@ -145,17 +225,27 @@ export class Database {
       limit = 20,
     } = filters;
 
-    let events: NEvent[] = [];
+    if (authors && authors.length > 0 && kinds && kinds.length > 0) {
+      return this.getEventsByPublicKeysAndKinds(
+        authors,
+        kinds,
+        since,
+        until,
+        memory?.eventIds
+      );
+    }
+
+    let events: EventBaseSigned[] = [];
     let total = 0;
 
     try {
-      const transaction = this.db.transaction("events", "readonly");
-      const store = transaction.objectStore("events");
+      const tx = this.db.transaction("events", "readonly");
+      const store = tx.objectStore("events");
       const index = store.index("created_at");
 
       console.log(
-        `RANGE --- ${new Date(since).toLocaleString()} -> ${new Date(
-          until
+        `RANGE --- ${new Date(since * 1000).toLocaleString()} -> ${new Date(
+          until * 1000
         ).toLocaleString()}`
       );
 
@@ -166,23 +256,34 @@ export class Database {
       );
 
       while (cursor) {
-        const { id, kind, pubkey, created_at } = cursor.value;
+        const { id, kind, pubkey } = cursor.value;
 
         const isKindMatch = !kinds || kinds.includes(kind);
 
         // Check if the event author is in the filter list, if provided
-        const isAuthorMatch = !authors || authors.includes(pubkey);
+        const matchOrNoAuthor = !authors || authors.includes(pubkey);
 
         // Check if the event ID is already in memory
         const isIdInMemory = memory && memory.eventIds.includes(id);
 
-        if (isAuthorMatch && !isIdInMemory) {
-          total++;
+        // Make sure we don't exceed the limit
+        const isWithinLimit = events.length < limit;
 
-          // Only add to the events array if we haven't reached the limit
-          if (events.length < limit && isKindMatch) {
+        if (
+          isKindMatch &&
+          matchOrNoAuthor &&
+          !isIdInMemory &&
+          this.isValidEvent(cursor.value)
+        ) {
+          total++;
+          if (isWithinLimit) {
             events.push(cursor.value);
           }
+        }
+
+        // total 1000; stop
+        if (total >= 500) {
+          break;
         }
 
         cursor = await cursor.continue();
@@ -223,19 +324,34 @@ export class Database {
     }
   }
 
-  async getRelatedEvents(id: string, kinds: NEVENT_KIND[]) {
+  async getRelatedEvents(
+    id: string,
+    kinds: NEVENT_KIND[]
+  ): Promise<EventBaseSigned[]> {
     if (!this.db) throw new Error("DB not initialized");
 
-    const transaction = this.db.transaction("tags", "readonly");
-    const store = transaction.objectStore("tags");
-    const index = store.index("typeAndValue");
-    const allRelated = await index.getAll(["e", id]);
-    const allEvents = await Promise.all(
-      allRelated.map((r) => this.db?.get("events", r.eventId))
-    );
-    return allEvents
-      .filter((e) => kinds.includes(e.kind))
-      .map((e) => new NEvent(e));
+    // Fetch all related event IDs
+    const transactionForTags = this.db.transaction("tags", "readonly");
+    const tagsStore = transactionForTags.objectStore("tags");
+    const tagsIndex = tagsStore.index("typeAndValue");
+    const allRelated = await tagsIndex.getAll(["e", id]);
+
+    const relatedEventIds = allRelated.map((r) => r.eventId);
+
+    // Fetch all events in a single transaction
+    const transactionForEvents = this.db.transaction("events", "readonly");
+    const eventsStore = transactionForEvents.objectStore("events");
+
+    const allEvents: EventBaseSigned[] = [];
+
+    for (const eventId of relatedEventIds) {
+      const event = await eventsStore.get(eventId);
+      if (event && kinds.includes(event.kind)) {
+        allEvents.push(new NEvent(event));
+      }
+    }
+
+    return allEvents;
   }
 
   async saveEvent(event: EventBaseSigned) {
@@ -341,8 +457,8 @@ export class Database {
     if (!this.db) {
       throw new Error("DB not initialized");
     }
-    const transaction = this.db.transaction("lists", "readonly");
-    const listStore = transaction.objectStore("lists");
+    const tx = this.db.transaction("lists", "readonly");
+    const listStore = tx.objectStore("lists");
     const userIndex = listStore.index("users");
     return userIndex.getAll(pubkey);
   }
@@ -379,8 +495,8 @@ export class Database {
   async getPopularRelated(since: number, until: number) {
     if (!this.db) throw new Error("DB not initialized");
 
-    const transaction = this.db.transaction("events", "readonly");
-    const store = transaction.objectStore("events");
+    const tx = this.db.transaction("events", "readonly");
+    const store = tx.objectStore("events");
     const index = store.index("created_at");
 
     let cursor = await index.openCursor(
@@ -411,15 +527,16 @@ export class Database {
       cursor = await cursor.continue();
     }
 
-    events = sortAndTrim(events);
+    events = sortAndTrim(events, 50);
     return events;
   }
 
   async calculatePopular(timeInSeconds?: number) {
-    const since = (Date.now() - (timeInSeconds * 1000 || ONE_WEEK)) / 1000;
-    const until = Date.now() / 1000;
+    const since = Math.round(
+      Date.now() / 1000 - (timeInSeconds || ONE_DAY * 3)
+    );
+    const until = Math.round(Date.now() / 1000);
 
-    const maxRecords = 10000;
     const startTime = Date.now();
 
     let users: { [pubkey: string]: number } = {};
@@ -429,51 +546,17 @@ export class Database {
 
     const popularRelated = await this.getPopularRelated(since, until);
 
+    const tx = this.db.transaction("events", "readonly");
+    const store = tx.objectStore("events");
+
     for (const id of Object.keys(popularRelated)) {
-      const event = await this.getEvent(id);
+      const event = await store.get(id);
       if (event) {
         const { pubkey } = event;
         users[pubkey] = (users[pubkey] || 0) + 1;
         events[id] = (events[id] || 0) + 1;
       }
     }
-
-    // const transaction = this.db.transaction("events", "readonly");
-    // const store = transaction.objectStore("events");
-    // const index = store.index("created_at");
-
-    // let cursor = await index.openCursor(
-    //   IDBKeyRange.bound(since, until),
-    //   "prev"
-    // );
-    // let recordCount = 0;
-
-    // while (cursor) {
-    //   const { pubkey, id } = cursor.value as {
-    //     pubkey: string;
-    //     id: string;
-    //   }; // Assuming types
-    //   recordCount++;
-
-    //   users[pubkey] = (users[pubkey] || 0) + 1;
-    //   events[id] = (events[id] || 0) + 1;
-
-    //   if (recordCount > maxRecords) {
-    //     break;
-    //   }
-
-    //   // if (recordCount % 100 === 0) {
-    //   //   await new Promise((r) => setTimeout(r, 100));
-    //   // }
-
-    //   // Refactor this into a function if used often
-    //   if (recordCount % 1000 === 0) {
-    //     users = sortAndTrim(users);
-    //     events = sortAndTrim(events);
-    //   }
-
-    //   cursor = await cursor.continue();
-    // }
 
     users = sortAndTrim(users);
     events = sortAndTrim(events);

@@ -3,12 +3,10 @@ import {
   WebSocketEvent,
   Relay,
   NEvent,
-  NFilters,
   PublishingQueueItem,
   CountRequest,
   PublishingRequest,
   WebSocketClientInfo,
-  RelaysWithIdsOrKeys,
   AuthRequest,
   CloseRequest,
   EventsRequest,
@@ -27,11 +25,11 @@ import {
   loadKeyStoreConfig,
   saveKeyStoreConfig,
 } from "./keystore";
-import { NClientWorker } from "./worker-types";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { CreateListRecord, WorkerEvent } from "./base-types";
+import { CreateListRecord, SystemStatus, WorkerEvent } from "./base-types";
+import { NWorker, StorageEventsQuery } from "@nostr-ts/web";
 
-const throttleDelayInMs = 250;
+const throttleDelayInMs = 500;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
@@ -75,29 +73,31 @@ function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
 }
 
 export const useNClient = create<NClient>((set, get) => ({
-  store: wrap<NClientWorker>(worker),
+  status: "loading",
+  store: wrap<NWorker>(worker),
+  hasNewerEvents: undefined,
   _processEvents: (events: WorkerEvent[]) => {
     events.forEach((event) => {
       const payload = event.data;
       if (payload.type === "RAW") return;
-      const isActiveView = get().activeView === payload.view;
-
-      if (payload.type === "event:new" && !isActiveView) {
-        console.log(
-          `New event for view ${payload.view} but not active (${
-            get().activeView
-          })`
-        );
-        return;
-      }
 
       switch (payload.type) {
         case "event:new":
-          // console.log(0);
-          get().addEvent(payload.data as LightProcessedEvent);
+          set({
+            hasNewerEvents: {
+              count: (function () {
+                const hasNotification = get().hasNewerEvents;
+                if (hasNotification) {
+                  return hasNotification.count + 1;
+                }
+                return 1;
+              })(),
+              lastTimestamp: (payload.data as LightProcessedEvent).event
+                .created_at,
+            },
+          });
           break;
         case "event:update":
-          // console.log(1, (payload.data as LightProcessedEvent).event.content);
           get().updateEvent(payload.data as LightProcessedEvent);
           break;
         case "relay:message":
@@ -105,18 +105,23 @@ export const useNClient = create<NClient>((set, get) => ({
             relayEvents: [...get().relayEvents, payload.data as WebSocketEvent],
           });
           break;
+        case "status:change":
+          set({ status: payload.data as SystemStatus });
+          console.log(`Status changed to ${payload.data}`);
+          break;
         default:
           console.log(`Unsupported payload type: ${payload.type}`);
       }
     });
   },
-  init: async (config?: { maxEvents?: number }) => {
+  init: async () => {
     try {
       await get().loadKeyStore();
-      await get().store.init(config);
 
       const throttledEvents = throttle(get()._processEvents, throttleDelayInMs);
       worker.addEventListener("message", throttledEvents);
+
+      await get().store.init();
 
       const following = await get().store.getAllUsersFollowing();
       if (following) {
@@ -127,7 +132,7 @@ export const useNClient = create<NClient>((set, get) => ({
     }
   },
   connected: false,
-  connect: async (relays?: Relay[]) => {
+  connect: async (relays: Relay[]) => {
     if (get().connected) {
       return;
     }
@@ -217,6 +222,11 @@ export const useNClient = create<NClient>((set, get) => ({
   unsubscribeAll: async () => {
     return get().store.unsubscribeAll();
   },
+  unsubscribeByToken: async (token: string) => {
+    console.log(`=> CLIENT: Unsubscribe by token`, token);
+    set({ events: [] });
+    return get().store.unsubscribeByToken(token);
+  },
   keystore: "none",
   loadKeyStore: () => {
     const store = loadKeyStoreConfig();
@@ -297,29 +307,102 @@ export const useNClient = create<NClient>((set, get) => ({
   getPopularUsers: async () => {
     return get().store.getPopularUsers();
   },
+  calculatePopular: async () => {
+    return get().store.calculatePopular();
+  },
   count: async (pubkey: string) => {
-    return get().store.count(pubkey);
+    console.log(`=> CLIENT: TODO Count`, pubkey);
+    return new Promise((resolve) => resolve([]));
   },
   countEvents: async () => {
-    return get().store.countEvents();
+    return new Promise((resolve) => resolve(0));
   },
   getEvent: async (
     id: string,
     options?: {
-      view?: string;
+      token?: string;
       retryCount?: number;
     }
   ) => {
     return get().store.getEvent(id, options);
   },
-  getEvents: async (params: {
-    view: string;
-    limit?: number;
-    offset?: number;
-  }) => {
-    await get().store.getEvents({
-      ...params,
-    });
+  nextQuery: undefined,
+  getEvents: async (
+    queryParams?: StorageEventsQuery,
+    insertAt?: "append" | "prepend" | "replace"
+  ) => {
+    const insert = insertAt || "append";
+    let params = queryParams;
+
+    if (!params) {
+      const nextQuery = get().nextQuery;
+      if (!nextQuery) {
+        throw new Error("No query params provided and no next query set");
+      }
+      params = {
+        token: nextQuery.token,
+        query: nextQuery.next,
+      };
+    }
+    const isFirstReq = params.query.reqCount
+      ? params.query.reqCount === 0
+      : true;
+    if (isFirstReq) {
+      set({
+        nextQuery: undefined,
+        hasNewerEvents: {
+          count: 0,
+          lastTimestamp: 0,
+        },
+      });
+    }
+    const data = await get().store.getEvents(params);
+
+    if (data.events && data.events.length > 0 && isFirstReq) {
+      set({
+        events: data.events,
+        nextQuery: {
+          token: params.token,
+          next: data.next,
+        },
+      });
+    } else if (data.events && data.events.length > 0) {
+      if (insert === "prepend") {
+        set({
+          // event.created_at
+          events: [...data.events, ...get().events],
+          nextQuery: {
+            token: params.token,
+            next: data.next,
+          },
+          hasNewerEvents: undefined,
+        });
+      } else if (insert === "append") {
+        set({
+          events: [...get().events, ...data.events],
+          nextQuery: {
+            token: params.token,
+            next: data.next,
+          },
+        });
+      } else {
+        set({
+          events: data.events,
+          nextQuery: {
+            token: params.token,
+            next: data.next,
+          },
+        });
+      }
+    } else {
+      set({
+        nextQuery: {
+          token: params.token,
+          next: data.next,
+        },
+      });
+    }
+    return data.next;
   },
   getEventReplies: async (id: string) => {
     return get().store.getEventReplies(id);
@@ -361,7 +444,6 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   maxEvents: MAX_EVENTS,
   setMaxEvents: async (max: number) => {
-    await get().store.setMaxEvents(max);
     set({ maxEvents: max });
   },
 
@@ -582,7 +664,7 @@ export const useNClient = create<NClient>((set, get) => ({
     return ev.id;
   },
   followUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
-    await get().store.followUser(payload);
+    await get().store.followUser(payload.pubkey);
     const folowing = await get().store.getAllUsersFollowing();
     if (folowing) {
       set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
@@ -596,14 +678,15 @@ export const useNClient = create<NClient>((set, get) => ({
     }
   },
   followingUser: async (pubkey: string) => {
-    return get().store.followingUser(pubkey);
+    const userData = await get().store.getUser(pubkey);
+    return userData?.following || false;
   },
   followingUserIds: [],
   getAllUsersFollowing: async () => {
     return get().store.getAllUsersFollowing();
   },
   blockUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
-    await get().store.blockUser(payload);
+    await get().store.blockUser(payload.pubkey);
     set({
       events: get().events.filter((e) => e.event.pubkey !== payload.pubkey),
     });
@@ -639,57 +722,12 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.removeUserFromList(id, pubkey);
   },
   requestInformation: (
-    payload: RelaysWithIdsOrKeys,
+    payload: {
+      source: "users" | "events" | "events:related";
+      idsOrKeys: string[];
+    },
     options: SubscriptionOptions
   ) => {
     return get().store.requestInformation(payload, options);
-  },
-
-  activeView: "",
-
-  setView: (view: string) => {
-    set({ activeView: view });
-  },
-
-  /**
-   * Setup a subscription related to a view
-   * @param view
-   * @param filters
-   * @returns
-   */
-  setViewSubscription: async (
-    view: string,
-    filters: NFilters,
-    options: {
-      reset?: boolean;
-      limit: number;
-      offset: number;
-    }
-  ) => {
-    console.log("setViewSubscription", view);
-    set({ activeView: view });
-    await get()
-      .store.setViewSubscription(view, filters, options)
-      .then(() => {
-        if (options && options.reset) {
-          set({ maxEvents: MAX_EVENTS });
-          set({ events: [] });
-        }
-      });
-  },
-
-  /**
-   * Remove a subscription related to a view
-   * @param view
-   * @returns
-   */
-  removeViewSubscription: async (view: string) => {
-    console.log("removeViewSubscription", view);
-    await get().store.removeViewSubscription(view);
-    // .then(() => {
-    //   set({ activeView: "" });
-    //   set({ maxEvents: MAX_EVENTS });
-    //   set({ events: [] });
-    // });
   },
 }));

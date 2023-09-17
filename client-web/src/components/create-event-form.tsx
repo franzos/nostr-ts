@@ -13,7 +13,12 @@ import {
   useDisclosure,
   ButtonGroup,
 } from "@chakra-ui/react";
-import { EventBase, NEvent, WebSocketClientInfo } from "@nostr-ts/common";
+import {
+  EventBase,
+  EventBaseSigned,
+  NEvent,
+  WebSocketClientInfo,
+} from "@nostr-ts/common";
 import SendIcon from "mdi-react/SendIcon";
 import { useNClient } from "../state/client";
 
@@ -29,7 +34,7 @@ import { RelaySelection } from "./relay-selection";
 
 interface CreateEventFormProps {
   isResponse?: boolean;
-  inResponseTo?: NEvent | undefined;
+  inResponseTo?: EventBaseSigned | undefined;
   relayUrls?: string[];
   kind?: NKIND;
   sendCallback?: (eventId: string) => void;

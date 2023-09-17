@@ -25,12 +25,16 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-inlinesvg": "^4.0.3",
+    "react-player": "^2.13.0",
     "react-router-dom": "^6.15.0",
+    "react-slick": "^0.29.0",
+    "slick-carousel": "^1.8.1",
     "zustand": "^4.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
+    "@types/react-slick": "^0.23.10",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react-swc": "^3.3.2",

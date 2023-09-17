@@ -7,6 +7,8 @@ export function filterDefault(limit?: number) {
       NEVENT_KIND.LONG_FORM_CONTENT,
       NEVENT_KIND.REPOST,
     ],
+    until: Math.round(Date.now() / 1000),
+    since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
   });
   if (limit) {
     filters.limit = limit;
@@ -18,6 +20,8 @@ export function filterByAuthor(pubKeys: string[], limit?: number) {
   const filters = new NFilters({
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
     authors: pubKeys,
+    until: Math.round(Date.now() / 1000),
+    since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
   });
   if (limit) {
     filters.limit = limit;

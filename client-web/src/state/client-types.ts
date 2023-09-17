@@ -2,7 +2,6 @@ import {
   NEvent,
   WebSocketClientInfo,
   WebSocketEvent,
-  NFilters,
   Subscription,
   PublishingQueueItem,
   PublishingRequest,
@@ -10,12 +9,18 @@ import {
   LightProcessedEvent,
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
-import { NClientWorker } from "./worker-types";
 import { NClientBase, WorkerEvent } from "./base-types";
 import { NClientKeystore } from "./keystore";
+import {
+  NWorker,
+  StorageEventsQuery,
+  StorageQueryParams,
+  StorageQueryResult,
+} from "@nostr-ts/web";
 
 export interface NClient extends NClientBase {
-  store: Remote<NClientWorker>;
+  status: "online" | "offline" | "loading" | "error";
+  store: Remote<NWorker>;
   _processEvents: (events: WorkerEvent[]) => void;
   getRelays: () => Promise<WebSocketClientInfo[] | undefined>;
   updateRelay: (
@@ -56,16 +61,15 @@ export interface NClient extends NClientBase {
       retryCount?: number;
     }
   ) => Promise<LightProcessedEvent | undefined>;
-  getEvents: (params: {
-    view: string;
-    limit?: number;
-    offset?: number;
-  }) => Promise<void>;
+  getEvents: (
+    params?: StorageEventsQuery,
+    insertAt?: "append" | "prepend" | "replace"
+  ) => Promise<StorageQueryParams>;
   getEventReplies: (
     id: string,
     view?: string
   ) => Promise<LightProcessedEvent[] | undefined>;
-  sendEvent: (events: PublishingRequest) => Promise<void>;
+  sendEvent: (events: PublishingRequest) => Promise<PublishingQueueItem[]>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 
   setMaxEvents: (max: number) => Promise<void>;
@@ -90,26 +94,14 @@ export interface NClient extends NClientBase {
   updateEvent: (payload: LightProcessedEvent) => void;
   updateEvents: (payload: LightProcessedEvent[]) => void;
 
-  activeView: string;
-
-  setView: (view: string) => void;
-  /**
-   * Set subscription related to view
-   */
-  setViewSubscription: (
-    view: string,
-    filters: NFilters,
-    options: {
-      reset?: boolean;
-      limit: number;
-      offset: number;
-    }
-  ) => Promise<void>;
-
-  /**
-   * Remove subscription related to view
-   */
-  removeViewSubscription: (view: string) => Promise<void>;
+  nextQuery: StorageQueryResult | undefined;
+  hasNewerEvents:
+    | {
+        count: number;
+        lastTimestamp: number;
+      }
+    | undefined;
+  unsubscribeByToken: (token: string) => Promise<void>;
 
   /**
    * Set to disconnect state

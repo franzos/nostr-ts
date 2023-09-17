@@ -1,8 +1,5 @@
 import { bech32 } from "bech32";
-
-// Create encoder/decoder instances
-const textEncoder = new TextEncoder();
-const textDecoder = new TextDecoder();
+import { Utf8Decoder, Utf8Encoder } from "./utf8-coder";
 
 function findlnurl(bodyOfText: string): string | null {
   let res = /,*?((lnurl)([0-9]{1,}[a-z0-9]+){1})/.exec(
@@ -32,7 +29,7 @@ export function decodeLnurl(lnurl: string): string {
     const { words } = bech32.decode(lnurl, 20000);
     const decodedData = new Uint8Array(bech32.fromWords(words));
 
-    return textDecoder.decode(decodedData);
+    return Utf8Decoder.decode(decodedData);
   } else if (
     lnurl.slice(0, 9) === "lnurlc://" ||
     lnurl.slice(0, 9) === "lnurlw://" ||
@@ -48,7 +45,7 @@ export function decodeLnurl(lnurl: string): string {
       const { words } = bech32.decode(bech32lnurl, 20000);
       const decodedData = new Uint8Array(bech32.fromWords(words));
 
-      return textDecoder.decode(decodedData);
+      return Utf8Decoder.decode(decodedData);
     }
 
     return lnurl;
@@ -68,7 +65,7 @@ export function decodeLnurl(lnurl: string): string {
  * @returns
  */
 export function encodeLnurl(str: string): string {
-  const data = textEncoder.encode(str);
+  const data = Utf8Encoder.encode(str);
 
   const words = bech32.toWords(new Uint8Array(data));
   return bech32.encode("lnurl", words, 20000);

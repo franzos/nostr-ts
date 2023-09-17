@@ -63,18 +63,9 @@ export function EventRoute() {
       return;
     }
     await getEvent();
-    // await loadReplies();
-    // await useNClient
-    //   .getState()
-    //   .setViewSubscription(view, filterByRelatedEvents(eventId.current), {
-    //     reset: true,
-    //     limit: MAX_EVENTS,
-    //     offset: 0,
-    //   });
   };
 
   useEffect(() => {
-    useNClient.getState().setView(view);
     if (note) {
       onMount(note);
     }
@@ -86,7 +77,7 @@ export function EventRoute() {
       if (eventLoadTimeout.current) {
         clearTimeout(eventLoadTimeout.current);
       }
-      useNClient.getState().removeViewSubscription(view);
+      useNClient.getState().unsubscribeByToken(view);
     };
   }, []);
 

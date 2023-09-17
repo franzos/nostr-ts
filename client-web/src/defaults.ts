@@ -23,13 +23,33 @@ export const DEFAULT_RELAYS = {
   },
   "wss://relay.damus.io": {
     read: true,
-    write: false,
+    write: true,
   },
   "wss://soloco.nl": {
     read: true,
     write: false,
   },
   "wss://eden.nostr.land": {
+    read: true,
+    write: true,
+  },
+  "wss://nostr.gruntwerk.org": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.cryptocculture.com": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.nostr.bg": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.nostrich.de": {
+    read: true,
+    write: false,
+  },
+  "wss://relay.nostr.ro": {
     read: true,
     write: false,
   },

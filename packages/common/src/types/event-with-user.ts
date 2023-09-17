@@ -1,5 +1,4 @@
-import { NEvent } from "../classes/event";
-import { NUserBase } from "../classes/user";
+import { EventBaseSigned } from "./event";
 import { UserBase } from "./user";
 
 export interface UserPublicKeyAndRelays {
@@ -44,7 +43,7 @@ export interface UserRecord extends ProcessedUserBase {
 export interface ProcessedEventBase {
   eventRelayUrls: string[];
   user?: UserBase;
-  event: NEvent;
+  event: EventBaseSigned;
 }
 
 export interface ProcessedEventWithReactionsAndReplies

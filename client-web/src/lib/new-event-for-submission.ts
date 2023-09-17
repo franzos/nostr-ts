@@ -1,4 +1,5 @@
 import {
+  EventBaseSigned,
   NEvent,
   NewLongFormContent,
   NewQuoteRepost,
@@ -12,7 +13,7 @@ export function createNewEventForSubmission(
   eventContent: string,
   relayUrl: string,
   props: {
-    inResponseTo?: NEvent;
+    inResponseTo?: EventBaseSigned;
   }
 ): {
   event?: NEvent;

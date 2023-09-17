@@ -1,7 +1,6 @@
 import { NFilters } from "@nostr-ts/common";
 import { Box } from "@chakra-ui/react";
 import { useRef, useEffect, useState } from "react";
-import { MAX_EVENTS } from "../defaults";
 import { useNClient } from "../state/client";
 import { Events } from "./events";
 import { ListSelection } from "./list-selection";
@@ -12,9 +11,9 @@ import {
 } from "../lib/default-filters";
 
 export function EventsFeeds() {
-  const [connected, followingUserIds, keypairIsLoaded, keypair] = useNClient(
+  const [status, followingUserIds, keypairIsLoaded, keypair] = useNClient(
     (state) => [
-      state.connected,
+      state.status,
       state.followingUserIds,
       state.keypairIsLoaded,
       state.keypair,
@@ -28,25 +27,27 @@ export function EventsFeeds() {
   const changingView = useRef<boolean>(false);
 
   const onMount = async () => {
-    if (!useNClient.getState().connected || isInitDone.current) {
+    if (isInitDone.current) {
       return;
     }
     // Set the default, "initial" view
     isInitDone.current = true;
 
-    await useNClient
-      .getState()
-      .setViewSubscription(view, activeFilters.current, {
-        reset: true,
-        limit: MAX_EVENTS,
-        offset: 0,
-      });
+    await useNClient.getState().getEvents({
+      token: view,
+      query: {
+        direction: "OLDER",
+        filters: activeFilters.current,
+        stickyInterval: true,
+      },
+    });
+
     isInitDone.current = true;
   };
 
   useEffect(() => {
     return () => {
-      useNClient.getState().removeViewSubscription(view);
+      useNClient.getState().unsubscribeByToken(view);
     };
   }, []);
 
@@ -54,15 +55,15 @@ export function EventsFeeds() {
    * Handle initial load
    */
   useEffect(() => {
-    if (connected) {
+    if (["online", "offline"].includes(useNClient.getState().status)) {
       onMount();
     }
-  }, [connected]);
+  }, [status]);
 
   const changeFeed = async (feedName: string) => {
     if (!useNClient.getState().connected) return;
     changingView.current = true;
-    useNClient.getState().setView(feedName);
+    // useNClient.getState().setView(feedName);
     setView(feedName);
 
     if (feedName === "global") {
@@ -82,13 +83,13 @@ export function EventsFeeds() {
       }
     }
 
-    await useNClient
-      .getState()
-      .setViewSubscription(feedName, activeFilters.current, {
-        reset: true,
-        limit: MAX_EVENTS,
-        offset: 0,
-      });
+    await useNClient.getState().getEvents({
+      token: feedName,
+      query: {
+        filters: activeFilters.current,
+        stickyInterval: true,
+      },
+    });
     changingView.current = false;
   };
 

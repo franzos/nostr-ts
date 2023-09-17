@@ -114,7 +114,6 @@ export class NEvent implements EventBase {
       throw new Error("Cannot sign event without an ID. Generate ID first.");
     }
     this.pubkey = keyPair.publicKey;
-    console.log(`Signing event ${this.id} with ${keyPair.publicKey}`);
     this.sig = sign(this.id, keyPair.privateKey);
   }
 

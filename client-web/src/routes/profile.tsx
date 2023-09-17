@@ -5,16 +5,15 @@ import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
 import { User } from "../components/user";
 import { Events } from "../components/events";
-import { MAX_EVENTS } from "../defaults";
 import { CreateEventForm } from "../components/create-event-form";
 import { filterByAuthor } from "../lib/default-filters";
 
 export function ProfileRoute() {
-  const [connected] = useNClient((state) => [state.connected]);
+  const [status] = useNClient((state) => [state.status]);
 
-  const isInitDone = useRef<boolean>(false);
+  const loadedEventsForRef = useRef<string | undefined>(undefined);
 
-  const pubkey = useRef("");
+  const pubkey = useRef<string | null>(null);
   const userLoadTimeout = useRef<number | null>(null);
   const [userData, setUserData] = useState<UserRecord | null>(null);
 
@@ -23,80 +22,111 @@ export function ProfileRoute() {
 
   const view = `profile-${npub}`;
 
-  const getUser = async (retryCount = 0) => {
+  const loadedEvents = () => {
+    if (loadedEventsForRef.current === npub) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  const getUser = async (pk: string, retryCount = 0) => {
     await useNClient
       .getState()
-      .getUser(pubkey.current)
+      .getUser(pk)
       .then((r) => {
         if (r) {
           setUserData(r);
+          if (userLoadTimeout.current) {
+            clearTimeout(userLoadTimeout.current);
+          }
         } else {
           userLoadTimeout.current = setTimeout(async () => {
-            if (retryCount > 20) {
+            console.log(`Retrying to load user ${pk} ...`);
+
+            if (retryCount === 2) {
+              await useNClient.getState().requestInformation(
+                {
+                  idsOrKeys: [pk],
+                  source: "users",
+                },
+                {
+                  timeoutIn: 10000,
+                }
+              );
+            } else if (retryCount > 20) {
               if (userLoadTimeout.current) {
                 clearTimeout(userLoadTimeout.current);
               }
               return;
             }
-            await getUser(retryCount + 1);
+            await getUser(pk, retryCount + 1);
           }, 1000);
         }
       });
   };
 
-  const count = async (pubkey: string) => {
-    await useNClient.getState().count(pubkey);
+  const count = async (pk: string) => {
+    await useNClient.getState().count(pk);
   };
 
-  const onMount = async (nprofileString: string) => {
-    if (!useNClient.getState().connected || isInitDone.current) return;
-    isInitDone.current = true;
+  const onMount = async () => {
+    if (!npub) return;
     try {
-      const decoded = decodeBech32(nprofileString);
+      const decoded = decodeBech32(npub);
+      let pk = undefined;
       for (const item of decoded.tlvItems) {
         if (item.type === 0) {
-          pubkey.current = item.value as string;
+          pk = item.value as string;
           break;
         }
       }
+      if (!pk) return;
+      pubkey.current = pk;
+      await getUser(pk);
+      await count(pk);
     } catch (e) {
       console.log(e);
       return;
     }
-    await Promise.all([
-      getUser(),
-      useNClient
-        .getState()
-        .setViewSubscription(view, filterByAuthor([pubkey.current]), {
-          reset: true,
-          limit: MAX_EVENTS,
-          offset: 0,
-        }),
-    ]);
-    await count(pubkey.current);
+  };
+
+  const loadEvents = async (pk: string) => {
+    loadedEventsForRef.current = npub;
+    await useNClient.getState().getEvents({
+      token: view,
+      query: {
+        direction: "OLDER",
+        filters: filterByAuthor([pk]),
+        stickyInterval: true,
+      },
+    });
   };
 
   useEffect(() => {
-    useNClient.getState().setView(view);
-    if (npub) {
-      onMount(npub);
-    }
-
     return () => {
       if (userLoadTimeout.current) {
         clearTimeout(userLoadTimeout.current);
       }
-      useNClient.getState().removeViewSubscription(view);
+      useNClient.getState().unsubscribeByToken(view);
     };
   }, []);
 
   useEffect(() => {
-    if (connected) {
-      if (npub) {
-        onMount(npub);
-      }
+    if (["online", "offline"].includes(useNClient.getState().status)) {
+      onMount();
     }
-  }, [connected]);
+  }, [status, npub]);
+
+  useEffect(() => {
+    if (
+      ["online", "offline"].includes(useNClient.getState().status) &&
+      pubkey.current &&
+      !loadedEvents()
+    ) {
+      loadEvents(pubkey.current);
+    }
+  }, [status, pubkey.current]);
 
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>

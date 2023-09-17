@@ -45,7 +45,8 @@ export class RelayClientBase {
   }
 
   private sendSubscribe(
-    request: CountRequest | AuthRequest | EventsRequest | CloseRequest
+    request: CountRequest | AuthRequest | EventsRequest | CloseRequest,
+    retryCount = 0
   ): RelaySubscription[] {
     const newSubscriptions: RelaySubscription[] = [];
 
@@ -57,6 +58,8 @@ export class RelayClientBase {
 
     // Always read since we are not posting anything
     const opt = "read";
+    const relayCount = relays.length;
+    let notReadyOrError = 0;
     for (const relay of relays) {
       if (relay.isReady(opt)) {
         const { relayUrls, ...restOfRequest } = request;
@@ -131,12 +134,29 @@ export class RelayClientBase {
           }
         } catch (e) {
           console.error(e);
+          notReadyOrError++;
         }
       } else {
         console.warn(
           `Relay ${relay.url} is not ready for ${opt} operations. Skipping...`
         );
+        notReadyOrError++;
       }
+    }
+
+    // If more than 4 relays, make sure at least 2 are ready
+    const relaysWitoutError = relayCount - notReadyOrError;
+    if (relayCount > 4 && relaysWitoutError < 2) {
+      console.warn(
+        `RELAY CLIENT: Only ${relaysWitoutError} relays are ready for ${opt} operations. Will try again in 2s`
+      );
+      setTimeout(() => {
+        if (retryCount < 5) {
+          console.log(`RELAY CLIENT: Not retrying.`);
+          return;
+        }
+        this.sendSubscribe(request, retryCount + 1);
+      }, 2000);
     }
 
     return newSubscriptions;

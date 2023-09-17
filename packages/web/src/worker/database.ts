@@ -46,7 +46,7 @@ export class Database {
   db: IDBPDatabase<NClientDB> | null;
 
   async init() {
-    this.db = await openDB<NClientDB>("nostros", 1, {
+    this.db = await openDB<NClientDB>("nostros", 4, {
       upgrade(database, oldVersion, newVersion, transaction) {
         dbMigration(database, oldVersion, newVersion, transaction);
       },
@@ -127,32 +127,6 @@ export class Database {
 
     return this.db.get("events", id);
   }
-
-  // async getEventsByPublicKeyAndKind(pubkey: string, kind: NEVENT_KIND, since: number, until: number) {
-  //   const tx = this.db?.transaction("events", "readonly");
-  //   const store = tx?.objectStore("events");
-  //   const index = store?.index("pubkeyAndKind");
-
-  //   const cursor = await index?.openCursor([pubkey, kind], "prev");
-
-  //   const events: NEvent[] = [];
-  //   let total = 0;
-  //   while (cursor) {
-  //     if (cursor.value.created_at > since && cursor.value.created_at < until) {
-  //       events.push(new NEvent(cursor.value));
-  //     }
-  //     total++;
-  //     if (total > 200) {
-  //       break;
-  //     }
-  //     cursor.continue();
-  //   }
-
-  //   return {
-  //     events,
-  //     total,
-  //   }
-  // }
 
   isValidEvent(event: EventBaseSigned) {
     if (

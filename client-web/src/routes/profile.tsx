@@ -146,7 +146,7 @@ export function ProfileRoute() {
           </Box>
         )}
         <Box overflowY="auto">
-          <Events />
+          <Events view={view} />
         </Box>
       </Box>
 

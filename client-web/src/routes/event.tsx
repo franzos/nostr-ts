@@ -69,10 +69,6 @@ export function EventRoute() {
     if (note) {
       onMount(note);
     }
-    // const replyCheckTimeout = setTimeout(() => {
-    //   loadReplies();
-    // }, 3000);
-
     return () => {
       if (eventLoadTimeout.current) {
         clearTimeout(eventLoadTimeout.current);

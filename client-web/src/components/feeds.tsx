@@ -61,7 +61,6 @@ export function EventsFeeds() {
   }, [status]);
 
   const changeFeed = async (feedName: string) => {
-    if (!useNClient.getState().connected) return;
     changingView.current = true;
     // useNClient.getState().setView(feedName);
     setView(feedName);
@@ -102,7 +101,7 @@ export function EventsFeeds() {
           changeFeed={changeFeed}
         />
       </Box>
-      <Events changingView={changingView.current} />
+      <Events changingView={changingView.current} view={view} />
     </Box>
   );
 }

@@ -1,26 +1,23 @@
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box, Button, Progress, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-import { useEffect, useRef, useState } from "react";
 import { unixTimeToRelative } from "../lib/relative-time";
 
+import { Virtuoso } from "react-virtuoso";
+
 interface EventsProps {
+  view: string;
   changingView?: boolean;
 }
 
-export function Events({ changingView }: EventsProps) {
+export function Events({ view, changingView }: EventsProps) {
   const [events, hasNewerEvents] = useNClient((state) => [
-    state.events,
+    state.events[view] || [],
     state.hasNewerEvents,
   ]);
-
-  const loadMoreRef = useRef<HTMLDivElement[]>([]);
-
   const throttleTimestamp = useRef(Date.now());
-
   const [isLoading, setIsLoading] = useState(false);
-  const [buttonTimeoutPassed, setButtonTimeoutPassed] = useState(false);
 
   const loadEvents = async () => {
     if (
@@ -38,7 +35,8 @@ export function Events({ changingView }: EventsProps) {
       nextQuery.next &&
       nextQuery.next.reqCount &&
       nextQuery.next.reqCount > 2 &&
-      useNClient.getState().events.length < 10
+      useNClient.getState().events[view] &&
+      useNClient.getState().events[view].length < 10
     ) {
       await useNClient.getState().getEvents(
         {
@@ -59,6 +57,18 @@ export function Events({ changingView }: EventsProps) {
     }
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    if (useNClient.getState().nextQuery) {
+      loadEvents();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hasNewerEvents && hasNewerEvents.count > 0 && !isLoading) {
+      loadEvents();
+    }
+  }, [hasNewerEvents, isLoading]);
 
   const loadNewerEvents = async () => {
     setIsLoading(true);
@@ -82,59 +92,6 @@ export function Events({ changingView }: EventsProps) {
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    if (useNClient.getState().nextQuery) {
-      loadEvents();
-    }
-
-    // Activate button after 3s
-    const buttonTimeout = setTimeout(() => {
-      setButtonTimeoutPassed(true);
-    }, 5000);
-
-    return () => {
-      // clearTimeout(initialLoad);
-      // clearInterval(loadEventsInterval);
-      clearTimeout(buttonTimeout);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Intersection Observer logic
-    const observer = new IntersectionObserver((entries) => {
-      const first = entries[0];
-      if (first.isIntersecting) {
-        loadEvents();
-      }
-    }, {});
-
-    loadMoreRef.current.forEach((ref) => {
-      if (ref) {
-        observer.observe(ref);
-      }
-    });
-
-    return () => {
-      loadMoreRef.current.forEach((ref) => {
-        if (ref) {
-          observer.unobserve(ref);
-        }
-      });
-    };
-  }, [events.length]);
-
-  useEffect(() => {
-    const newEvs = useNClient.getState().hasNewerEvents;
-    if (
-      useNClient.getState().events.length === 0 &&
-      newEvs &&
-      newEvs.count > 0 &&
-      !isLoading
-    ) {
-      loadNewerEvents();
-    }
-  }, [hasNewerEvents]);
-
   const LoadingSkeleton = (
     <Stack>
       {Array.from({ length: 3 }).map((_, index) => (
@@ -143,64 +100,38 @@ export function Events({ changingView }: EventsProps) {
     </Stack>
   );
 
-  const NewerEventsPrompt = (
-    <>
-      {hasNewerEvents && hasNewerEvents.lastTimestamp && !isLoading && (
-        <Button onClick={loadNewerEvents} width="100%" isLoading={isLoading}>
-          Click to load newer events (
-          {unixTimeToRelative(hasNewerEvents.lastTimestamp)})
-        </Button>
-      )}
-    </>
+  const NewerEventsPrompt = (lastTimestamp: number) => (
+    <Button onClick={loadNewerEvents} width="100%" isLoading={isLoading}>
+      Click to load newer events
+      {" - "}
+      {unixTimeToRelative(lastTimestamp)}
+    </Button>
   );
-
-  const LoadMoreButton = ({ loadMore }: { loadMore: () => Promise<void> }) => {
-    const hasNextQuery = useNClient.getState().nextQuery;
-    const until = hasNextQuery ? hasNextQuery?.next?.filters?.until : undefined;
-    const since = hasNextQuery ? hasNextQuery?.next?.filters?.since : undefined;
-    const count = hasNextQuery ? hasNextQuery?.next?.remainInRange : undefined;
-
-    return (
-      <Button flex="1" marginRight={2} onClick={loadMore}>
-        Load more {since && `${new Date(since * 1000).toLocaleString()}`}
-        {" - "}
-        {until && `${new Date(until * 1000).toLocaleString()}`} ({count})
-      </Button>
-    );
-  };
 
   return (
     <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
-      {NewerEventsPrompt}
-      {events.map((event, index) => (
-        <React.Fragment key={`${event.event.id}-${index}`}>
+      {hasNewerEvents &&
+        hasNewerEvents.lastTimestamp &&
+        !isLoading &&
+        NewerEventsPrompt(hasNewerEvents.lastTimestamp)}
+      <Virtuoso
+        useWindowScroll={true}
+        data={events}
+        itemContent={(index, data) => (
           <Box mb={2}>
-            <Event data={event} level={0} />
+            <Event data={data} level={0} />
           </Box>
-          {(index + 1) % 25 === 15 && (
-            <div
-              ref={(el) => {
-                if (el && !loadMoreRef.current.includes(el)) {
-                  loadMoreRef.current.push(el);
-                }
-              }}
-            ></div>
-          )}
-        </React.Fragment>
-      ))}
+        )}
+        endReached={() => {
+          loadEvents();
+        }}
+        overscan={1000}
+      />
       {events.length === 0 && (
         <Box marginTop={5} marginBottom={5} textAlign={"center"}>
           <Progress size="xs" mb={2} hasStripe isIndeterminate />
           <Text>Waiting for fresh content ... hold on.</Text>
           {LoadingSkeleton}
-        </Box>
-      )}
-      {buttonTimeoutPassed && (
-        <Box display="flex" justifyContent="space-between" padding={2}>
-          {LoadMoreButton({ loadMore: loadEvents })}
-          {/* <Button flex="1" marginLeft={2} onClick={newEvents}>
-            Clear and load new
-          </Button> */}
         </Box>
       )}
     </Box>

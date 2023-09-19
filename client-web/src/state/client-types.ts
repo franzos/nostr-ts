@@ -83,19 +83,21 @@ export interface NClient extends NClientBase {
   generateQueueItems: (
     request: PublishingRequest
   ) => Promise<PublishingQueueItem[] | undefined>;
-  events: LightProcessedEvent[];
+  events: {
+    [token: string]: LightProcessedEvent[] | [];
+  };
   /**
    * Add event to array or map
    * - In worker, must post message to main thread
    */
-  addEvent: (payload: LightProcessedEvent) => void;
-  addEvents: (payload: LightProcessedEvent[]) => void;
+  addEvent: (payload: LightProcessedEvent, token: string) => void;
+  // addEvents: (payload: LightProcessedEvent[]) => void;
   /**
    * Update event on array or map
    * - In worker, must post message to main thread
    */
-  updateEvent: (payload: LightProcessedEvent) => void;
-  updateEvents: (payload: LightProcessedEvent[]) => void;
+  updateEvent: (payload: LightProcessedEvent, token?: string) => void;
+  // updateEvents: (payload: LightProcessedEvent[]) => void;
 
   nextQuery: StorageQueryResult | undefined;
   hasNewerEvents:

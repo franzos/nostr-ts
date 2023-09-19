@@ -224,7 +224,17 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   unsubscribeByToken: async (token: string) => {
     console.log(`=> CLIENT: Unsubscribe by token`, token);
-    set({ events: [] });
+
+    // Use set with a function argument to safely update the state
+    set((state) => {
+      return {
+        events: {
+          ...state.events, // Spread the existing events object
+          [token]: [], // Update only the relevant property
+        },
+      };
+    });
+
     return get().store.unsubscribeByToken(token);
   },
   keystore: "none",
@@ -331,22 +341,21 @@ export const useNClient = create<NClient>((set, get) => ({
     queryParams?: StorageEventsQuery,
     insertAt?: "append" | "prepend" | "replace"
   ) => {
-    const insert = insertAt || "append";
-    let params = queryParams;
-
-    if (!params) {
+    if (!queryParams) {
       const nextQuery = get().nextQuery;
       if (!nextQuery) {
         throw new Error("No query params provided and no next query set");
       }
-      params = {
+      queryParams = {
         token: nextQuery.token,
         query: nextQuery.next,
       };
     }
-    const isFirstReq = params.query.reqCount
-      ? params.query.reqCount === 0
-      : true;
+
+    const { token, query } = queryParams;
+    const insert = insertAt || "append";
+
+    const isFirstReq = query.reqCount ? query.reqCount === 0 : true;
     if (isFirstReq) {
       set({
         nextQuery: undefined,
@@ -356,96 +365,101 @@ export const useNClient = create<NClient>((set, get) => ({
         },
       });
     }
-    const data = await get().store.getEvents(params);
 
-    // This takes 1-2s. If the view changes, we don't want to update the events
-    if (get().nextQuery && params.token !== get().nextQuery?.token) {
+    const data = await get().store.getEvents(queryParams);
+
+    // Check if the token has changed since the request was initiated
+    if (get().nextQuery && token !== get().nextQuery?.token) {
       return data.next;
     }
 
-    if (data.events && data.events.length > 0 && isFirstReq) {
-      set({
-        events: data.events,
-        nextQuery: {
-          token: params.token,
-          next: data.next,
-        },
-      });
-    } else if (data.events && data.events.length > 0) {
-      if (insert === "prepend") {
-        set({
-          // event.created_at
-          events: [...data.events, ...get().events],
-          nextQuery: {
-            token: params.token,
-            next: data.next,
-          },
-          hasNewerEvents: undefined,
-        });
-      } else if (insert === "append") {
-        set({
-          events: [...get().events, ...data.events],
-          nextQuery: {
-            token: params.token,
-            next: data.next,
-          },
-        });
-      } else {
-        set({
-          events: data.events,
-          nextQuery: {
-            token: params.token,
-            next: data.next,
-          },
-        });
+    // Update the events for the given token
+    set((state) => {
+      const updatedEvents = { ...state.events };
+      if (data.events && data.events.length > 0) {
+        if (isFirstReq || insert === "replace") {
+          updatedEvents[token] = data.events;
+        } else if (insert === "prepend") {
+          updatedEvents[token] = [
+            ...data.events,
+            ...(updatedEvents[token] || []),
+          ];
+        } else {
+          updatedEvents[token] = [
+            ...(updatedEvents[token] || []),
+            ...data.events,
+          ];
+        }
       }
-    } else {
-      set({
+
+      return {
+        events: updatedEvents,
         nextQuery: {
-          token: params.token,
+          token,
           next: data.next,
         },
-      });
-    }
+      };
+    });
+
     return data.next;
   },
+
   getEventReplies: async (id: string) => {
     return get().store.getEventReplies(id);
   },
-  events: [],
-  addEvent: (payload: LightProcessedEvent) => {
-    set({
-      events: [...get().events, payload],
+  events: {},
+  addEvent: (payload: LightProcessedEvent, token: string) => {
+    set((state) => {
+      const events = state.events[token] || [];
+      return {
+        events: {
+          ...state.events, // Spread the existing events object
+          [token]: [...events, payload], // Update only the relevant property
+        },
+      };
     });
   },
-  addEvents: (payload: LightProcessedEvent[]) => {
-    set({
-      events: [...get().events, ...payload],
-    });
-  },
-  updateEvent: (payload: LightProcessedEvent) => {
-    const events = [...get().events]; // copy existing array
-    const indexToUpdate = events.findIndex(
-      (event) => event.event.id === payload.event.id
-    );
-
-    if (indexToUpdate !== -1) {
-      events[indexToUpdate] = payload;
-    }
-
-    set({ events });
-  },
-  updateEvents: (payload: LightProcessedEvent[]) => {
-    const events = [...get().events];
-    const payloadMap = Object.fromEntries(payload.map((p) => [p.event.id, p]));
-
-    for (let i = 0; i < events.length; i++) {
-      if (payloadMap[events[i].event.id]) {
-        events[i] = payloadMap[events[i].event.id];
+  updateEvent: (payload: LightProcessedEvent, token?: string) => {
+    if (!token) {
+      const events = get().events;
+      for (const key in events) {
+        if (Object.prototype.hasOwnProperty.call(events, key)) {
+          const element = events[key];
+          const index = element.findIndex(
+            (e) => e.event.id === payload.event.id
+          );
+          if (index !== -1) {
+            set((state) => {
+              const events = state.events[key] || [];
+              events[index] = payload;
+              return {
+                events: {
+                  ...state.events, // Spread the existing events object
+                  [key]: events, // Update only the relevant property
+                },
+              };
+            });
+            return;
+          }
+        }
+      }
+    } else {
+      const events = get().events[token] || [];
+      const index = events.findIndex((e) => e.event.id === payload.event.id);
+      if (index !== -1) {
+        set((state) => {
+          const events = state.events[token] || [];
+          events[index] = payload;
+          return {
+            events: {
+              ...state.events, // Spread the existing events object
+              [token]: events, // Update only the relevant property
+            },
+          };
+        });
+        return;
       }
     }
-
-    set({ events });
   },
   maxEvents: MAX_EVENTS,
   setMaxEvents: async (max: number) => {
@@ -681,9 +695,28 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   blockUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
     await get().store.blockUser(payload.pubkey);
-    set({
-      events: get().events.filter((e) => e.event.pubkey !== payload.pubkey),
-    });
+    const events = get().events;
+    // remove event.pubkey === payload.pubkey from events
+    for (const key in events) {
+      if (Object.prototype.hasOwnProperty.call(events, key)) {
+        const element = events[key];
+        const index = element.findIndex(
+          (e) => e.event.pubkey === payload.pubkey
+        );
+        if (index !== -1) {
+          set((state) => {
+            const events = state.events[key] || [];
+            events.splice(index, 1);
+            return {
+              events: {
+                ...state.events, // Spread the existing events object
+                [key]: events, // Update only the relevant property
+              },
+            };
+          });
+        }
+      }
+    }
   },
   unblockUser: async (pubkey: string) => {
     return get().store.unblockUser(pubkey);

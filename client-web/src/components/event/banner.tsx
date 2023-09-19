@@ -33,7 +33,7 @@ const Content = (
       {images && Images(images)}
       {videos &&
         videos.map((url, index) => (
-          <AspectRatio ratio={16 / 9}>
+          <AspectRatio key={index} ratio={16 / 9}>
             <ReactPlayer
               key={index}
               url={url}

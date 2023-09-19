@@ -3,6 +3,7 @@ import { Box, Button, Progress, Skeleton, Stack, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useEffect, useRef, useState } from "react";
+import { unixTimeToRelative } from "../lib/relative-time";
 
 interface EventsProps {
   changingView?: boolean;
@@ -30,7 +31,32 @@ export function Events({ changingView }: EventsProps) {
     }
     setIsLoading(true);
     throttleTimestamp.current = Date.now();
-    await useNClient.getState().getEvents();
+
+    const nextQuery = useNClient.getState().nextQuery;
+    if (
+      nextQuery &&
+      nextQuery.next &&
+      nextQuery.next.reqCount &&
+      nextQuery.next.reqCount > 2 &&
+      useNClient.getState().events.length < 10
+    ) {
+      await useNClient.getState().getEvents(
+        {
+          token: nextQuery.token,
+          query: {
+            ...nextQuery.next,
+            filters: {
+              ...nextQuery.next.filters,
+              until: Math.round(Date.now() / 1000),
+              since: Math.round(Date.now() / 1000) - 30 * 24 * 60 * 60,
+            },
+          },
+        },
+        "replace"
+      );
+    } else {
+      await useNClient.getState().getEvents();
+    }
     setIsLoading(false);
   };
 
@@ -46,8 +72,8 @@ export function Events({ changingView }: EventsProps) {
           ...nextQuery.next,
           filters: {
             ...nextQuery.next.filters,
-            since: Math.round(Date.now() / 1000 - 60 * 60 * 24 * 2),
             until: Math.round(Date.now() / 1000),
+            since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
           },
         },
       },
@@ -95,9 +121,19 @@ export function Events({ changingView }: EventsProps) {
         }
       });
     };
-  }, [events.length]); // Depend on `events.length`
+  }, [events.length]);
 
-  // const showButtons = events.length >= maxEvents || buttonTimeoutPassed;
+  useEffect(() => {
+    const newEvs = useNClient.getState().hasNewerEvents;
+    if (
+      useNClient.getState().events.length === 0 &&
+      newEvs &&
+      newEvs.count > 0 &&
+      !isLoading
+    ) {
+      loadNewerEvents();
+    }
+  }, [hasNewerEvents]);
 
   const LoadingSkeleton = (
     <Stack>
@@ -109,9 +145,10 @@ export function Events({ changingView }: EventsProps) {
 
   const NewerEventsPrompt = (
     <>
-      {hasNewerEvents && (
+      {hasNewerEvents && hasNewerEvents.lastTimestamp && !isLoading && (
         <Button onClick={loadNewerEvents} width="100%" isLoading={isLoading}>
-          There are newer events, click here to load them.
+          Click to load newer events (
+          {unixTimeToRelative(hasNewerEvents.lastTimestamp)})
         </Button>
       )}
     </>
@@ -121,12 +158,13 @@ export function Events({ changingView }: EventsProps) {
     const hasNextQuery = useNClient.getState().nextQuery;
     const until = hasNextQuery ? hasNextQuery?.next?.filters?.until : undefined;
     const since = hasNextQuery ? hasNextQuery?.next?.filters?.since : undefined;
+    const count = hasNextQuery ? hasNextQuery?.next?.remainInRange : undefined;
 
     return (
       <Button flex="1" marginRight={2} onClick={loadMore}>
         Load more {since && `${new Date(since * 1000).toLocaleString()}`}
         {" - "}
-        {until && `${new Date(until * 1000).toLocaleString()}`}
+        {until && `${new Date(until * 1000).toLocaleString()}`} ({count})
       </Button>
     );
   };

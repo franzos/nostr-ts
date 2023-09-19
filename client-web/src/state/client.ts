@@ -358,6 +358,11 @@ export const useNClient = create<NClient>((set, get) => ({
     }
     const data = await get().store.getEvents(params);
 
+    // This takes 1-2s. If the view changes, we don't want to update the events
+    if (get().nextQuery && params.token !== get().nextQuery?.token) {
+      return data.next;
+    }
+
     if (data.events && data.events.length > 0 && isFirstReq) {
       set({
         events: data.events,
@@ -453,26 +458,31 @@ export const useNClient = create<NClient>((set, get) => ({
    */
   determineApplicableRelays: async (
     request: PublishingRequest
-  ): Promise<{
-    relays: WebSocketClientInfo[];
-    pow: number;
-  }> => {
+  ): Promise<
+    | {
+        relays: WebSocketClientInfo[];
+        pow: number;
+      }
+    | undefined
+  > => {
     // TODO: RELAY check if supported (supportsEvent)
-    const relays = await get()
-      .getRelays()
-      .then((rels) => {
-        if (!rels) {
-          return [];
-        }
-        // If preference provided; if not use all
-        const selected = request.relayUrls
-          ? rels.filter((r) => request.relayUrls?.includes(r.url))
-          : rels;
-        return selected.filter((r) => r.isReady && r.write === true);
-      });
-
+    const relays = await get().getRelays();
+    if (!relays) {
+      console.log(`=> CLIENT: No relays found`);
+      return undefined;
+    }
+    const selected =
+      request.relayUrls && request.relayUrls.length > 0
+        ? relays.filter((r) => request.relayUrls?.includes(r.url))
+        : relays;
+    const ready = selected.filter((r) => r.isReady && r.write);
+    if (ready.length === 0) {
+      console.log(`=> CLIENT: No ready relays found`);
+      return undefined;
+    }
+    console.log(`=> CLIENT: Found ${ready.length} ready relays`);
     return {
-      relays,
+      relays: ready,
       pow: 0,
     };
   },
@@ -485,32 +495,22 @@ export const useNClient = create<NClient>((set, get) => ({
   generateQueueItems: async (
     request: PublishingRequest
   ): Promise<PublishingQueueItem[] | undefined> => {
-    let applicableRelays: WebSocketClientInfo[] = [];
-    const { relays } = await get().determineApplicableRelays(request);
-    if (request.relayUrls && request.relayUrls.length > 0) {
-      applicableRelays = relays.filter((r) =>
-        request.relayUrls?.includes(r.url)
-      );
-    } else {
-      applicableRelays = relays;
-    }
-    if (applicableRelays.length === 0) {
+    const availRelays = await get().determineApplicableRelays(request);
+    if (!availRelays) {
       return undefined;
     }
     const newSubs: PublishingQueueItem[] = [];
-    for (const relay of applicableRelays) {
-      if (relay.isReady && relay.write) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { relayUrls: _relayUrls, ...restOfRequest } = request;
-        const sub: PublishingQueueItem = {
-          ...restOfRequest,
-          id: nanoid(),
-          relayUrl: relay.url,
-          send: false,
-        };
-        newSubs.push(sub);
-      }
+    for (const relay of availRelays.relays) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { relayUrls, ...restOfRequest } = request;
+      newSubs.push({
+        ...restOfRequest,
+        id: nanoid(),
+        relayUrl: relay.url,
+        send: false,
+      });
     }
+    console.log(newSubs);
     return newSubs;
   },
   getQueueItems: async () => {
@@ -569,21 +569,15 @@ export const useNClient = create<NClient>((set, get) => ({
     let relayUrls = payload.relayUrls;
 
     // Check if POW is needed and which relays are available
-    const { relays, pow } = await get().determineApplicableRelays(payload);
-    if (relays.length === 0) {
-      if (relayUrls?.length === 0) {
-        throw new Error(
-          `None of the required relays are available: ${relayUrls.join(", ")}.`
-        );
-      } else {
-        throw new Error(`No write-enabled relays available.`);
-      }
+    const availRelays = await get().determineApplicableRelays(payload);
+    if (!availRelays) {
+      throw new Error("No relays available");
     }
 
-    relayUrls = relays.map((r) => r.url);
+    relayUrls = availRelays.relays.map((r) => r.url);
 
     let requestedPOW = payload.pow;
-    const neededPow = pow;
+    const neededPow = availRelays.pow;
     if (requestedPOW && requestedPOW !== 0) {
       if (requestedPOW < neededPow) {
         // Smaller than needed, throw error

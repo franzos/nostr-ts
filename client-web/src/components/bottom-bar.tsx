@@ -63,7 +63,7 @@ export function BottomBar() {
   };
 
   useEffect(() => {
-    const statsUpdateInterval = setInterval(async () => await update(), 1000);
+    const statsUpdateInterval = setInterval(async () => await update(), 2000);
 
     return () => clearInterval(statsUpdateInterval);
   }, []);
@@ -84,25 +84,27 @@ export function BottomBar() {
         setLastCount(current);
         const newEvents = relayEvents.slice(-diff);
         for (const event of newEvents) {
+          let title = "";
           let description = "";
           let success = true;
           if (event.data[0] === RELAY_MESSAGE_TYPE.NOTICE) {
             description = event.data[1];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.OK) {
-            description = `Event ${excerpt(event.data[1], 5)}: ${
-              event.data[3]
-            }`;
+            title = success ? `Event accepted` : `Event rejected`;
+            description = `${event.meta.url}`;
             success = event.data[2];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
             // Ignore for now
             return;
             // description = `Loaded all requested events for subscription ${event.data[1]}`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.COUNT) {
-            description = `Relay ${event.meta.url} #${
+            title = `Received count`;
+            description = `${event.meta.url} #${
               event.data[1]
             }: ${JSON.stringify(event.data[2])} events`;
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.AUTH) {
-            description = `Relay ${event.meta.url}: requested authentication`;
+            title = "Authentication requested";
+            description = `${event.meta.url}`;
             const keystore = useNClient.getState().keystore;
             if (!keystore || keystore === "none") {
               description +=
@@ -113,7 +115,7 @@ export function BottomBar() {
           }
           if (description !== "") {
             toast({
-              title: `Relay ${event.data[0]}`,
+              title,
               position: "top-right",
               description,
               status: success ? "info" : "error",

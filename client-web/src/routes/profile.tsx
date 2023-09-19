@@ -22,7 +22,7 @@ export function ProfileRoute() {
 
   const view = `profile-${npub}`;
 
-  const loadedEvents = () => {
+  const loadedEventsRefMatchesNpub = () => {
     if (loadedEventsForRef.current === npub) {
       return true;
     } else {
@@ -122,7 +122,7 @@ export function ProfileRoute() {
     if (
       ["online", "offline"].includes(useNClient.getState().status) &&
       pubkey.current &&
-      !loadedEvents()
+      !loadedEventsRefMatchesNpub()
     ) {
       loadEvents(pubkey.current);
     }

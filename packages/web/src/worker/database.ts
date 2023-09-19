@@ -46,6 +46,7 @@ export class Database {
   db: IDBPDatabase<NClientDB> | null;
 
   async init() {
+    console.log(`=> DATABASE: Initializing database...`);
     this.db = await openDB<NClientDB>("nostros", 4, {
       upgrade(database, oldVersion, newVersion, transaction) {
         dbMigration(database, oldVersion, newVersion, transaction);
@@ -54,7 +55,7 @@ export class Database {
   }
 
   async deleteAll() {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     await this.db.clear("events");
     await this.db.clear("users");
@@ -66,13 +67,13 @@ export class Database {
    */
 
   async getUser(pubkey: string) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.get("users", pubkey);
   }
 
   async getUsersByParam(key: "isBlocked" | "following") {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     const tx = this.db.transaction("users", "readonly");
     const store = tx.objectStore("users");
@@ -96,13 +97,13 @@ export class Database {
   }
 
   async addUser(data: ProcessedUserBase) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.put("users", data);
   }
 
   async updateUser(pubkey: string, data: ProcessedUserBase) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.put("users", {
       ...data,
@@ -113,7 +114,7 @@ export class Database {
   }
 
   async countUsers() {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.count("users");
   }
@@ -123,7 +124,7 @@ export class Database {
    */
 
   async getEvent(id: string) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.get("events", id);
   }
@@ -189,7 +190,7 @@ export class Database {
       eventIds: string[];
     }
   ): Promise<[EventBaseSigned[], number]> {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     const {
       kinds,
@@ -274,7 +275,7 @@ export class Database {
     filters: FiltersBase,
     kind: NEVENT_KIND = NEVENT_KIND.SHORT_TEXT_NOTE
   ): Promise<number | undefined> {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     const hasAuthorFilter = filters.authors && filters.authors.length > 0;
 
@@ -302,7 +303,7 @@ export class Database {
     id: string,
     kinds: NEVENT_KIND[]
   ): Promise<EventBaseSigned[]> {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     // Fetch all related event IDs
     const transactionForTags = this.db.transaction("tags", "readonly");
@@ -329,28 +330,32 @@ export class Database {
   }
 
   async saveEvent(event: EventBaseSigned) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
-    const result = await this.db.put("events", event);
+    const start = Date.now();
+    const result = await this.db.add("events", event);
+
     if (event.tags) {
-      for (const tag of event.tags) {
-        if (tag[0] === "e" || tag[0] === "p") {
-          await this.db?.add("tags", {
-            eventId: event.id,
-            id: `${event.id.slice(0, 10)}-${tag[0]}-${tag[1].slice(0, 10)}}`,
-            type: tag[0],
-            value: tag[1],
-          });
-        }
+      const tags = event.tags.filter((tag) => tag[0] === "e" || tag[0] === "p");
+      for (const tag of tags) {
+        await this.db.add("tags", {
+          eventId: event.id,
+          id: `${event.id.slice(0, 10)}-${tag[0]}-${tag[1].slice(0, 10)}}`,
+          type: tag[0],
+          value: tag[1],
+        });
       }
     }
+
+    const took = Date.now() - start;
+    console.log(`=> DATABASE: Took ${took}ms to save event`);
 
     return result;
   }
 
   async createList(payload: CreateListRecord): Promise<void> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     await this.db.add("lists", {
       ...payload,
@@ -360,7 +365,7 @@ export class Database {
 
   async updateList(id: string, payload: CreateListRecord): Promise<void> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     const record = await this.db.get("lists", id);
     await this.db.put("lists", Object.assign(record, payload));
@@ -368,14 +373,14 @@ export class Database {
 
   async deleteList(id: string): Promise<void> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     await this.db.delete("lists", id);
   }
 
   async getAllLists(): Promise<ProcessedListRecord[] | undefined> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
 
     const lists: ListRecord[] = await this.db.getAll("lists");
@@ -407,7 +412,7 @@ export class Database {
 
   async getList(id: string): Promise<ProcessedListRecord | undefined> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     const list: ListRecord = await this.db.get("lists", id);
     if (list.userPubkeys) {
@@ -429,7 +434,7 @@ export class Database {
 
   async getListsWithUser(pubkey: string): Promise<ListRecord[] | undefined> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     const tx = this.db.transaction("lists", "readonly");
     const listStore = tx.objectStore("lists");
@@ -439,7 +444,7 @@ export class Database {
 
   async addUserToList(id: string, pubkey: string): Promise<void> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     const list: ListRecord = await this.db.get("lists", id);
     if (list && list.userPubkeys) {
@@ -457,7 +462,7 @@ export class Database {
 
   async removeUserFromList(id: string, pubkey: string): Promise<void> {
     if (!this.db) {
-      throw new Error("DB not initialized");
+      throw new Error("=> DATABASE: not ready");
     }
     const list: ListRecord = await this.db.get("lists", id);
     if (list && list.userPubkeys) {
@@ -467,7 +472,7 @@ export class Database {
   }
 
   async getPopularRelated(since: number, until: number) {
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     const tx = this.db.transaction("events", "readonly");
     const store = tx.objectStore("events");
@@ -516,7 +521,7 @@ export class Database {
     let users: { [pubkey: string]: number } = {};
     let events: { [id: string]: number } = {};
 
-    if (!this.db) throw new Error("DB not initialized");
+    if (!this.db) throw new Error("=> DATABASE: not ready");
 
     const popularRelated = await this.getPopularRelated(since, until);
 

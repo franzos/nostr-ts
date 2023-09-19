@@ -11,9 +11,11 @@ export function processEventContentFrontend(data: LightProcessedEvent) {
   }
 
   // Find images and videos
-  const imageRegex = /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif)(?:\?\S+)?\b/gi;
+  const imageRegex =
+    /\bhttps?:\/\/\S+?\.(?:jpg|jpeg|png|gif|webp)(?:\?\S+)?\b/gi;
   const videoRegex =
-    /\bhttps?:\/\/\S+?\.(?:mp4|webm|ogg)\b|(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|vimeo\.com\/)[a-zA-Z0-9_-]{6,11}\b/gi;
+    /\bhttps?:\/\/\S+?\.(?:mp4|webm|ogg)\b|(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|vimeo\.com\/)[a-zA-Z0-9_-]{6,11}(?:\?[a-zA-Z0-9_=&-]+)?\b/gi;
+
   const images: string[] | null = content?.match(imageRegex);
   const videos: string[] | null = content?.match(videoRegex);
 

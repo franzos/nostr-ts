@@ -10,11 +10,11 @@ export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
   if (!text) return "";
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const noteRegex = /(note[0-9a-zA-Z]+)/g;
+  const noteRegex = /(note[0-9a-zA-Z]|nevent[0-9a-zA-Z]+)/g;
   const profileRegex = /(npub[0-9a-zA-Z]+|nprofile[0-9a-zA-Z]+)/g;
 
   const tokens = text.split(
-    /(https?:\/\/[^\s]+|note[0-9a-zA-Z]+|npub[0-9a-zA-Z]+|nprofile[0-9a-zA-Z]+)/g
+    /(https?:\/\/[^\s]+|note[0-9a-zA-Z]+|npub[0-9a-zA-Z]+|nprofile[0-9a-zA-Z]|nevent[0-9a-zA-Z]+)/g
   );
 
   return tokens.map((token, index) => {

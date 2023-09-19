@@ -31,7 +31,6 @@ import { Database, NewProcessedEventFromDB } from "./database";
 import {
   ONE_MINUTE,
   ONE_SECOND,
-  ONE_SECOND_IN_MS,
   ProcessedToLightProcessedEvent,
   StorageEventsQuery,
   StorageQueryResult,
@@ -74,6 +73,15 @@ export class NWorker {
     isInWebWorker?: boolean;
   };
 
+  // Track and limit the number of events a subscription may yield
+  subscriptionEventsCount: {
+    [id: string]: {
+      count: number;
+      limit: number;
+      createdAt: number;
+    };
+  } = {};
+
   lastQuery: StorageEventsQuery | undefined;
 
   // Triggered if subscription yields new event
@@ -107,24 +115,6 @@ export class NWorker {
     let newStatus;
     if (this.componentStatus.relayClient && this.componentStatus.database) {
       newStatus = "online";
-
-      // Setup live subscriptions
-      setTimeout(async () => {
-        const req: EventsRequest = {
-          type: CLIENT_MESSAGE_TYPE.REQ,
-          filters: new NFilters({
-            kinds: [
-              NEVENT_KIND.SHORT_TEXT_NOTE,
-              NEVENT_KIND.LONG_FORM_CONTENT,
-              NEVENT_KIND.REPOST,
-            ],
-          }),
-          options: {
-            timeoutIn: ONE_SECOND_IN_MS * 360,
-          },
-        };
-        await this.subscribe(req);
-      }, ONE_SECOND * 1000);
     } else if (this.componentStatus.database) {
       newStatus = "offline";
     } else {
@@ -150,7 +140,7 @@ export class NWorker {
     // Calculate popular users and events
     setTimeout(async () => {
       await this.calculatePopular();
-    }, 3 * ONE_SECOND * 1000);
+    }, 30 * ONE_SECOND * 1000);
   }
 
   ////////////////////////////////// RELAYS //////////////////////////////////
@@ -240,7 +230,7 @@ export class NWorker {
       );
 
       setTimeout(() => {
-        if (retryCount < 3) {
+        if (retryCount < 10) {
           console.log(`WORKER: Not retrying.`);
           return;
         }
@@ -264,7 +254,7 @@ export class NWorker {
     const subs = this.getSubscriptions();
     if (!subs) return;
     for (const sub of subs) {
-      if (sub.options.view === token) {
+      if (sub.options && sub.options.view === token) {
         this.unsubscribe([sub.id]);
       }
     }
@@ -362,11 +352,8 @@ export class NWorker {
       },
       {
         timeoutIn: TEN_SECONDS_IN_MS,
-      }[
-        (NEVENT_KIND.METADATA,
-        NEVENT_KIND.SHORT_TEXT_NOTE,
-        NEVENT_KIND.LONG_FORM_CONTENT)
-      ]
+      },
+      [(NEVENT_KIND.METADATA, NEVENT_KIND.SHORT_TEXT_NOTE)]
     );
   }
 
@@ -442,7 +429,17 @@ export class NWorker {
    * Add event to publishing queue
    */
   addQueueItems(payload: PublishingQueueItem[]) {
-    this.eventsPublishingQueue.push(...payload);
+    for (const item of payload) {
+      if (
+        this.eventsPublishingQueue.find(
+          (i) => i.event.id === item.event.id && i.relayUrl === item.relayUrl
+        )
+      ) {
+        continue;
+      } else {
+        this.eventsPublishingQueue.push(item);
+      }
+    }
   }
 
   /**
@@ -450,7 +447,10 @@ export class NWorker {
    */
   updateQueueItem(payload: PublishingQueueItem) {
     this.eventsPublishingQueue = this.eventsPublishingQueue.map((item) => {
-      if (item.event.id === payload.event.id) {
+      if (
+        item.event.id === payload.event.id &&
+        item.relayUrl === payload.relayUrl
+      ) {
         return payload;
       }
       return item;
@@ -677,12 +677,8 @@ export class NWorker {
   }
 
   async notifyOfNewEvent(event: EventBaseSigned) {
-    if (
-      this.lastQueryHasNewerEvents !== undefined ||
-      this.lastQuery === undefined
-    ) {
-      return;
-    }
+    if (this.lastQuery === undefined) return;
+    if (this.lastQueryHasNewerEvents > event.created_at) return;
     const filters = this.lastQuery.query.filters;
     const hasSinceFilter = filters.since && filters.since > 0;
     const eventCreated = event.created_at;
@@ -1114,6 +1110,29 @@ export class NWorker {
               return;
             }
           }
+          if (
+            kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+            kind === NEVENT_KIND.LONG_FORM_CONTENT
+          ) {
+            if (subscription && subscription.id) {
+              if (this.subscriptionEventsCount[subscription.id]) {
+                this.subscriptionEventsCount[subscription.id].count++;
+                if (
+                  this.subscriptionEventsCount[subscription.id].count >
+                  this.subscriptionEventsCount[subscription.id].limit
+                ) {
+                  console.log(`=> WORKER: Subscription limit reached`);
+                  return;
+                }
+              } else {
+                this.subscriptionEventsCount[subscription.id] = {
+                  count: 1,
+                  limit: 25,
+                  createdAt: Date.now(),
+                };
+              }
+            }
+          }
 
           const ev = payload.data[2] as EventBaseSigned;
           const userRecord = await this.db.getUser(ev.pubkey);
@@ -1229,7 +1248,8 @@ export class NWorker {
     const filtered = payload.idsOrKeys;
 
     console.log(
-      `=> WORKER: Getting information for ${filtered.length} ${payload.source}`
+      `=> WORKER: Getting information for ${filtered.length} ${payload.source}`,
+      options
     );
 
     const subscriptions: RelaySubscription[] = [];
@@ -1277,7 +1297,6 @@ export class NWorker {
       const subs = await this.subscribe({
         type: CLIENT_MESSAGE_TYPE.REQ,
         filters,
-        // relayUrls: [payload.relayUrl],
         options,
       });
       if (subs) {

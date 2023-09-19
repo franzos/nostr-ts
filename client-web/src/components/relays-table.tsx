@@ -122,6 +122,7 @@ export function RelaysTable() {
             isDisabled={isBusy}
           />
         </Td>
+        <Td>{rl.error}</Td>
       </Tr>
     );
   };
@@ -136,6 +137,7 @@ export function RelaysTable() {
             <Th>Info</Th>
             <Th>Read</Th>
             <Th>Write</Th>
+            <Th>Error</Th>
           </Tr>
         </Thead>
         <Tbody>

@@ -38,12 +38,16 @@ export function PublishingQueueTable() {
     await useNClient
       .getState()
       .getQueueItems()
-      .then((q) => setQueue(q));
+      .then((q) => {
+        if (q) {
+          setQueue(q);
+        }
+      });
   };
 
   useEffect(() => {
     update();
-    const updateInterval = setInterval(update, 2000);
+    const updateInterval = setInterval(update, 3000);
 
     return () => clearInterval(updateInterval);
   }, []);
@@ -74,11 +78,11 @@ export function PublishingQueueTable() {
   );
 
   const QueueItemRow = (item: PublishingQueueItem) => {
-    const eventId = item.event.id || "";
     return (
-      <Tr key={eventId}>
+      <Tr key={`${item.event.id}_${item.relayUrl}`}>
+        <Td>{item.relayUrl}</Td>
         <Td>
-          <Tooltip label={eventId}>{excerpt(eventId, 5)}</Tooltip>
+          <Tooltip label={item.event.id}>{excerpt(item.event.id, 5)}</Tooltip>
         </Td>
         <Td>
           <HStack>
@@ -121,6 +125,7 @@ export function PublishingQueueTable() {
       <Table variant="simple" marginBottom={4}>
         <Thead>
           <Tr>
+            <Th>Relay</Th>
             <Th>Event ID</Th>
             <Th>POW / Done</Th>
             <Th>Info</Th>
@@ -128,11 +133,7 @@ export function PublishingQueueTable() {
             <Th>Accepted</Th>
           </Tr>
         </Thead>
-        <Tbody>
-          {queue.map((item) => {
-            return QueueItemRow(item);
-          })}
-        </Tbody>
+        <Tbody>{queue.map((item) => ({ item } && QueueItemRow(item)))}</Tbody>
       </Table>
       {QueueModal}
     </Box>

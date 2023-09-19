@@ -7,18 +7,22 @@ interface EventContentProps {
 
 export function EventContent({ content }: EventContentProps) {
   return (
-    <Box
-      overflowWrap={"break-word"}
-      wordBreak={"break-word"}
-      pl={4}
-      pr={4}
-      pt={2}
-      pb={2}
-      background={"blackAlpha.100"}
-      borderRadius={4}
-      style={{ overflowWrap: "anywhere" }}
-    >
-      <EventContentWithLinks text={content} />
-    </Box>
+    <>
+      {content !== "" && (
+        <Box
+          overflowWrap={"break-word"}
+          wordBreak={"break-word"}
+          pl={4}
+          pr={4}
+          pt={2}
+          pb={2}
+          background={"blackAlpha.100"}
+          borderRadius={4}
+          style={{ overflowWrap: "anywhere" }}
+        >
+          <EventContentWithLinks text={content} />
+        </Box>
+      )}
+    </>
   );
 }

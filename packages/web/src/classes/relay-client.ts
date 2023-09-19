@@ -55,9 +55,12 @@ export class RelayClient extends RelayClientBase {
               `WebSocket disconnected from ${relay.url}`,
               JSON.stringify(event)
             );
+            relay.error = JSON.stringify(event);
           };
         } catch (e) {
-          console.error("Error connecting to relay", e);
+          const err = e as Error;
+          console.error("Error connecting to relay", err.message);
+          relay.error = err.message;
         }
       }
     }
@@ -99,7 +102,9 @@ export class RelayClient extends RelayClientBase {
           console.log(`Relay ${relay.url} information`, relay.info);
           info.push(relay.getInfo("withInfo"));
         } catch (e) {
-          console.error("Error getting relay information", e);
+          const err = e as Error;
+          relay.error = err.message;
+          console.error("Error getting relay information", err.message);
         }
       }
     }

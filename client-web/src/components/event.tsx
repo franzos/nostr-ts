@@ -88,7 +88,7 @@ export function Event({ data, level }: EventProps) {
     if (!data.eventRelayUrls) return;
     const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
-    if (relay) return relay;
+    if (relay && relay.write) return relay;
   };
 
   const handleError = (e: Error | unknown) => {
@@ -147,12 +147,10 @@ export function Event({ data, level }: EventProps) {
         return;
     }
 
-    const relayIsRelay = relay ? relay.isReady && relay.write : false;
-
     try {
       const evId = await useNClient.getState().signAndSendEvent({
         event: ev,
-        relayUrls: relay && relayIsRelay ? [relay.url] : undefined,
+        relayUrls: relay ? [relay.url] : undefined,
       });
       if (evId) {
         handleSuccess(evId);

@@ -73,10 +73,13 @@ export interface NClient extends NClientBase {
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 
   setMaxEvents: (max: number) => Promise<void>;
-  determineApplicableRelays: (request: PublishingRequest) => Promise<{
-    relays: WebSocketClientInfo[];
-    pow: number;
-  }>;
+  determineApplicableRelays: (request: PublishingRequest) => Promise<
+    | {
+        relays: WebSocketClientInfo[];
+        pow: number;
+      }
+    | undefined
+  >;
   generateQueueItems: (
     request: PublishingRequest
   ) => Promise<PublishingQueueItem[] | undefined>;

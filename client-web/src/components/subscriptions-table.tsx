@@ -45,7 +45,7 @@ export function SubscriptionsTable() {
       await update();
     };
     init();
-    const updateInterval = setInterval(update, 1000);
+    const updateInterval = setInterval(update, 3000);
 
     return () => clearInterval(updateInterval);
   }, []);
@@ -72,9 +72,6 @@ export function SubscriptionsTable() {
       <Tr key={sub.id}>
         <Td>{sub.type}</Td>
         <Td>
-          <Tooltip label={sub.id}>{excerpt(sub.id, 5)}</Tooltip>
-        </Td>
-        <Td>
           <Tooltip label={sub.relayUrl}>{sub.relayUrl.substring(6)}</Tooltip>
         </Td>
         <Td>
@@ -98,6 +95,7 @@ export function SubscriptionsTable() {
         <Td>
           <Tooltip label={view}>{excerpt(view, 5)}</Tooltip>
         </Td>
+        <Td>{sub.options?.timeoutIn}</Td>
         <Td>
           <Button
             size={"sm"}
@@ -116,11 +114,11 @@ export function SubscriptionsTable() {
         <Thead>
           <Tr>
             <Th>Type</Th>
-            <Th>ID</Th>
             <Th>Relay</Th>
             <Th>Kind</Th>
             <Th>Filter</Th>
             <Th>View</Th>
+            <Th>Timeout</Th>
             <Th>Action</Th>
           </Tr>
         </Thead>

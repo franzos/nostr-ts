@@ -30,6 +30,8 @@ export class RelayConnection implements WebSocketClientConnection {
   info?: RelayInformationDocument;
   ws?: WebSocketClientBase;
 
+  error?: string | undefined;
+
   private subscriptions: Subscription[] = [];
 
   constructor(conf: WebSocketClientConfig) {
@@ -138,6 +140,7 @@ export class RelayConnection implements WebSocketClientConnection {
         write: this.write,
         powRequired: this.requiresPOW,
         isReady: this.isReady("any"),
+        error: this.error,
       };
     } else {
       return {
@@ -147,6 +150,7 @@ export class RelayConnection implements WebSocketClientConnection {
         powRequired: this.requiresPOW,
         info: this.info,
         isReady: this.isReady("any"),
+        error: this.error,
       };
     }
   }

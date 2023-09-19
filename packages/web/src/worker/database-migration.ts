@@ -3,6 +3,7 @@ import { ProcessedUserBase, EventBase, NEVENT_KIND } from "@nostr-ts/common";
 export function dbMigration(db, oldVersion, _newVersion, transaction) {
   if (oldVersion < 1) {
     // Initial version
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 1`);
     if (!db.objectStoreNames.contains("users")) {
       db.createObjectStore("users", { keyPath: "user.pubkey" });
     }
@@ -12,12 +13,14 @@ export function dbMigration(db, oldVersion, _newVersion, transaction) {
   }
 
   if (oldVersion < 2) {
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 2`);
     if (db.objectStoreNames.contains("following")) {
       db.deleteObjectStore("following");
     }
   }
 
   if (oldVersion < 3) {
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 3`);
     if (!db.objectStoreNames.contains("lists")) {
       db.createObjectStore("lists", { keyPath: "id" });
       const listStore = transaction.objectStore("lists");
@@ -26,6 +29,7 @@ export function dbMigration(db, oldVersion, _newVersion, transaction) {
   }
 
   if (oldVersion < 4) {
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 4`);
     const eventStore = db.createObjectStore("events", { keyPath: "id" });
 
     eventStore.createIndex("pubkey", "pubkey", { unique: false });

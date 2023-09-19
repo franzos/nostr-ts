@@ -1,10 +1,13 @@
 import {
   Box,
   Button,
+  HStack,
   Heading,
   Progress,
   Skeleton,
+  Spacer,
   Stack,
+  Text,
 } from "@chakra-ui/react";
 import { UserRecord } from "@nostr-ts/common";
 import { useEffect, useRef, useState } from "react";
@@ -16,9 +19,11 @@ export function PopularUsersList() {
   const [progressPercent, setProgressPercent] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [calculationTimeoutPassed, setCalculationTimeoutPassed] =
+    useState(false);
   const calculationCheckInterval = useRef(0);
 
-  const calculate = async () => {
+  const getPopular = async () => {
     await useNClient
       .getState()
       .getPopularUsers()
@@ -28,10 +33,12 @@ export function PopularUsersList() {
           clearInterval(calculationCheckInterval.current);
           setUsers(r);
         } else {
-          if (progressPercent < 70) {
+          if (progressPercent > 90) {
+            setCalculationTimeoutPassed(true);
+            clearInterval(calculationCheckInterval.current);
+            setIsLoading(false);
+          } else {
             setProgressPercent((prevProgress) => prevProgress + 5);
-          } else if (progressPercent < 90) {
-            setProgressPercent((prevProgress) => prevProgress + 1);
           }
         }
       });
@@ -41,8 +48,8 @@ export function PopularUsersList() {
     setUsers([]);
     setProgressPercent(0);
     calculationCheckInterval.current = setInterval(async () => {
-      await calculate();
-    }, 1000);
+      await getPopular();
+    }, 2000);
   };
 
   useEffect(() => {
@@ -64,29 +71,42 @@ export function PopularUsersList() {
 
   const LoadingSkeleton = (
     <>
-      <Progress size="xs" mb={2} hasStripe value={progressPercent} />
-      <Stack>
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton height="32px" mb={2} key={index} />
-        ))}
-      </Stack>
+      {calculationTimeoutPassed ? (
+        <Text fontSize="sm" mb={2}>
+          Looks like there are no events to work with yet. Try again after
+          browsing a little longer.
+        </Text>
+      ) : (
+        <>
+          <Progress size="xs" mb={2} hasStripe value={progressPercent} />
+          <Stack>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton height="32px" mb={2} key={index} />
+            ))}
+          </Stack>
+        </>
+      )}
     </>
   );
 
   return (
     <Box>
-      <Heading as="h2" size="md" marginBottom={4}>
-        Hot right now
-      </Heading>
-      {!isLoading && progressPercent === 100 ? (
-        <Button onClick={refresh} size="xs" marginBottom={2}>
-          Refresh
-        </Button>
-      ) : (
-        <Button onClick={onMount} size="xs" disabled={true} marginBottom={2}>
-          Calculating ...
-        </Button>
-      )}
+      <HStack spacing={2} mb={4}>
+        <Heading as="h2" size="md" marginBottom={4}>
+          Hot right now
+        </Heading>
+        <Spacer />
+        {!isLoading && progressPercent === 100 ? (
+          <Button onClick={refresh} size="xs" marginBottom={2}>
+            Refresh
+          </Button>
+        ) : (
+          <Button onClick={onMount} size="xs" disabled={true} marginBottom={2}>
+            Calculating ...
+          </Button>
+        )}
+      </HStack>
+
       {users.length > 0
         ? users.map((user, index) => (
             <UserInfo

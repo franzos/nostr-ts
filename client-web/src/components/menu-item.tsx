@@ -19,7 +19,7 @@ export function MenuItem({
       to={to}
       w="100%"
       padding={2}
-      borderRadius={3}
+      borderRadius={5}
       bg={"blackAlpha.50"}
       border={"1px solid"}
       borderColor={"whiteAlpha.100"}

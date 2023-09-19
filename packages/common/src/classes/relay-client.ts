@@ -44,24 +44,57 @@ export class RelayClientBase {
     }
   }
 
-  private sendSubscribe(
+  private relaysForRequest(payloadRelays: string[] | undefined) {
+    return payloadRelays && payloadRelays.length > 0
+      ? this.relays.filter((r) => payloadRelays.includes(r.url))
+      : this.relays;
+  }
+
+  private async waitForRelayToBeReady(relay, retryCount = 0): Promise<boolean> {
+    if (relay.isReady("read")) {
+      return true;
+    }
+    if (retryCount >= 5) {
+      console.warn(
+        `Relay ${relay.url} is not ready after 5 retries. Skipping...`
+      );
+
+      console.log(
+        `RELAY CLIENT: Relay ${relay.url} is not ready. Skipping... (${retryCount})`
+      );
+      return false;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return this.waitForRelayToBeReady(relay, retryCount + 1);
+  }
+
+  /**
+   * Subscribe to receive events
+   * Use filters to specify which events you want to receive
+   * @param payload
+   * @returns
+   */
+
+  subscribe(
     request: CountRequest | AuthRequest | EventsRequest | CloseRequest,
     retryCount = 0
   ): RelaySubscription[] {
+    // Filter relays if specified
+    const relays = this.relaysForRequest(request.relayUrls);
+
     const newSubscriptions: RelaySubscription[] = [];
 
-    // Filter relays if specified
-    const relays =
-      request?.relayUrls?.length > 0
-        ? this.relays.filter((r) => request.relayUrls.includes(r.url))
-        : this.relays;
-
-    // Always read since we are not posting anything
-    const opt = "read";
-    const relayCount = relays.length;
+    /**
+     * Track number of relays that are not ready or have errors
+     */
     let notReadyOrError = 0;
     for (const relay of relays) {
-      if (relay.isReady(opt)) {
+      this.waitForRelayToBeReady(relay).then((isReady) => {
+        if (!isReady) {
+          return;
+        }
+
         const { relayUrls, ...restOfRequest } = request;
         const subscription: RelaySubscription = {
           ...restOfRequest,
@@ -75,6 +108,9 @@ export class RelayClientBase {
         let message: ClientRequest | ClientCount | ClientAuth;
 
         if (request.type === CLIENT_MESSAGE_TYPE.REQ) {
+          /**
+           * Request events
+           */
           message = {
             type: CLIENT_MESSAGE_TYPE.REQ,
             subscriptionId: subscription.id,
@@ -86,11 +122,14 @@ export class RelayClientBase {
             message.filters,
           ]);
         } else if (request.type === CLIENT_MESSAGE_TYPE.COUNT) {
+          /**
+           * Count events
+           */
           const nips = relay.info?.supported_nips;
           if (nips && !nips.includes(45)) {
             console.warn(`Relay ${relay.url} does not support count command.`);
             subscription.error = `Relay ${relay.url} does not support count command.`;
-            continue;
+            return;
           }
           message = {
             type: CLIENT_MESSAGE_TYPE.COUNT,
@@ -103,19 +142,25 @@ export class RelayClientBase {
             message.filters,
           ]);
         } else if (request.type === CLIENT_MESSAGE_TYPE.AUTH) {
+          /**
+           * Authenticate
+           */
           message = {
             type: CLIENT_MESSAGE_TYPE.AUTH,
             signedEvent: request.signedEvent,
           };
           data = JSON.stringify([message.type, message.signedEvent]);
         } else {
-          throw new Error("Invalid subscription type.");
+          throw new Error(`Invalid subscription type: ${request.type}`);
         }
 
         try {
           relay.ws.sendMessage(data);
           relay.addSubscription(subscription);
 
+          /**
+           * Set timeout if specified
+           */
           if (request.type === CLIENT_MESSAGE_TYPE.REQ && request.options) {
             const timeoutIn = request.options.timeoutIn;
             if (timeoutIn) {
@@ -136,55 +181,10 @@ export class RelayClientBase {
           console.error(e);
           notReadyOrError++;
         }
-      } else {
-        console.warn(
-          `Relay ${relay.url} is not ready for ${opt} operations. Skipping...`
-        );
-        notReadyOrError++;
-      }
-    }
-
-    // If more than 4 relays, make sure at least 2 are ready
-    const relaysWitoutError = relayCount - notReadyOrError;
-    if (relayCount > 4 && relaysWitoutError < 2) {
-      console.warn(
-        `RELAY CLIENT: Only ${relaysWitoutError} relays are ready for ${opt} operations. Will try again in 2s`
-      );
-      setTimeout(() => {
-        if (retryCount < 5) {
-          console.log(`RELAY CLIENT: Not retrying.`);
-          return;
-        }
-        this.sendSubscribe(request, retryCount + 1);
-      }, 2000);
+      });
     }
 
     return newSubscriptions;
-  }
-
-  /**
-   * Subscribe to receive events
-   * Use filters to specify which events you want to receive
-   * @param payload
-   * @returns
-   */
-
-  subscribe(
-    payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
-  ): RelaySubscription[] {
-    return this.sendSubscribe(payload);
-  }
-
-  /**
-   * @deprecated
-   */
-  count(payload: CountRequest) {
-    if (payload.type !== CLIENT_MESSAGE_TYPE.COUNT) {
-      throw new Error("Invalid subscription type. Expected COUNT.");
-    }
-
-    const subscriptions = this.sendSubscribe(payload);
-    return subscriptions;
   }
 
   /**
@@ -291,51 +291,55 @@ export class RelayClientBase {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: payload.event,
     };
-    const data = JSON.stringify([message.type, message.data]);
+
+    // Use provided relay, or all relays
+    const relays = this.relaysForRequest(payload.relayUrls);
+    console.log("RELAY CLIENT: Sending event", message.data, relays);
 
     const published: PublishingQueueItem[] = [];
-    const relays = payload.relayUrls
-      ? this.relays.filter((r) => payload.relayUrls.includes(r.url))
-      : this.relays;
+    const data = JSON.stringify([message.type, message.data]);
 
     for (const relay of relays) {
-      if (relay.isReady("write")) {
-        const { relayUrls, ...restOfRequest } = payload;
+      const { relayUrls, ...restOfRequest } = payload;
 
-        const publish = {
-          id: nanoid(),
-          ...restOfRequest,
-          relayUrl: relay.url,
-          send: true,
-          error: undefined,
-        };
+      const publish = {
+        id: nanoid(),
+        ...restOfRequest,
+        relayUrl: relay.url,
+        send: true,
+        error: undefined,
+      };
 
-        const supportsEvent = relay.supportsEvent(payload.event);
-        if (!supportsEvent) {
-          console.log(
-            `Event ${payload.event.id} not published to ${relay.url} because not all needed NIPS are supported`,
-            message
-          );
-          publish.send = false;
-          publish.error = `Event ${payload.event.id} not published to ${relay.url} because not all needed NIPS are supported`;
+      const writeEnabled = relay.isReady("write");
+      const supportsEvent = relay.supportsEvent(payload.event);
+      if (!writeEnabled || !supportsEvent) {
+        const errorMsg = !writeEnabled
+          ? `Relay ${relay.url} is not ready for write operations. Skipping...`
+          : `Event ${payload.event.id} was not published because not all needed NIPS are supported`;
+        publish.send = false;
+        publish.error = errorMsg;
 
-          published.push(publish);
-          continue;
-        }
-
-        relay.ws.sendMessage(data);
         published.push(publish);
-      } else {
-        console.warn(
-          `Relay ${relay.url} is not ready for write operations. Skipping...`
-        );
+        continue;
       }
+
+      console.log(
+        `RELAY CLIENT: Sending event ${payload.event.id} to ${relay.url}.`,
+        data
+      );
+
+      relay.ws.sendMessage(data);
+      published.push(publish);
     }
 
     return published.length > 0 ? published : undefined;
   }
 
+  /**
+   * These should relate to the same event
+   */
   sendQueueItems(items: PublishingQueueItem[]) {
+    // TODO: Add checks to make sure all items relate to the same event
     const message = {
       type: CLIENT_MESSAGE_TYPE.EVENT,
       data: items.find((i) => i.event)?.event,
@@ -345,6 +349,10 @@ export class RelayClientBase {
     for (const item of items) {
       const relay = this.relays.find((r) => r.url === item.relayUrl);
       if (relay) {
+        console.log(
+          `Sending queued event ${item.event.id} to ${relay.url}.`,
+          data
+        );
         relay.ws.sendMessage(data);
         item.send = true;
       }

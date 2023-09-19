@@ -81,6 +81,7 @@ export interface WebSocketClientInfo extends WebSocketClientConfig {
    */
   powRequired?: number;
   isReady: boolean;
+  error: string | undefined;
 }
 
 export interface WebSocketClientConnection extends WebSocketClientConfig {

@@ -5,10 +5,11 @@ export function filterDefault(limit?: number) {
     kinds: [
       NEVENT_KIND.SHORT_TEXT_NOTE,
       NEVENT_KIND.LONG_FORM_CONTENT,
-      NEVENT_KIND.REPOST,
+      // NEVENT_KIND.REPOST,
     ],
     until: Math.round(Date.now() / 1000),
     since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
+    limit: 15,
   });
   if (limit) {
     filters.limit = limit;
@@ -21,7 +22,8 @@ export function filterByAuthor(pubKeys: string[], limit?: number) {
     kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
     authors: pubKeys,
     until: Math.round(Date.now() / 1000),
-    since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
+    since: Math.round((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000),
+    limit: 15,
   });
   if (limit) {
     filters.limit = limit;

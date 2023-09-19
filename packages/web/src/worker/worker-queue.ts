@@ -31,16 +31,35 @@ export class IncomingEventsQueue {
     this._background = [];
   }
 
+  // Add a sleep function to introduce delay
+  sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   /**
-   * Manually process the queue
+   * Manually process the queue with throttling
    */
-  async process() {
+  async process(batchSize = 5, delay = 500) {
     while (this._priority.length > 0 || this._background.length > 0) {
-      const taskToRun = this._priority.shift() || this._background.shift();
-      if (taskToRun) {
-        await taskToRun;
+      const tasksToRun = [];
+
+      // Take `batchSize` tasks from priority queue or from the background queue
+      while (
+        tasksToRun.length < batchSize &&
+        (this._priority.length > 0 || this._background.length > 0)
+      ) {
+        tasksToRun.push(this._priority.shift() || this._background.shift());
+      }
+
+      // Wait for the batch to complete
+      await Promise.all(tasksToRun);
+
+      // Introduce a delay before the next batch
+      if (this._priority.length > 0 || this._background.length > 0) {
+        await this.sleep(delay);
       }
     }
+
     this._current = Promise.resolve();
   }
 

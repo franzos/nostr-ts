@@ -119,7 +119,7 @@ export function Events({ view, changingView }: EventsProps) {
         data={events}
         itemContent={(index, data) => (
           <Box mb={2}>
-            <Event data={data} level={0} />
+            <Event key={index} data={data} level={0} />
           </Box>
         )}
         endReached={() => {

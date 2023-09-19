@@ -19,7 +19,6 @@ import {
 import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
-import { excerpt } from "../lib/excerpt";
 import { NavLink } from "react-router-dom";
 import { EventFormModal } from "./event-form-modal";
 import { SubscriptionsTable } from "./subscriptions-table";

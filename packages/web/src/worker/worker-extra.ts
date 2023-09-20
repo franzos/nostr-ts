@@ -4,6 +4,8 @@ import {
   FiltersBase,
   LightProcessedEvent,
   ProcessedEventWithEvents,
+  PublishingQueueItem,
+  WebSocketEvent,
 } from "@nostr-ts/common";
 
 export const ONE_WEEK = 7 * 24 * 60 * 60;
@@ -70,15 +72,40 @@ export function calculateEventsRequestRange(
 
 export interface StorageQueryParams {
   filters: FiltersBase;
-  // Keep track of requests (first is usually undefined; second is 1)
+  /**
+   * Track how many requests we've made against these filters
+   * set automatically by the worker
+   *
+   * starts with 0
+   */
   reqCount?: number;
-  // prevInterval?: number;
-  // Above limit; pick-up next round (will invoke memory)
+  /**
+   * Essentially pagination
+   * as long as there's more results, we stay in the given time range
+   */
   remainInRange?: number;
-  // Means, we stick to the interval, and don't start from the last event
+  /**
+   * Related to stickyInterval
+   * set automatically by the worker
+   */
   prevInterval?: number;
+  /**
+   * If true, we don't adjust the interval based on the last event
+   */
   stickyInterval: boolean;
+  /**
+   * Whether to go forward, or backward in time
+   *
+   * defaults to NEWER
+   */
   direction?: "OLDER" | "NEWER";
+  /**
+   * Stream events to frontend
+   * do not save to DB
+   *
+   * defaults to false
+   */
+  isLive?: boolean;
 
   // No subscription
   isOffline?: boolean;
@@ -101,23 +128,11 @@ export function relayEventsRequestFromQuery(
   const query = req.query;
   const { filters } = query;
 
-  let intervalAdjusted;
+  let intervalAdjusted: number | undefined;
 
   if (query.filters.until && query.filters.since) {
-    // const prevInterval =
-    //   query.direction === "OLDER"
-    //     ? query.filters.until - query.filters.since
-    //     : query.filters.since - query.filters.until;
-    // If Interval is larger than 7 days, or smaller than -7 days, we default to 7
-    // const interval = Math.min(Math.max(prevInterval, -ONE_WEEK), ONE_WEEK);
-    // If it's smaller than 1 day, we increase to 3
     intervalAdjusted = ONE_WEEK;
   }
-
-  // We cannot query into the future, so yeah
-
-  // if direction is NEWER, we use the since value
-  // if direction is OLDER, we use the until value
   return {
     type: CLIENT_MESSAGE_TYPE.REQ,
     filters: {
@@ -128,8 +143,48 @@ export function relayEventsRequestFromQuery(
       until: filters.until,
     },
     options: {
-      timeoutIn: TEN_SECONDS_IN_MS,
+      timeoutIn: ONE_MINUTE,
       view: req.token,
+      isLive: query.isLive,
     },
   };
+}
+
+export type SystemStatus = "online" | "offline" | "loading";
+
+export interface WorkerEvent {
+  data: {
+    type:
+      | "event:notify"
+      | "event:new"
+      | "event:update"
+      | "relay:message"
+      | "event:queue:new"
+      | "event:queue:update"
+      | "status:change"
+      | "RAW";
+    view: string;
+    data:
+      | LightProcessedEvent
+      | WebSocketEvent
+      | PublishingQueueItem
+      | SystemStatus;
+  };
+}
+
+export interface WorkerEventNew {
+  type: "event:new";
+  view: string;
+  data: LightProcessedEvent;
+}
+
+export interface WorkerEventUpdate {
+  type: "event:update";
+  view: string;
+  data: LightProcessedEvent;
+}
+
+export interface WorkerEventStatusChange {
+  type: "status:change";
+  data: SystemStatus;
 }

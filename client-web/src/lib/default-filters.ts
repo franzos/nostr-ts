@@ -9,7 +9,7 @@ export function filterDefault(limit?: number) {
     ],
     until: Math.round(Date.now() / 1000),
     since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
-    limit: 15,
+    limit: 50,
   });
   if (limit) {
     filters.limit = limit;
@@ -23,7 +23,7 @@ export function filterByAuthor(pubKeys: string[], limit?: number) {
     authors: pubKeys,
     until: Math.round(Date.now() / 1000),
     since: Math.round((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000),
-    limit: 15,
+    limit: 50,
   });
   if (limit) {
     filters.limit = limit;

@@ -9,13 +9,12 @@ import {
   UserRecord,
 } from "@nostr-ts/common";
 import { NClientDB, dbMigration } from "./database-migration";
-import { ONE_DAY, ONE_WEEK } from "./worker-extra";
+import { ONE_DAY } from "./worker-extra";
 import { CreateListRecord, ListRecord, ProcessedListRecord } from "./lists";
 import { nanoid } from "nanoid";
 import { NUser } from "../classes";
 
-function // TODO
-sortAndTrim(
+export function sortAndTrimPopular(
   data: { [key: string]: number },
   max = 10
 ): { [key: string]: number } {
@@ -23,6 +22,17 @@ sortAndTrim(
     .sort(([, a], [, b]) => b - a)
     .slice(0, max);
   return Object.fromEntries(sorted);
+}
+
+export function mergePopular(
+  firstObj: { [key: string]: number },
+  secondObj: { [key: string]: number }
+): { [key: string]: number } {
+  const merged = { ...firstObj };
+  for (const [key, value] of Object.entries(secondObj)) {
+    merged[key] = (merged[key] || 0) + value;
+  }
+  return merged;
 }
 
 export function NewProcessedEventFromDB(
@@ -506,7 +516,7 @@ export class Database {
       cursor = await cursor.continue();
     }
 
-    events = sortAndTrim(events, 50);
+    events = sortAndTrimPopular(events, 50);
     return events;
   }
 
@@ -537,8 +547,8 @@ export class Database {
       }
     }
 
-    users = sortAndTrim(users);
-    events = sortAndTrim(events);
+    users = sortAndTrimPopular(users);
+    events = sortAndTrimPopular(events);
 
     const took = Date.now() - startTime;
     console.log(`=> WORKER: Took ${took}ms to calculate popular`);

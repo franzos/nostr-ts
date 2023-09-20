@@ -8,6 +8,7 @@ import {
   useToast,
   FormHelperText,
   ButtonGroup,
+  useDisclosure,
 } from "@chakra-ui/react";
 import {
   CLIENT_MESSAGE_TYPE,
@@ -15,9 +16,11 @@ import {
   NFilters,
   NewUpdateUserMetadata,
   UserMetadata,
+  WebSocketClientInfo,
 } from "@nostr-ts/common";
 import { useEffect, useRef, useState } from "react";
 import { useNClient } from "../state/client";
+import { RelaySelection } from "./relay-selection";
 
 interface UserProfileFormProps {
   pubkey: string;
@@ -44,14 +47,83 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
 
   const toast = useToast();
 
+  // Relay selection
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [relays, setRelays] = useState<
+    {
+      data: WebSocketClientInfo;
+      isAssigned: boolean;
+    }[]
+  >([]);
+
+  const availableRelaysCount = relays.filter((item) => item.isAssigned).length;
+
+  const onRelaySelection = (url: string, action: "add" | "remove") => {
+    setRelays(
+      relays.map((item) => {
+        if (item.data.url === url) {
+          return {
+            ...item,
+            isAssigned: action === "add" ? true : false,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
   useEffect(() => {
     if (props.metadata && !hasChanges.current) {
       setUserMetadata(Object.assign(userMetadata, props.metadata));
     }
   }, [props.metadata]);
 
+  useEffect(() => {
+    useNClient
+      .getState()
+      .getRelays()
+      .then((r) => {
+        if (r) {
+          setRelays(
+            r.map((item) => {
+              return {
+                data: item,
+                isAssigned: false,
+              };
+            })
+          );
+        }
+      });
+  }, []);
+
+  const handleError = (error: string) => {
+    toast({
+      title: "Error",
+      description: error,
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  // const handleSuccess = (message: string) => {
+  //   toast({
+  //     title: "Success",
+  //     description: message,
+  //     status: "success",
+  //     duration: 5000,
+  //     isClosable: true,
+  //   });
+  // };
+
   const updateData = async () => {
     setIsBusy(true);
+    const relayUrls = relays.map((item) => item.data.url);
+    if (relayUrls.length === 0) {
+      handleError("Select at least one relay");
+      setIsBusy(false);
+      return;
+    }
     const obj: Record<string, string> = {}; // specify type here
     for (const [key, value] of Object.entries(userMetadata)) {
       if (value && value !== "") {
@@ -76,6 +148,7 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
     try {
       await useNClient.getState().signAndSendEvent({
         event: ev,
+        relayUrls,
       });
       setIsBusy(false);
       await useNClient.getState().subscribe({
@@ -211,6 +284,8 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
         />
       </FormControl>
 
+      {isOpen && <RelaySelection relays={relays} onChange={onRelaySelection} />}
+
       <ButtonGroup>
         <Button
           colorScheme="blue"
@@ -220,8 +295,11 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
         >
           Send update
         </Button>
+        <Button variant={"outline"} onClick={isOpen ? onClose : onOpen}>
+          Select relays ({availableRelaysCount})
+        </Button>
         <Button
-          isDisabled={!hasChanges.current}
+          isDisabled={!hasChanges.current || availableRelaysCount === 0}
           onClick={() => (hasChanges.current = false)}
         >
           Reset

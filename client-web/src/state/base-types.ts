@@ -8,13 +8,11 @@ import {
   RelayOK,
   WebSocketClientInfo,
   Subscription,
-  PublishingQueueItem,
   SubscriptionOptions,
   AuthRequest,
   CloseRequest,
   CountRequest,
   EventsRequest,
-  WebSocketEvent,
   ProcessedUserBase,
   UserRecord,
   UserPublicKeyAndRelays,
@@ -92,27 +90,6 @@ export interface NClientBase {
     },
     options: SubscriptionOptions
   ): Promise<void>;
-}
-
-export type SystemStatus = "online" | "offline" | "loading";
-
-export interface WorkerEvent {
-  data: {
-    type:
-      | "event:new"
-      | "event:update"
-      | "relay:message"
-      | "event:queue:new"
-      | "event:queue:update"
-      | "status:change"
-      | "RAW";
-    view: string;
-    data:
-      | LightProcessedEvent
-      | WebSocketEvent
-      | PublishingQueueItem
-      | SystemStatus;
-  };
 }
 
 export interface CreateListRecord {

@@ -45,7 +45,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     state.connected && state.keystore !== "none",
     state.keypairIsLoaded,
   ]);
-  const [isBusy, setBusy] = useState<boolean>(false);
+  const [isBusy, setIsBusy] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
 
   const [keystore, keypair] = useNClient((state) => [
@@ -211,12 +211,12 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
    * Submit event
    */
   const submit = async () => {
-    setBusy(true);
+    setIsBusy(true);
     setErrors([]);
     const relayUrls = relays.map((item) => item.data.url);
     if (relayUrls.length === 0) {
       handleError("Select at least one relay");
-      setBusy(false);
+      setIsBusy(false);
       return;
     }
     const newEvent = createNewEventForSubmission(
@@ -227,14 +227,14 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     );
     if (newEvent.error) {
       handleError(newEvent.error);
-      setBusy(false);
+      setIsBusy(false);
       return;
     }
     const event = newEvent.event as NEvent;
     const check = checkEvent(event);
     if (check?.error) {
       handleError(check.error);
-      setBusy(false);
+      setIsBusy(false);
       return;
     }
 
@@ -247,7 +247,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         handleSuccess(`Event sent: ${excerpt(event.content, 20)}`);
 
         reset();
-        setBusy(false);
+        setIsBusy(false);
         if (props.sendCallback) {
           props.sendCallback(evId);
         }
@@ -260,7 +260,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         error = e ? e.toString() : "Unknown error";
       }
       handleError(error);
-      setBusy(false);
+      setIsBusy(false);
       return;
     }
   };

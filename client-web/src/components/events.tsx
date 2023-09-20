@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Button, Progress, Skeleton, Stack, Text } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-import { unixTimeToRelative } from "../lib/relative-time";
 
 import { Virtuoso } from "react-virtuoso";
 
@@ -70,70 +69,41 @@ export function Events({ view, changingView }: EventsProps) {
     }
   }, [hasNewerEvents, isLoading]);
 
-  const loadNewerEvents = async () => {
-    setIsLoading(true);
-    throttleTimestamp.current = Date.now();
-    const nextQuery = useNClient.getState().nextQuery;
-    if (!nextQuery) return;
-    await useNClient.getState().getEvents(
-      {
-        token: nextQuery.token,
-        query: {
-          ...nextQuery.next,
-          filters: {
-            ...nextQuery.next.filters,
-            until: Math.round(Date.now() / 1000),
-            since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
-          },
-        },
-      },
-      "replace"
-    );
-    setIsLoading(false);
-  };
-
-  const LoadingSkeleton = (
-    <Stack>
-      {Array.from({ length: 3 }).map((_, index) => (
-        <Skeleton height="160px" mb={2} key={index} />
-      ))}
-    </Stack>
-  );
-
-  const NewerEventsPrompt = (lastTimestamp: number) => (
-    <Button onClick={loadNewerEvents} width="100%" isLoading={isLoading}>
-      Click to load newer events
-      {" - "}
-      {unixTimeToRelative(lastTimestamp)}
-    </Button>
-  );
+  // const loadNewerEvents = async () => {
+  //   setIsLoading(true);
+  //   throttleTimestamp.current = Date.now();
+  //   const nextQuery = useNClient.getState().nextQuery;
+  //   if (!nextQuery) return;
+  //   await useNClient.getState().getEvents(
+  //     {
+  //       token: nextQuery.token,
+  //       query: {
+  //         ...nextQuery.next,
+  //         filters: {
+  //           ...nextQuery.next.filters,
+  //           until: Math.round(Date.now() / 1000),
+  //           since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
+  //         },
+  //       },
+  //     },
+  //     "replace"
+  //   );
+  //   setIsLoading(false);
+  // };
 
   return (
-    <Box style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>
-      {hasNewerEvents &&
-        hasNewerEvents.lastTimestamp &&
-        !isLoading &&
-        NewerEventsPrompt(hasNewerEvents.lastTimestamp)}
-      <Virtuoso
-        useWindowScroll={true}
-        data={events}
-        itemContent={(index, data) => (
-          <Box mb={2}>
-            <Event key={index} data={data} level={0} />
-          </Box>
-        )}
-        endReached={() => {
-          loadEvents();
-        }}
-        overscan={1000}
-      />
-      {events.length === 0 && (
-        <Box marginTop={5} marginBottom={5} textAlign={"center"}>
-          <Progress size="xs" mb={2} hasStripe isIndeterminate />
-          <Text>Waiting for fresh content ... hold on.</Text>
-          {LoadingSkeleton}
+    <Virtuoso
+      useWindowScroll={true}
+      data={events}
+      itemContent={(index, data) => (
+        <Box mb={2}>
+          <Event key={index} data={data} level={0} />
         </Box>
       )}
-    </Box>
+      endReached={() => {
+        loadEvents();
+      }}
+      overscan={1000}
+    />
   );
 }

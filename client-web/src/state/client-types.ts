@@ -9,13 +9,14 @@ import {
   LightProcessedEvent,
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
-import { NClientBase, WorkerEvent } from "./base-types";
+import { NClientBase } from "./base-types";
 import { NClientKeystore } from "./keystore";
 import {
   NWorker,
   StorageEventsQuery,
   StorageQueryParams,
   StorageQueryResult,
+  WorkerEvent,
 } from "@nostr-ts/web";
 
 export interface NClient extends NClientBase {

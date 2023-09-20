@@ -1,11 +1,10 @@
-import { Heading, Box, Grid } from "@chakra-ui/react";
+import { Box, Grid } from "@chakra-ui/react";
 import { UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
 import { User } from "../components/user";
 import { Events } from "../components/events";
-import { CreateEventForm } from "../components/create-event-form";
 import { filterByAuthor } from "../lib/default-filters";
 
 export function ProfileRoute() {
@@ -99,6 +98,7 @@ export function ProfileRoute() {
         direction: "OLDER",
         filters: filterByAuthor([pk]),
         stickyInterval: true,
+        isLive: true,
       },
     });
   };
@@ -145,16 +145,14 @@ export function ProfileRoute() {
             />
           </Box>
         )}
-        <Box overflowY="auto">
-          <Events view={view} />
-        </Box>
+        <Events view={view} />
       </Box>
 
       <Box display="flex" flexDirection="column">
-        <Heading as="h2" size="md" marginBottom={4}>
+        {/* <Heading as="h2" size="md" marginBottom={4}>
           Broadcast to the Network
         </Heading>
-        <CreateEventForm />
+        <CreateEventForm /> */}
       </Box>
     </Grid>
   );

@@ -39,6 +39,7 @@ export function EventsFeeds() {
         direction: "OLDER",
         filters: activeFilters.current,
         stickyInterval: true,
+        isLive: true,
       },
     });
 
@@ -87,6 +88,7 @@ export function EventsFeeds() {
       query: {
         filters: activeFilters.current,
         stickyInterval: true,
+        isLive: true,
       },
     });
     changingView.current = false;

@@ -27,7 +27,12 @@ import {
   eventHasPositionalEventTag,
   eventHasPositionalEventTags,
 } from "@nostr-ts/common";
-import { Database, NewProcessedEventFromDB } from "./database";
+import {
+  Database,
+  NewProcessedEventFromDB,
+  mergePopular,
+  sortAndTrimPopular,
+} from "./database";
 import {
   ONE_MINUTE,
   ONE_SECOND,
@@ -35,6 +40,9 @@ import {
   StorageEventsQuery,
   StorageQueryResult,
   TEN_SECONDS_IN_MS,
+  WorkerEventNew,
+  WorkerEventStatusChange,
+  WorkerEventUpdate,
   calculateEventsRequestRange,
   relayEventsRequestFromQuery,
 } from "./worker-extra";
@@ -125,10 +133,11 @@ export class NWorker {
       console.log(`=> WORKER: Status change: ${this.status} => ${newStatus}`);
       this.status = newStatus;
       if (this.options.isInWebWorker) {
-        postMessage({
+        const wev: WorkerEventStatusChange = {
           type: "status:change",
           data: this.status,
-        });
+        };
+        postMessage(wev);
       }
     }
   }
@@ -353,12 +362,31 @@ export class NWorker {
       {
         timeoutIn: TEN_SECONDS_IN_MS,
       },
-      [(NEVENT_KIND.METADATA, NEVENT_KIND.SHORT_TEXT_NOTE)]
+      [NEVENT_KIND.METADATA]
     );
   }
 
+  private popularUsersFromMemory() {
+    let users: { [pubkey: string]: number } = {};
+
+    for (const event of this.eventsInMemory) {
+      if (!event.user) continue;
+      if (users[event.user.pubkey]) {
+        users[event.user.pubkey] += 1;
+      } else {
+        users[event.user.pubkey] = 1;
+      }
+    }
+
+    return users;
+  }
+
   async getPopularUsers() {
-    const pubkeys = Object.entries(this.popularUsers).map((p) => p[0]);
+    const pubkeys = Object.entries(
+      sortAndTrimPopular(
+        mergePopular(this.popularUsers, this.popularUsersFromMemory())
+      )
+    ).map((p) => p[0]);
     const users: UserRecord[] = [];
     for (const pubkey of pubkeys) {
       const user = await this.db.getUser(pubkey);
@@ -376,8 +404,26 @@ export class NWorker {
     return users ? users : undefined;
   }
 
+  private poularEventsFromMemory() {
+    let events: { [id: string]: number } = {};
+
+    for (const event of this.eventsInMemory) {
+      if (events[event.event.id]) {
+        events[event.event.id] += 1;
+      } else {
+        events[event.event.id] = 1;
+      }
+    }
+
+    return events;
+  }
+
   async getPopularEvents() {
-    const ids = Object.entries(this.popularEvents).map((p) => p[0]);
+    const ids = Object.entries(
+      sortAndTrimPopular(
+        mergePopular(this.popularEvents, this.poularEventsFromMemory())
+      )
+    ).map((p) => p[0]);
     const events: LightProcessedEvent[] = [];
     for (const id of ids) {
       const event = await this.db.getEvent(id);
@@ -528,24 +574,39 @@ export class NWorker {
     };
   }
 
+  addToMemoryAndFrontend(event: ProcessedEventWithEvents, view: string) {
+    console.log(`=> WORKER: addToMemoryAndFrontend`, event);
+    this.eventsInMemory.push(event);
+    if (this.options.isInWebWorker) {
+      const workerEvent: WorkerEventNew = {
+        type: "event:new",
+        view,
+        data: ProcessedToLightProcessedEvent(event),
+      };
+      postMessage(workerEvent);
+    }
+  }
+
   /**
    * Update in-memory event and send to frontend
    * - Usually for worker scenario to teach the main thread
    */
-  updateEventInMemoryAndFrontend(event: ProcessedEventWithEvents) {
+  updateEventInMemoryAndFrontend(
+    event: ProcessedEventWithEvents,
+    view?: string
+  ) {
     const index = this.eventsInMemory.findIndex(
       (ev) => ev.event.id === event.event.id
     );
     if (index !== -1) {
       this.eventsInMemory[index] = event;
       if (this.options.isInWebWorker) {
-        const workerEvent = {
-          data: {
-            type: "event:update",
-            data: ProcessedToLightProcessedEvent(event),
-          },
+        const workerEvent: WorkerEventUpdate = {
+          type: "event:update",
+          view,
+          data: ProcessedToLightProcessedEvent(event),
         };
-        postMessage(workerEvent.data);
+        postMessage(workerEvent);
       }
     }
   }
@@ -687,7 +748,7 @@ export class NWorker {
 
       if (this.options.isInWebWorker) {
         postMessage({
-          type: "event:new",
+          type: "event:notify",
           data: ProcessedToLightProcessedEvent(NewProcessedEventFromDB(event)),
         });
       }
@@ -709,11 +770,25 @@ export class NWorker {
       if (params.query.isOffline === true) {
         console.warn(`=> WORKER: Offline mode`);
       } else {
+        console.log(`=> WORKER: Online mode`);
         await this.subscribe(relayEventsRequestFromQuery(params));
       }
     }
 
     this.lastQuery = params;
+
+    console.log(`=> WORKER: getEvents`, params);
+
+    // if (params.query.isLive) {
+    //   console.log(`=> WORKER: IS LIVE`, params);
+    //   return {
+    //     next: params.query,
+    //     token: params.token,
+    //     events: [],
+    //   };
+    // }
+
+    // console.log(`=> WORKER: IS NOT LIVE`, params);
 
     const result = await this._getEventsQueryProcessor(params);
     if (
@@ -781,7 +856,8 @@ export class NWorker {
   private async mergeEventWithActive(
     event: EventBaseSigned,
     relayUrl: string,
-    view?: string
+    view?: string,
+    isLive?: boolean
   ) {
     if (event.kind === NEVENT_KIND.ZAP_RECEIPT) {
       /**
@@ -813,7 +889,7 @@ export class NWorker {
               ev.zapReceipts = [data];
             }
 
-            this.updateEventInMemoryAndFrontend(ev);
+            this.updateEventInMemoryAndFrontend(ev, view);
             return;
           } catch (err) {
             console.log(`=> WORKER: Error decoding invoice`, err);
@@ -832,11 +908,14 @@ export class NWorker {
 
       for (const ev of this.eventsInMemory) {
         if (ev.event.pubkey === event.pubkey) {
-          this.updateEventInMemoryAndFrontend({
-            ...ev,
-            user: data.user,
-            eventRelayUrls: data.relayUrls,
-          });
+          this.updateEventInMemoryAndFrontend(
+            {
+              ...ev,
+              user: data.user,
+              eventRelayUrls: data.relayUrls,
+            },
+            view
+          );
         }
       }
     } else if (event.kind === NEVENT_KIND.REACTION) {
@@ -866,7 +945,7 @@ export class NWorker {
           ev.reactions = [data];
         }
 
-        this.updateEventInMemoryAndFrontend(ev);
+        this.updateEventInMemoryAndFrontend(ev, view);
         return;
       }
     } else if (event.kind === NEVENT_KIND.REPOST) {
@@ -895,7 +974,7 @@ export class NWorker {
           ev.reposts = [data];
         }
 
-        this.updateEventInMemoryAndFrontend(ev);
+        this.updateEventInMemoryAndFrontend(ev, view);
         return;
       }
     } else if (event.kind === NEVENT_KIND.SHORT_TEXT_NOTE) {
@@ -927,7 +1006,7 @@ export class NWorker {
               ev.replies = [data];
             }
 
-            this.updateEventInMemoryAndFrontend(ev);
+            this.updateEventInMemoryAndFrontend(ev, view);
             return;
           }
         }
@@ -949,12 +1028,42 @@ export class NWorker {
               ev.replies = [data];
             }
 
-            this.updateEventInMemoryAndFrontend(ev);
+            this.updateEventInMemoryAndFrontend(ev, view);
             return;
           }
         }
         // Not adding to main thread since this is a reponse; we only couldn't find the related event
         return;
+      }
+
+      if (isLive) {
+        const exists = this.eventsInMemory.find(
+          (ev) => ev.event.id === event.id
+        );
+        if (!exists) {
+          // TODO: This is probably not needed
+          const userData = await this.getUser(event.pubkey);
+          const mentions = new NEvent(event).hasMentions();
+          const newEvent: ProcessedEventWithEvents = {
+            eventRelayUrls: [relayUrl],
+            user: userData ? userData.user : undefined,
+            event: new NEvent(event),
+            reactions: [],
+            reposts: [],
+            badgeAwards: [],
+            replies: [],
+            mentions:
+              mentions?.map((mention) => {
+                return {
+                  pubkey: mention,
+                  id: event.id,
+                };
+              }) || [],
+            zapReceipts: [],
+          };
+
+          this.addToMemoryAndFrontend(newEvent, view);
+        }
       }
 
       this.notifyOfNewEvent(event);
@@ -1067,6 +1176,7 @@ export class NWorker {
 
     let subscription: RelaySubscription | undefined = undefined;
     let associatedWithView: string | undefined = undefined;
+    let isLive: boolean = false;
 
     if (
       payLoadKind === RELAY_MESSAGE_TYPE.COUNT ||
@@ -1077,6 +1187,7 @@ export class NWorker {
         payload.data[1] as string
       );
       associatedWithView = subscription?.options?.view;
+      isLive = subscription?.options?.isLive || false;
     }
 
     /**
@@ -1105,15 +1216,13 @@ export class NWorker {
         kind === NEVENT_KIND.METADATA
       ) {
         this.incomingEventsQueue.enqueuePriority(async () => {
+          let subEventCountExceeded = false;
+
           if (kind !== NEVENT_KIND.METADATA) {
             if (this.eventsInMemory.length >= 100 * 5) {
               return;
             }
-          }
-          if (
-            kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-            kind === NEVENT_KIND.LONG_FORM_CONTENT
-          ) {
+
             if (subscription && subscription.id) {
               if (this.subscriptionEventsCount[subscription.id]) {
                 this.subscriptionEventsCount[subscription.id].count++;
@@ -1122,12 +1231,12 @@ export class NWorker {
                   this.subscriptionEventsCount[subscription.id].limit
                 ) {
                   console.log(`=> WORKER: Subscription limit reached`);
-                  return;
+                  subEventCountExceeded = true;
                 }
               } else {
                 this.subscriptionEventsCount[subscription.id] = {
                   count: 1,
-                  limit: 25,
+                  limit: 10,
                   createdAt: Date.now(),
                 };
               }
@@ -1142,7 +1251,9 @@ export class NWorker {
             }
           }
 
-          await this.db.saveEvent(ev);
+          if (!isLive && !subEventCountExceeded) {
+            await this.db.saveEvent(ev);
+          }
 
           if (kind === NEVENT_KIND.METADATA) {
             const newUser = new NUserBase();
@@ -1161,7 +1272,8 @@ export class NWorker {
           await this.mergeEventWithActive(
             ev,
             payload.meta.url,
-            associatedWithView
+            associatedWithView,
+            isLive
           );
         });
       } else if (
@@ -1177,12 +1289,16 @@ export class NWorker {
               return;
             }
           }
-          await this.db.saveEvent(ev);
+
+          if (!isLive) {
+            await this.db.saveEvent(ev);
+          }
 
           await this.mergeEventWithActive(
             ev,
             payload.meta.url,
-            associatedWithView
+            associatedWithView,
+            isLive
           );
         });
       }

@@ -89,9 +89,9 @@ export function BottomBar() {
           if (event.data[0] === RELAY_MESSAGE_TYPE.NOTICE) {
             description = event.data[1];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.OK) {
+            success = event.data[2];
             title = success ? `Event accepted` : `Event rejected`;
             description = `${event.meta.url}`;
-            success = event.data[2];
           } else if (event.data[0] === RELAY_MESSAGE_TYPE.EOSE) {
             // Ignore for now
             return;

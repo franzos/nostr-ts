@@ -26,8 +26,13 @@ import {
   saveKeyStoreConfig,
 } from "./keystore";
 import { SubscriptionOptions } from "@nostr-ts/common";
-import { CreateListRecord, SystemStatus, WorkerEvent } from "./base-types";
-import { NWorker, StorageEventsQuery } from "@nostr-ts/web";
+import { CreateListRecord } from "./base-types";
+import {
+  NWorker,
+  StorageEventsQuery,
+  SystemStatus,
+  WorkerEvent,
+} from "@nostr-ts/web";
 
 const throttleDelayInMs = 500;
 
@@ -82,7 +87,7 @@ export const useNClient = create<NClient>((set, get) => ({
       if (payload.type === "RAW") return;
 
       switch (payload.type) {
-        case "event:new":
+        case "event:notify":
           set({
             hasNewerEvents: {
               count: (function () {
@@ -96,6 +101,9 @@ export const useNClient = create<NClient>((set, get) => ({
                 .created_at,
             },
           });
+          break;
+        case "event:new":
+          get().addEvent(payload.data as LightProcessedEvent, payload.view);
           break;
         case "event:update":
           get().updateEvent(payload.data as LightProcessedEvent);

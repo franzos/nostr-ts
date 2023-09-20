@@ -21,7 +21,12 @@ export interface SubscriptionOptions {
    * for ex. `welcome` or `profile:<uuid>
    */
   view?: string;
+  // TODO
   unsubscribeOnEose?: boolean;
+  /**
+   * Doesn't save to DB
+   */
+  isLive?: boolean;
 }
 
 /**

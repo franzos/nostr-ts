@@ -4,9 +4,7 @@ import {
   HStack,
   Heading,
   Progress,
-  Skeleton,
   Spacer,
-  Stack,
   Text,
 } from "@chakra-ui/react";
 import { UserRecord } from "@nostr-ts/common";
@@ -79,11 +77,6 @@ export function PopularUsersList() {
       ) : (
         <>
           <Progress size="xs" mb={2} hasStripe value={progressPercent} />
-          <Stack>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton height="32px" mb={2} key={index} />
-            ))}
-          </Stack>
         </>
       )}
     </>

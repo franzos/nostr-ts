@@ -2,13 +2,13 @@ import { Box } from "@chakra-ui/react";
 import { EventContentWithLinks } from "./clickable-links";
 
 interface EventContentProps {
-  content: string;
+  content: string | undefined;
 }
 
 export function EventContent({ content }: EventContentProps) {
   return (
     <>
-      {content !== "" && (
+      {content && content !== "" && (
         <Box
           overflowWrap={"break-word"}
           wordBreak={"break-word"}

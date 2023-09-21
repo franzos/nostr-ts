@@ -89,7 +89,7 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
         if (r) {
           setRelays(
             r.map((item) => {
-              if (item.isReady) {
+              if (item.isReady && item.write) {
                 return {
                   data: item,
                   isAssigned: true,
@@ -114,16 +114,6 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
       isClosable: true,
     });
   };
-
-  // const handleSuccess = (message: string) => {
-  //   toast({
-  //     title: "Success",
-  //     description: message,
-  //     status: "success",
-  //     duration: 5000,
-  //     isClosable: true,
-  //   });
-  // };
 
   const updateData = async () => {
     setIsBusy(true);

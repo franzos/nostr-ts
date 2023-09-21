@@ -134,32 +134,31 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     // Try to get the first relay url from the list
     const relayUrl = relayUrls && relayUrls.length > 0 ? relayUrls[0] : "";
 
-    console.log("relayUrls", relayUrls);
-
-    if (isOpen) {
-      useNClient
-        .getState()
-        .getRelays()
-        .then((r) => {
-          if (r) {
-            setRelays(
-              r.map((item) => {
-                if (relayUrl === item.url || item.isReady) {
-                  return {
-                    data: item,
-                    isAssigned: true,
-                  };
-                }
+    useNClient
+      .getState()
+      .getRelays()
+      .then((r) => {
+        if (r) {
+          setRelays(
+            r.map((item) => {
+              if (
+                (relayUrl === item.url && item.write) ||
+                (item.isReady && item.write)
+              ) {
                 return {
                   data: item,
-                  isAssigned: false,
+                  isAssigned: true,
                 };
-              })
-            );
-          }
-        });
-    }
-  }, [isOpen]);
+              }
+              return {
+                data: item,
+                isAssigned: false,
+              };
+            })
+          );
+        }
+      });
+  }, []);
 
   /**
    * Check environment for errors

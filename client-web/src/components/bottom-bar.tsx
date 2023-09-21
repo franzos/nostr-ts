@@ -20,7 +20,7 @@ import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
 import { NavLink } from "react-router-dom";
-import { EventFormModal } from "./event-form-modal";
+import { EventFormModal } from "./create-event-form-modal";
 import { SubscriptionsTable } from "./subscriptions-table";
 import { RelaysTable } from "./relays-table";
 import { PublishingQueueTable } from "./queue-table";

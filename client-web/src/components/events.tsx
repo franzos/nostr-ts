@@ -103,7 +103,10 @@ export function Events({ view, changingView }: EventsProps) {
       endReached={() => {
         loadEvents();
       }}
-      overscan={1000}
+      overscan={{
+        main: 4000,
+        reverse: 4000,
+      }}
     />
   );
 }

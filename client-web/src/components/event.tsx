@@ -1,18 +1,12 @@
 import { useEffect, useState } from "react";
 import {
   Card,
-  CardHeader,
   CardBody,
-  CardFooter,
-  Text,
-  Button,
-  Box,
-  Icon,
   useToast,
-  HStack,
   useDisclosure,
-  Spacer,
-  IconButton,
+  CardHeader,
+  Box,
+  Skeleton,
 } from "@chakra-ui/react";
 import {
   NEvent,
@@ -20,19 +14,18 @@ import {
   NewReaction,
   eventHasContentWarning,
   LightProcessedEvent,
+  UserBase,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
-import InformationOutlineIcon from "mdi-react/InformationOutlineIcon";
-import { unixTimeToRelative } from "../lib/relative-time";
 import { excerpt } from "../lib/excerpt";
 import { processEventContentFrontend } from "../lib/process-event-content";
-import { EventUser } from "./event/user";
-import { EventActionButtons } from "./event/action-buttons";
 import { EventInfoModal } from "./event/info-modal";
 import { EventContent } from "./event/content";
 import { EventReplies } from "./event/replies";
+import { NSFWContentToggle } from "./event/nsfw-toggle";
+import { EventCardFooter } from "./event/card-footer";
 import { EventBanner } from "./event/banner";
-import { filterReactions } from "../lib/event-reactions-filter";
+import { User } from "./user";
 
 export interface EventProps {
   data: LightProcessedEvent;
@@ -40,21 +33,35 @@ export interface EventProps {
 }
 
 export function Event({ data, level }: EventProps) {
-  const [connected] = useNClient((state) => [
-    state.connected && state.keystore !== "none",
+  const [isReady] = useNClient((state) => [
+    (state.status === "offline" || state.status === "online") &&
+      state.keystore !== "none",
   ]);
 
-  const toast = useToast();
-
-  const hasContentWarning = eventHasContentWarning(data.event);
-  const [showContent, setShowContent] = useState(
-    hasContentWarning == undefined ? true : false
-  );
-
-  const content = processEventContentFrontend(data);
-  const filteredReactions = filterReactions(data.reactionsCount);
-
   const [replies, setReplies] = useState<LightProcessedEvent[]>();
+  const [contentIsVisible, makeContentVisible] = useState(true);
+  const [user, setUser] = useState<UserBase>({
+    pubkey: data.event.pubkey,
+  });
+  const [properties, setProperties] = useState<{
+    isLoaded: boolean;
+    contentWarning: string | undefined;
+    images: string[] | undefined;
+    videos: string[] | undefined;
+    text: string | undefined;
+  }>({
+    isLoaded: false,
+    contentWarning: undefined,
+    images: undefined,
+    videos: undefined,
+    text: undefined,
+  });
+
+  const userOptions = {
+    showFollowing: true,
+    showBlock: true,
+    relayUrls: data.eventRelayUrls,
+  };
 
   const {
     isOpen: isInfoModalOpen,
@@ -66,6 +73,35 @@ export function Event({ data, level }: EventProps) {
     onOpen: onReplyOpen,
     onClose: onReplyClose,
   } = useDisclosure();
+
+  const toast = useToast();
+
+  useEffect(() => {
+    const content = processEventContentFrontend(data);
+    const contentWarning = eventHasContentWarning(data.event);
+    if (content?.text && !contentWarning) {
+      makeContentVisible(true);
+    } else if (contentWarning) {
+      makeContentVisible(false);
+    }
+    const newProps = {
+      isLoaded: true,
+      contentWarning,
+      images: content?.images,
+      videos: content?.videos,
+      text: content?.text,
+    };
+    setProperties(newProps);
+  }, [data.event.content]);
+
+  useEffect(() => {
+    const user = data.user
+      ? data.user
+      : {
+          pubkey: data.event.pubkey,
+        };
+    setUser(user);
+  }, [data.user]);
 
   useEffect(() => {
     if (isReplyOpen) {
@@ -91,6 +127,9 @@ export function Event({ data, level }: EventProps) {
     if (relay && relay.write) return relay;
   };
 
+  /**
+   * Handle errors
+   */
   const handleError = (e: Error | unknown) => {
     let error = "";
     if (e instanceof Error) {
@@ -172,72 +211,53 @@ export function Event({ data, level }: EventProps) {
     }
   };
 
-  const EventCard = (
+  return (
     <Card>
+      {/* HEADER */}
       <CardHeader p={0}>
-        <Box overflowWrap={"break-word"} wordBreak={"break-word"}>
-          <EventBanner
-            extractedContent={content}
-            showContent={showContent}
-            hasContentWarning={hasContentWarning}
-            setShowContent={setShowContent}
+        {contentIsVisible ? (
+          <EventBanner images={properties.images} videos={properties.videos} />
+        ) : (
+          <NSFWContentToggle
+            contentWarning={properties.contentWarning}
+            setShowNSFWContent={makeContentVisible}
           />
-          <Box p={4} paddingBottom={0}>
-            <EventUser data={data} />
-          </Box>
+        )}
+        <Box p={2}>
+          <User user={user} options={userOptions} />
         </Box>
       </CardHeader>
+      {/* BODY */}
       <CardBody p={0}>
-        {content && showContent && <EventContent content={content.text} />}
-        <Box ml={4} overflowWrap={"break-word"} wordBreak={"break-word"}>
-          {filteredReactions &&
-            Object.keys(filteredReactions).map((r) => (
-              <Button
-                size="xs"
-                variant="outline"
-                key={r}
-                aria-label="Repost"
-                isDisabled={true}
-                m={0.5}
-              >
-                {r} {filteredReactions[r]}
-              </Button>
-            ))}
-        </Box>
+        {contentIsVisible && (
+          <Skeleton isLoaded={properties.isLoaded}>
+            <EventContent
+              content={
+                properties.isLoaded ? properties.text : data.event.content
+              }
+            />
+          </Skeleton>
+        )}
       </CardBody>
-      <CardFooter pl={4} pr={4} pt={2} pb={2}>
-        <HStack width="100%">
-          <EventActionButtons
-            data={data}
-            isReady={connected}
-            isReplyOpen={isReplyOpen}
-            onReplyOpen={onReplyOpen}
-            onReplyClose={onReplyClose}
-            newAction={newAction}
-            level={level}
-            showAll={false}
-            filteredReactions={filteredReactions}
-          />
+      {/* FOOTER */}
+      <EventCardFooter
+        isReady={isReady}
+        level={level}
+        createdAt={data.event.created_at}
+        repliesCount={data.repliesCount}
+        reactionsCount={data.reactionsCount}
+        repostCount={data.repostsCount}
+        zapReceiptCount={data.zapReceiptCount}
+        zapReceiptAmount={data.zapReceiptAmount}
+        isReplyOpen={isReplyOpen}
+        onReplyOpen={onReplyOpen}
+        onReplyClose={onReplyClose}
+        isInfoModalOpen={isInfoModalOpen}
+        onInfoModalOpen={onInfoModalOpen}
+        onInfoModalClose={onInfoModalClose}
+        onAction={newAction}
+      />
 
-          <Spacer />
-          <Text fontSize={12}>{unixTimeToRelative(data.event.created_at)}</Text>
-          <IconButton
-            aria-label="Event info"
-            size={"xs"}
-            variant="outline"
-            icon={<Icon as={InformationOutlineIcon} />}
-            onClick={() => {
-              onInfoModalOpen();
-            }}
-          ></IconButton>
-        </HStack>
-      </CardFooter>
-    </Card>
-  );
-
-  return (
-    <>
-      {EventCard}
       <EventReplies
         data={data}
         replies={replies}
@@ -250,6 +270,6 @@ export function Event({ data, level }: EventProps) {
         isOpen={isInfoModalOpen}
         onClose={onInfoModalClose}
       />
-    </>
+    </Card>
   );
 }

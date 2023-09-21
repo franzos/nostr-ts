@@ -1,5 +1,5 @@
 import { HStack, Button, Icon } from "@chakra-ui/react";
-import { LightProcessedEvent, ReactionsCount } from "@nostr-ts/common";
+import { ReactionsCount } from "@nostr-ts/common";
 import CurrencyBtcIcon from "mdi-react/CurrencyBtcIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import ReplyIcon from "mdi-react/ReplyIcon";
@@ -7,27 +7,33 @@ import ThumbDownIcon from "mdi-react/ThumbDownIcon";
 import ThumbUpIcon from "mdi-react/ThumbUpIcon";
 
 export interface EventActionButtonsProps {
-  data: LightProcessedEvent;
   isReady: boolean;
+  level: number;
+
+  repliesCount: number;
+  reactionsCount: ReactionsCount;
+  repostCount: number;
+  zapReceiptCount: number;
+  zapReceiptAmount: number;
+
   isReplyOpen: boolean;
   onReplyOpen: () => void;
   onReplyClose: () => void;
-  newAction: (type: "quote" | "reaction", reaction?: string) => void;
-  level: number;
-  showAll?: boolean;
-  filteredReactions?: ReactionsCount;
+  onAction: (type: "quote" | "reaction", reaction?: string) => void;
 }
 
 export function EventActionButtons({
-  data,
   isReady,
+  level,
+  repliesCount,
+  reactionsCount,
+  repostCount,
+  zapReceiptCount,
+  zapReceiptAmount,
   isReplyOpen,
   onReplyOpen,
   onReplyClose,
-  newAction,
-  level,
-  showAll,
-  filteredReactions,
+  onAction,
 }: EventActionButtonsProps) {
   return (
     <HStack>
@@ -39,37 +45,37 @@ export function EventActionButtons({
         onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
         isDisabled={!isReady || level >= 1}
       >
-        {data.repliesCount}
+        {repliesCount}
       </Button>
       <Button
         size="xs"
         variant="outline"
         aria-label="Upvote"
         leftIcon={<Icon as={ThumbUpIcon} />}
-        onClick={() => newAction("reaction", "+")}
+        onClick={() => onAction("reaction", "+")}
         isDisabled={!isReady}
       >
-        {data.reactionsCount?.["+"] || 0}
+        {reactionsCount?.["+"] || 0}
       </Button>
       <Button
         size="xs"
         variant="outline"
         aria-label="Downvote"
         leftIcon={<Icon as={ThumbDownIcon} />}
-        onClick={() => newAction("reaction", "-")}
+        onClick={() => onAction("reaction", "-")}
         isDisabled={!isReady}
       >
-        {data.reactionsCount?.["-"] || 0}
+        {reactionsCount?.["-"] || 0}
       </Button>
       <Button
         size="xs"
         variant="outline"
         aria-label="Repost"
         leftIcon={<Icon as={RepeatIcon} />}
-        onClick={() => newAction("quote")}
+        onClick={() => onAction("quote")}
         isDisabled={!isReady}
       >
-        {data.repostsCount}
+        {repostCount}
       </Button>
       <Button
         size="xs"
@@ -78,17 +84,8 @@ export function EventActionButtons({
         leftIcon={<Icon as={CurrencyBtcIcon} />}
         isDisabled={!isReady}
       >
-        {data.zapReceiptCount} ({data.zapReceiptAmount})
+        {zapReceiptCount} ({zapReceiptAmount})
       </Button>
-      {showAll &&
-        filteredReactions &&
-        Object.keys(filteredReactions)
-          .slice(0, 4)
-          .map((r) => (
-            <Button size="xs" key={r} aria-label="Repost" isDisabled={true}>
-              {r} {filteredReactions[r]}
-            </Button>
-          ))}
     </HStack>
   );
 }

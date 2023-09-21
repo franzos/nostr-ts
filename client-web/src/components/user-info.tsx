@@ -13,6 +13,7 @@ import { useNClient } from "../state/client";
 import { UserInfoProps } from "../lib/user-properties";
 import { BECH32_PREFIX, encodeBech32 } from "@nostr-ts/common";
 import { ListAssignmentModal } from "./list-assignment-modal";
+import { useEffect, useState } from "react";
 
 export function UserInfo({
   user: { pubkey, data },
@@ -34,16 +35,19 @@ export function UserInfo({
 
   const displayNameEqName = displayName === name;
 
+  const [profileLink, setProfileLink] = useState<string>("");
+
+  useEffect(() => {
+    const npub = encodeBech32(BECH32_PREFIX.PublicKeys, [
+      {
+        type: 0,
+        value: pubkey,
+      },
+    ]);
+    setProfileLink(`/p/${npub}`);
+  }, [pubkey]);
+
   // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
-
-  const npub = encodeBech32(BECH32_PREFIX.PublicKeys, [
-    {
-      type: 0,
-      value: pubkey,
-    },
-  ]);
-
-  const profileLink = `/p/${npub}`;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 

@@ -3,21 +3,36 @@ import { Button, Box, Image, Text, AspectRatio } from "@chakra-ui/react";
 import { Slideshow } from "./image-slideshow";
 import { useState } from "react";
 
-const Images = (images: string[]) => {
+interface ImageProps {
+  src: string;
+  alt?: string;
+}
+
+const EventImage = ({ src, alt }: ImageProps) => {
+  return (
+    <Image
+      width={"100%"}
+      src={src}
+      fallback={
+        <Box width="100%" textAlign="center">
+          <Text>Image failed to load.</Text>
+        </Box>
+      }
+      fallbackStrategy="onError"
+      alt={alt}
+    />
+  );
+};
+
+interface ImagesProps {
+  images: string[];
+}
+
+const Images = ({ images }: ImagesProps) => {
   return (
     <>
       {images?.length === 1 ? (
-        <Image
-          width={"100%"}
-          src={images[0]}
-          fallback={
-            <Box width="100%" textAlign="center">
-              <Text>Image failed to load.</Text>
-            </Box>
-          }
-          fallbackStrategy="onError"
-          alt=""
-        />
+        <EventImage src={images[0]} />
       ) : (
         <Slideshow images={images} />
       )}
@@ -29,13 +44,13 @@ interface VideoProps {
   url: string;
 }
 
-const Video = (props: VideoProps) => {
-  const [showVideo, setShowVideo] = useState(false);
+const EventVideo = (props: VideoProps) => {
+  const [loadVideo, setLoadVideo] = useState(false);
   const domain = new URL(props.url).hostname;
 
   return (
     <>
-      {showVideo ? (
+      {loadVideo ? (
         <AspectRatio ratio={16 / 9}>
           <ReactPlayer
             url={props.url}
@@ -56,7 +71,7 @@ const Video = (props: VideoProps) => {
           width="100%"
           overflowWrap="break-word"
           wordBreak="break-all"
-          onClick={() => setShowVideo(true)}
+          onClick={() => setLoadVideo(true)}
         >
           Load video from {domain}
         </Button>
@@ -65,72 +80,30 @@ const Video = (props: VideoProps) => {
   );
 };
 
-const Content = (
-  images: string[] | undefined,
-  videos: string[] | undefined
-) => {
-  return (
-    <Box width="100%">
-      {images && Images(images)}
-      {videos && videos.map((url, index) => <Video url={url} key={index} />)}
-    </Box>
-  );
-};
+interface VideosProps {
+  videos: string[];
+}
 
-const ContentWarningToggle = (
-  hasContent: boolean,
-  contentWarning: string | undefined,
-  setShowContent: (show: boolean) => void
-) => {
+const Videos = ({ videos }: VideosProps) => {
   return (
     <>
-      {hasContent && contentWarning !== null ? (
-        <Button
-          size="sm"
-          width="100%"
-          overflowWrap="break-word"
-          wordBreak="break-all"
-          onClick={() => setShowContent(true)}
-        >
-          Show Content{" "}
-          {contentWarning !== "" ? `(${contentWarning})` : `(NSFW)`}
-        </Button>
-      ) : (
-        <Text>No content found.</Text>
-      )}
+      {videos.map((url, index) => (
+        <EventVideo url={url} key={index} />
+      ))}
     </>
   );
 };
 
 interface EventBannerProps {
-  extractedContent:
-    | {
-        images: string[] | undefined;
-        videos: string[] | undefined;
-        text: string;
-      }
-    | undefined;
-  showContent: boolean;
-  hasContentWarning: string | undefined;
-  setShowContent: (show: boolean) => void;
+  images: string[] | undefined;
+  videos: string[] | undefined;
 }
 
-export function EventBanner({
-  extractedContent,
-  showContent,
-  hasContentWarning,
-  setShowContent,
-}: EventBannerProps) {
+export function EventBanner({ images, videos }: EventBannerProps) {
   return (
     <>
-      {!showContent &&
-        ContentWarningToggle(
-          extractedContent !== null,
-          hasContentWarning,
-          setShowContent
-        )}
-      {showContent &&
-        Content(extractedContent?.images, extractedContent?.videos)}
+      {images && <Images images={images} />}
+      {videos && <Videos videos={videos} />}
     </>
   );
 }

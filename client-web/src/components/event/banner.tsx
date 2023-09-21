@@ -1,6 +1,7 @@
 import ReactPlayer from "react-player";
 import { Button, Box, Image, Text, AspectRatio } from "@chakra-ui/react";
 import { Slideshow } from "./image-slideshow";
+import { useState } from "react";
 
 const Images = (images: string[]) => {
   return (
@@ -24,6 +25,46 @@ const Images = (images: string[]) => {
   );
 };
 
+interface VideoProps {
+  url: string;
+}
+
+const Video = (props: VideoProps) => {
+  const [showVideo, setShowVideo] = useState(false);
+  const domain = new URL(props.url).hostname;
+
+  return (
+    <>
+      {showVideo ? (
+        <AspectRatio ratio={16 / 9}>
+          <ReactPlayer
+            url={props.url}
+            controls={true}
+            width="100%"
+            height="100%"
+            fallback={
+              <Box width="100%" textAlign="center">
+                <Text>Video failed to load.</Text>
+              </Box>
+            }
+            fallbackStrategy="onError"
+          />
+        </AspectRatio>
+      ) : (
+        <Button
+          size="sm"
+          width="100%"
+          overflowWrap="break-word"
+          wordBreak="break-all"
+          onClick={() => setShowVideo(true)}
+        >
+          Load video from {domain}
+        </Button>
+      )}
+    </>
+  );
+};
+
 const Content = (
   images: string[] | undefined,
   videos: string[] | undefined
@@ -31,18 +72,7 @@ const Content = (
   return (
     <Box width="100%">
       {images && Images(images)}
-      {videos &&
-        videos.map((url, index) => (
-          <AspectRatio key={index} ratio={16 / 9}>
-            <ReactPlayer
-              key={index}
-              url={url}
-              controls={true}
-              width="100%"
-              height="100%"
-            />
-          </AspectRatio>
-        ))}
+      {videos && videos.map((url, index) => <Video url={url} key={index} />)}
     </Box>
   );
 };

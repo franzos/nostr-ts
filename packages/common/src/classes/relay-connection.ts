@@ -112,7 +112,19 @@ export class RelayConnection implements WebSocketClientConnection {
    * To unsubscribe, use relay client
    */
   public removeSubscription(id: string) {
-    this.subscriptions = this.subscriptions.filter((sub) => sub.id !== id);
+    this.subscriptions = this.subscriptions.map((sub) => {
+      if (sub.id === id) {
+        return {
+          ...sub,
+          isActive: false,
+        };
+      }
+      return sub;
+    });
+
+    setTimeout(() => {
+      this.subscriptions = this.subscriptions.filter((sub) => sub.id !== id);
+    }, 10000);
   }
 
   public getSubscription(id: string): RelaySubscription | null {
@@ -125,11 +137,23 @@ export class RelayConnection implements WebSocketClientConnection {
       : null;
   }
 
-  public getSubscriptions(): RelaySubscription[] {
-    return this.subscriptions.map((sub) => ({
-      ...sub,
-      relayUrl: this.url,
-    }));
+  public getSubscriptions(options?: {
+    isActive?: boolean;
+  }): RelaySubscription[] {
+    const filterActive = options && options.isActive ? true : false;
+    if (filterActive) {
+      return this.subscriptions
+        .filter((sub) => sub.isActive)
+        .map((sub) => ({
+          ...sub,
+          relayUrl: this.url,
+        }));
+    } else {
+      return this.subscriptions.map((sub) => ({
+        ...sub,
+        relayUrl: this.url,
+      }));
+    }
   }
 
   public getInfo(fields: "default" | "withInfo"): WebSocketClientInfo {

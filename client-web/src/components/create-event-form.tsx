@@ -125,6 +125,9 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     );
   };
 
+  /**
+   * Initial load of relays
+   */
   useEffect(() => {
     // Urls from props; for ex. event
     const relayUrls = props.relayUrls ? props.relayUrls : undefined;
@@ -141,7 +144,7 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
           if (r) {
             setRelays(
               r.map((item) => {
-                if (relayUrl === item.url) {
+                if (relayUrl === item.url || item.isReady) {
                   return {
                     data: item,
                     isAssigned: true,

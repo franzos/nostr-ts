@@ -43,7 +43,9 @@ export function BottomBar() {
     if (count) {
       setUserCount(count);
     }
-    const subs = await useNClient.getState().getSubscriptions();
+    const subs = await useNClient.getState().getSubscriptions({
+      isActive: true,
+    });
     if (subs) {
       setSubscriptionsCount(subs.length);
     }

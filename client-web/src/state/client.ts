@@ -216,8 +216,8 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   relayEvents: [],
-  getSubscriptions: async () => {
-    return get().store.getSubscriptions();
+  getSubscriptions: async (options?: { isActive?: boolean }) => {
+    return get().store.getSubscriptions(options);
   },
   subscribe: async (
     payload: CountRequest | AuthRequest | EventsRequest | CloseRequest
@@ -704,28 +704,25 @@ export const useNClient = create<NClient>((set, get) => ({
   blockUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
     await get().store.blockUser(payload.pubkey);
     const events = get().events;
-    // remove event.pubkey === payload.pubkey from events
-    for (const key in events) {
-      if (Object.prototype.hasOwnProperty.call(events, key)) {
-        const element = events[key];
-        const index = element.findIndex(
-          (e) => e.event.pubkey === payload.pubkey
+
+    set((state) => {
+      // Create a new object to hold the updated events
+      const updatedEvents: typeof state.events = {};
+
+      // Iterate through each token in the events
+      for (const [key, eventArray] of Object.entries(events)) {
+        // Filter out events from the blocked user
+        updatedEvents[key] = eventArray.filter(
+          (e) => e.event.pubkey !== payload.pubkey
         );
-        if (index !== -1) {
-          set((state) => {
-            const events = state.events[key] || [];
-            events.splice(index, 1);
-            return {
-              events: {
-                ...state.events, // Spread the existing events object
-                [key]: events, // Update only the relevant property
-              },
-            };
-          });
-        }
       }
-    }
+
+      return {
+        events: updatedEvents,
+      };
+    });
   },
+
   unblockUser: async (pubkey: string) => {
     return get().store.unblockUser(pubkey);
   },

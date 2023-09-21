@@ -38,7 +38,9 @@ export interface NClient extends NClientBase {
    */
   relayEvents: WebSocketEvent[];
 
-  getSubscriptions: () => Promise<RelaySubscription[] | undefined>;
+  getSubscriptions: (options?: {
+    isActive?: boolean;
+  }) => Promise<RelaySubscription[] | undefined>;
   unsubscribe: (ids: string[]) => Promise<void>;
   unsubscribeAll: () => Promise<void>;
 

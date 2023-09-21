@@ -163,7 +163,7 @@ export class NWorker {
     this.connecting = true;
     this.relayClient = new RelayClient(relays);
     if (options?.autoLoadInfo !== false) {
-      await this.relayClient.getRelayInformation();
+      this.relayClient.getRelayInformation();
     }
     this.relayClient.listen(async (payload) => {
       await this.processEvent(payload);
@@ -611,6 +611,13 @@ export class NWorker {
     }
   }
 
+  deleteEventsByPublicKey(publicKey: string) {
+    this.eventsInMemory = this.eventsInMemory.filter(
+      (ev) => ev.event.pubkey !== publicKey
+    );
+    this.db.deleteEventByPublicKey(publicKey);
+  }
+
   /**
    *  Process query for events
    * - defaults interval to last 24h if no range (since, until) is specified
@@ -797,7 +804,11 @@ export class NWorker {
       params.query.isOffline !== true
     ) {
       // trying w/o await
-      await this.processSelectedEvents(params.token, result.events);
+      await this.processSelectedEvents(
+        result.events,
+        params.token,
+        params.query.isLive
+      );
     }
 
     const milestone = Date.now();
@@ -1041,6 +1052,7 @@ export class NWorker {
           (ev) => ev.event.id === event.id
         );
         if (!exists) {
+          console.log(`=> WORKER: YES Adding live event to memory`);
           // TODO: This is probably not needed
           const userData = await this.getUser(event.pubkey);
           const mentions = new NEvent(event).hasMentions();
@@ -1064,6 +1076,8 @@ export class NWorker {
 
           this.addToMemoryAndFrontend(newEvent, view);
         }
+      } else {
+        console.log(`=> WORKER: NOT LIVE`, event, view, isLive);
       }
 
       this.notifyOfNewEvent(event);
@@ -1188,6 +1202,10 @@ export class NWorker {
       );
       associatedWithView = subscription?.options?.view;
       isLive = subscription?.options?.isLive || false;
+
+      if (!isLive) {
+        console.log(`=> WORKER: Not live`, subscription);
+      }
     }
 
     /**
@@ -1307,7 +1325,11 @@ export class NWorker {
 
   ////////////////////////////////// More Info //////////////////////////////////
 
-  async processSelectedEvents(view: string, events: EventBaseSigned[]) {
+  async processSelectedEvents(
+    events: EventBaseSigned[],
+    view: string,
+    isLive: boolean
+  ) {
     const eventUsers: string[] = [];
     const eventIds: string[] = [];
 
@@ -1334,6 +1356,7 @@ export class NWorker {
       {
         timeoutIn: TEN_SECONDS_IN_MS,
         view,
+        isLive,
       }
     );
 
@@ -1345,6 +1368,7 @@ export class NWorker {
       {
         timeoutIn: TEN_SECONDS_IN_MS,
         view,
+        isLive,
       }
     );
   }

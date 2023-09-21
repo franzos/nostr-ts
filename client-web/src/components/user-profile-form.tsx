@@ -78,6 +78,9 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
     }
   }, [props.metadata]);
 
+  /**
+   * Initial load of relays
+   */
   useEffect(() => {
     useNClient
       .getState()
@@ -86,6 +89,12 @@ export function UserProfileForm({ props }: { props: UserProfileFormProps }) {
         if (r) {
           setRelays(
             r.map((item) => {
+              if (item.isReady) {
+                return {
+                  data: item,
+                  isAssigned: true,
+                };
+              }
               return {
                 data: item,
                 isAssigned: false,

@@ -245,8 +245,10 @@ export class RelayClientBase {
     }
   }
 
-  getSubscriptions(): RelaySubscription[] | undefined {
-    return this.relays.map((relay) => relay.getSubscriptions()).flat();
+  getSubscriptions(options?: {
+    isActive?: boolean;
+  }): RelaySubscription[] | undefined {
+    return this.relays.map((relay) => relay.getSubscriptions(options)).flat();
   }
 
   countSubscriptions() {

@@ -363,6 +363,43 @@ export class Database {
     return result;
   }
 
+  async deleteEventByPublicKey(pubkey: string) {
+    if (!this.db) throw new Error("=> DATABASE: not ready");
+
+    const tx = this.db.transaction("events", "readwrite");
+    const store = tx.objectStore("events");
+    const index = store.index("pubkey");
+
+    let cursor = await index.openCursor(pubkey);
+
+    const eventIds: string[] = [];
+
+    while (cursor) {
+      const event = cursor.value;
+      if (event.pubkey === pubkey) {
+        eventIds.push(event.id);
+        await store.delete(event.id);
+      }
+      cursor = await cursor.continue();
+    }
+
+    const txTags = this.db.transaction("tags", "readwrite");
+    const storeTags = txTags.objectStore("tags");
+    const indexTags = storeTags.index("value");
+
+    for (const id of eventIds) {
+      let cursor = await indexTags.openCursor(id);
+
+      while (cursor) {
+        const tag = cursor.value;
+        if (tag.value === id) {
+          await storeTags.delete(tag.id);
+        }
+        cursor = await cursor.continue();
+      }
+    }
+  }
+
   async createList(payload: CreateListRecord): Promise<void> {
     if (!this.db) {
       throw new Error("=> DATABASE: not ready");

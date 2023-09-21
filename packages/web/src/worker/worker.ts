@@ -210,8 +210,8 @@ export class NWorker {
 
   ////////////////////////////////// SUBSCRIPTIONS //////////////////////////////////
 
-  getSubscriptions() {
-    return this.relayClient?.getSubscriptions();
+  getSubscriptions(options?: { isActive?: boolean }) {
+    return this.relayClient?.getSubscriptions(options);
   }
 
   /**
@@ -1263,13 +1263,40 @@ export class NWorker {
 
           const ev = payload.data[2] as EventBaseSigned;
           const userRecord = await this.db.getUser(ev.pubkey);
+          let following = false;
           if (userRecord) {
             if (userRecord.isBlocked) {
               return;
             }
+            following = userRecord.following;
           }
 
-          if (!isLive && !subEventCountExceeded) {
+          /**
+           * We save the record to DB if
+           * - We are not live
+           * - We follow the user
+           * - It has positional tags
+           *
+           * We do
+           */
+          const hasPositional = eventHasPositionalEventTag(ev);
+
+          // If live, don't save
+          let saveEvent = !isLive;
+          if (hasPositional) {
+            // if it has positional tags, save
+            saveEvent = true;
+          }
+          if (subEventCountExceeded) {
+            // if the count is exceeded, don't save; even if positional
+            saveEvent = false;
+          }
+          if (following) {
+            // if we follow the user, save
+            saveEvent = true;
+          }
+
+          if (saveEvent) {
             await this.db.saveEvent(ev);
           }
 

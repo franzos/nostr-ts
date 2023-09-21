@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box } from "@chakra-ui/react";
+import { Box, Button } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 
@@ -11,8 +11,9 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, hasNewerEvents] = useNClient((state) => [
+  const [events, eventsNewerCount, hasNewerEvents] = useNClient((state) => [
     state.events[view] || [],
+    state.eventsNewer[view]?.length || 0,
     state.hasNewerEvents,
   ]);
   const throttleTimestamp = useRef(Date.now());
@@ -91,22 +92,40 @@ export function Events({ view, changingView }: EventsProps) {
   //   setIsLoading(false);
   // };
 
+  const mergeNewerEvents = () => {
+    useNClient.getState().mergeNewerEvents(view);
+  };
+
   return (
-    <Virtuoso
-      useWindowScroll={true}
-      data={events}
-      itemContent={(index, data) => (
-        <Box mb={2}>
-          <Event key={index} data={data} level={0} />
-        </Box>
+    <>
+      {eventsNewerCount > 0 && (
+        <Button
+          onClick={mergeNewerEvents}
+          variant="outline"
+          colorScheme="blue"
+          size="sm"
+          mb={2}
+          width={"100%"}
+        >
+          {eventsNewerCount} new events
+        </Button>
       )}
-      endReached={() => {
-        loadEvents();
-      }}
-      overscan={{
-        main: 4000,
-        reverse: 4000,
-      }}
-    />
+      <Virtuoso
+        useWindowScroll={true}
+        data={events}
+        itemContent={(index, data) => (
+          <Box mb={2}>
+            <Event key={index} data={data} level={0} />
+          </Box>
+        )}
+        endReached={() => {
+          loadEvents();
+        }}
+        overscan={{
+          main: 4000,
+          reverse: 4000,
+        }}
+      />
+    </>
   );
 }

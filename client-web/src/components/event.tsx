@@ -95,12 +95,14 @@ export function Event({ data, level }: EventProps) {
   }, [data.event.content]);
 
   useEffect(() => {
-    const user = data.user
-      ? data.user
-      : {
-          pubkey: data.event.pubkey,
-        };
-    setUser(user);
+    if (level === 0) {
+      const user = data.user
+        ? data.user
+        : {
+            pubkey: data.event.pubkey,
+          };
+      setUser(user);
+    }
   }, [data.user]);
 
   useEffect(() => {
@@ -108,6 +110,18 @@ export function Event({ data, level }: EventProps) {
       loadReplies();
     }
   }, [isReplyOpen]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const user = await useNClient.getState().getUser(data.event.pubkey);
+      if (user) {
+        setUser(user.user);
+      }
+    };
+    if (level > 0) {
+      loadUser();
+    }
+  }, [data.event.pubkey]);
 
   const loadReplies = async () => {
     const evData = await useNClient.getState().getEventReplies(data.event.id);

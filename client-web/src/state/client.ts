@@ -233,12 +233,19 @@ export const useNClient = create<NClient>((set, get) => ({
   unsubscribeByToken: async (token: string) => {
     console.log(`=> CLIENT: Unsubscribe by token`, token);
 
-    // Use set with a function argument to safely update the state
     set((state) => {
       return {
         events: {
-          ...state.events, // Spread the existing events object
-          [token]: [], // Update only the relevant property
+          ...state.events,
+          [token]: [],
+        },
+        eventsNewest: {
+          ...state.eventsNewest,
+          [token]: 0,
+        },
+        eventsNewer: {
+          ...state.eventsNewer,
+          [token]: [],
         },
       };
     });
@@ -381,6 +388,22 @@ export const useNClient = create<NClient>((set, get) => ({
       return data.next;
     }
 
+    // find newest event by created_at
+    if (!queryParams.query.reqCount || queryParams.query.reqCount === 0) {
+      const newest = data.events?.reduce((prev, current) => {
+        return prev.event.created_at > current.event.created_at
+          ? prev
+          : current;
+      }, data.events[0]);
+
+      set({
+        eventsNewest: {
+          ...get().eventsNewest,
+          token: newest?.event.created_at || 0,
+        },
+      });
+    }
+
     // Update the events for the given token
     set((state) => {
       const updatedEvents = { ...state.events };
@@ -416,41 +439,94 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.getEventReplies(id);
   },
   events: {},
-  addEvent: (payload: LightProcessedEvent, token: string) => {
+  eventsNewest: {},
+  mergeNewerEvents: (token: string) => {
     set((state) => {
       const events = state.events[token] || [];
+      const newerEvents = state.eventsNewer[token] || [];
+      get().requestInformation(
+        {
+          source: "events:related",
+          idsOrKeys: [...newerEvents.map((e) => e.event.id)],
+        },
+        {
+          view: token,
+          timeoutIn: 10000,
+          // TODO: isLive
+          isLive: true,
+        }
+      );
+      get().requestInformation(
+        {
+          source: "users",
+          idsOrKeys: [...new Set([...newerEvents.map((e) => e.event.pubkey)])],
+        },
+        {
+          view: token,
+          timeoutIn: 10000,
+          isLive: true,
+        }
+      );
+      const merged = [...newerEvents, ...events];
       return {
         events: {
-          ...state.events, // Spread the existing events object
-          [token]: [...events, payload], // Update only the relevant property
+          ...state.events,
+          [token]: merged,
+        },
+        eventsNewer: {
+          ...state.eventsNewer,
+          [token]: [],
+        },
+      };
+    });
+  },
+  eventsNewer: {},
+  addEvent: (payload: LightProcessedEvent, token: string) => {
+    set((state) => {
+      const newest = state.eventsNewest[token] || 0;
+      const isNewer = payload.event.created_at > newest;
+      const target = isNewer ? "eventsNewer" : "events";
+
+      const events = state[target][token] || [];
+      return {
+        [target]: {
+          ...state[target],
+          [token]: [...events, payload],
         },
       };
     });
   },
   updateEvent: (payload: LightProcessedEvent, token?: string) => {
     if (!token) {
-      const events = get().events;
-      for (const key in events) {
-        if (Object.prototype.hasOwnProperty.call(events, key)) {
-          const element = events[key];
-          const index = element.findIndex(
-            (e) => e.event.id === payload.event.id
-          );
-          if (index !== -1) {
-            set((state) => {
-              const events = state.events[key] || [];
-              events[index] = payload;
-              return {
-                events: {
-                  ...state.events, // Spread the existing events object
-                  [key]: events, // Update only the relevant property
-                },
-              };
-            });
-            return;
+      let done = false;
+      (["events", "eventsNewer"] as ["events", "eventsNewer"]).forEach(
+        (target) => {
+          if (done) return;
+          const events = target === "events" ? get().events : get().eventsNewer;
+          for (const key in events) {
+            if (Object.prototype.hasOwnProperty.call(events, key)) {
+              const element = events[key];
+              const index = element.findIndex(
+                (e) => e.event.id === payload.event.id
+              );
+              if (index !== -1) {
+                done = true;
+                set((state) => {
+                  const events = state[target][key] || [];
+                  events[index] = payload;
+                  return {
+                    [target]: {
+                      ...state[target],
+                      [key]: events,
+                    },
+                  };
+                });
+                return;
+              }
+            }
           }
         }
-      }
+      );
     } else {
       const events = get().events[token] || [];
       const index = events.findIndex((e) => e.event.id === payload.event.id);
@@ -460,8 +536,8 @@ export const useNClient = create<NClient>((set, get) => ({
           events[index] = payload;
           return {
             events: {
-              ...state.events, // Spread the existing events object
-              [token]: events, // Update only the relevant property
+              ...state.events,
+              [token]: events,
             },
           };
         });

@@ -76,7 +76,7 @@ export class Database {
    * USER HANDLING
    */
 
-  async getUser(pubkey: string) {
+  async getUser(pubkey: string): Promise<UserRecord> {
     if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.get("users", pubkey);

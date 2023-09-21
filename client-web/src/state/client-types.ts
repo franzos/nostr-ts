@@ -87,7 +87,14 @@ export interface NClient extends NClientBase {
     request: PublishingRequest
   ) => Promise<PublishingQueueItem[] | undefined>;
   events: {
-    [token: string]: LightProcessedEvent[] | [];
+    [token: string]: LightProcessedEvent[];
+  };
+  eventsNewest: {
+    [token: string]: number;
+  };
+  mergeNewerEvents: (token: string) => void;
+  eventsNewer: {
+    [token: string]: LightProcessedEvent[];
   };
   /**
    * Add event to array or map

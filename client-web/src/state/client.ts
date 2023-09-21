@@ -270,6 +270,8 @@ export const useNClient = create<NClient>((set, get) => ({
         },
         keypairIsLoaded: true,
       });
+
+      get().store.setUserPubkey(store.publicKey);
     }
   },
   saveKeyStore: () => {
@@ -298,6 +300,7 @@ export const useNClient = create<NClient>((set, get) => ({
       keypair: { publicKey: "", privateKey: "" },
       keypairIsLoaded: false,
     });
+    get().store.setUserPubkey("");
   },
   setKeyStore: (config: NClientKeystore) => {
     if (config.keystore === "localstore") {
@@ -311,6 +314,8 @@ export const useNClient = create<NClient>((set, get) => ({
           keypairIsLoaded: true,
         });
         get().saveKeyStore();
+
+        get().store.setUserPubkey(config.publicKey);
       }
     } else if (config.keystore === "nos2x") {
       set({
@@ -320,6 +325,8 @@ export const useNClient = create<NClient>((set, get) => ({
         },
         keypairIsLoaded: true,
       });
+
+      get().store.setUserPubkey(config.publicKey || "");
     } else {
       console.error(`Unknown keystore ${config.keystore}`);
     }

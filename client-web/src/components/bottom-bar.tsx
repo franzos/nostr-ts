@@ -38,7 +38,7 @@ export function BottomBar() {
   const toast = useToast();
 
   const update = async () => {
-    if (!useNClient.getState().connected) return;
+    if (useNClient.getState().status === "loading") return;
     const count = await useNClient.getState().countUsers();
     if (count) {
       setUserCount(count);

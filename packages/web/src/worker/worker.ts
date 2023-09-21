@@ -26,6 +26,7 @@ import {
   eventHasEventTags,
   eventHasPositionalEventTag,
   eventHasPositionalEventTags,
+  verifyEvent,
 } from "@nostr-ts/common";
 import {
   Database,
@@ -51,6 +52,8 @@ import { CreateListRecord } from "./lists";
 
 export class NWorker {
   status: "online" | "offline" | "loading";
+  userPubkey?: string;
+
   connecting: boolean;
   componentStatus: {
     relayClient: boolean;
@@ -150,6 +153,10 @@ export class NWorker {
     setTimeout(async () => {
       await this.calculatePopular();
     }, 30 * ONE_SECOND * 1000);
+  }
+
+  setUserPubkey(pubkey: string) {
+    this.userPubkey = pubkey;
   }
 
   ////////////////////////////////// RELAYS //////////////////////////////////
@@ -319,6 +326,60 @@ export class NWorker {
 
   async getAllUsersFollowing() {
     return await this.db.getUsersByParam("following");
+  }
+
+  async updateUsersFollowingFromContacts(ev: EventBaseSigned) {
+    const tags = ev.tags.filter((tag) => tag[0] === "p");
+    const contacts: {
+      // 32-bytes hex key
+      key: string;
+      relayUrl?: string;
+      petName?: string;
+    }[] = [];
+    for (const tag of tags) {
+      if (tag.length === 4) {
+        contacts.push({
+          key: tag[1],
+          relayUrl: tag[2],
+          petName: tag[3],
+        });
+      }
+    }
+
+    const following = await this.getAllUsersFollowing();
+    let removeFollowing = [];
+    let addNew = [];
+
+    for (const prev of following) {
+      const found = contacts.find((c) => c.key === prev.user.pubkey);
+      if (!found) {
+        removeFollowing.push(prev.user.pubkey);
+      }
+    }
+    for (const contact of contacts) {
+      const found = following.find((f) => f.user.pubkey === contact.key);
+      if (!found) {
+        addNew.push(contact);
+      }
+    }
+
+    for (const pubkey of removeFollowing) {
+      await this.unfollowUser(pubkey);
+    }
+
+    for (const contact of addNew) {
+      const exists = await this.getUser(contact.key);
+      if (!exists) {
+        await this.addUser({
+          user: new NUserBase({
+            pubkey: contact.key,
+          }),
+          relayUrls: [contact.relayUrl],
+        });
+      } else {
+        await this.followUser(contact.key);
+      }
+    }
   }
 
   async blockUser(pubkey: string) {
@@ -1206,6 +1267,17 @@ export class NWorker {
       if (!isLive) {
         console.log(`=> WORKER: Not live`, subscription);
       }
+
+      /**
+       * Make sure event signature is correct
+       */
+      if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
+        const isVald = await verifyEvent(payload.data[2]);
+        if (!isVald) {
+          console.log(`=> WORKER: Invalid event signature`, payload.data[2]);
+          return;
+        }
+      }
     }
 
     /**
@@ -1345,6 +1417,21 @@ export class NWorker {
             associatedWithView,
             isLive
           );
+        });
+      } else if (kind === NEVENT_KIND.CONTACTS) {
+        this.incomingEventsQueue.enqueueBackground(async () => {
+          const ev = payload.data[2] as EventBaseSigned;
+          const userRecord = await this.db.getUser(ev.pubkey);
+          if (userRecord) {
+            if (userRecord.isBlocked) {
+              return;
+            }
+          }
+
+          const isNewer = await this.db.saveEventAndDeleteOlderOfType(ev);
+          if (this.userPubkey === ev.pubkey && isNewer) {
+            await this.updateUsersFollowingFromContacts(ev);
+          }
         });
       }
     }

@@ -4,6 +4,10 @@ import {
   HStack,
   Heading,
   Link,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -14,6 +18,7 @@ import {
   Text,
   useColorMode,
   useDisclosure,
+  useMediaQuery,
   useToast,
 } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
@@ -198,6 +203,8 @@ export function BottomBar() {
     </Modal>
   );
 
+  const [isSmallerScreen] = useMediaQuery("(max-width: 600px)");
+
   return (
     <Box
       position="fixed"
@@ -207,51 +214,115 @@ export function BottomBar() {
       p={3}
       backgroundColor="background"
     >
-      <HStack spacing={4}>
-        <>
+      {isSmallerScreen ? (
+        <HStack spacing={4}>
           <Button variant={"outline"} size="sm" onClick={toggleColorMode}>
             Toggle {colorMode === "light" ? "Dark" : "Light"}
           </Button>
           <EventFormModal buttonSize="sm" />
-          <Spacer />
-          <HStack spacing={2}>
-            <Text fontSize="sm">Users:</Text>
-            <Text fontSize="xl">{userCount}</Text>
-          </HStack>
-          <Link as={NavLink} to="/blocked">
+          <Menu>
+            <MenuButton as={Button} size="sm">
+              Actions
+            </MenuButton>
+            <MenuList>
+              <MenuItem>
+                <HStack spacing={2}>
+                  <Text fontSize="sm">Users:</Text>
+                  <Text fontSize="xl">{userCount}</Text>
+                </HStack>
+              </MenuItem>
+              <MenuItem>
+                <Link as={NavLink} to="/blocked">
+                  <HStack spacing={2}>
+                    <Text fontSize="sm">Blocked Users:</Text>
+                    <Text fontSize="xl">{blockedUsersCount}</Text>
+                  </HStack>
+                </Link>
+              </MenuItem>
+              <MenuItem>
+                <Link
+                  onClick={
+                    isRelayModalOpen ? onRelayModalClose : onRelayModalOpen
+                  }
+                >
+                  <HStack spacing={2}>
+                    <Text fontSize="sm">Relays:</Text>
+                    <Text fontSize="xl">{relaysCount}</Text>
+                  </HStack>
+                </Link>
+              </MenuItem>
+              <MenuItem>
+                <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
+                  <HStack spacing={2}>
+                    <Text fontSize="sm">Queue:</Text>
+                    <Text fontSize="xl">{queueItemsCount}</Text>
+                  </HStack>
+                </Link>
+              </MenuItem>
+              <MenuItem>
+                <Link
+                  onClick={
+                    isSubscriptionsModalOpen
+                      ? onSubscriptionsModalClose
+                      : onSubscriptionsModalOpen
+                  }
+                >
+                  <HStack spacing={2}>
+                    <Text fontSize="sm">Subscriptions:</Text>
+                    <Text fontSize="xl">{subscriptionsCount}</Text>
+                  </HStack>
+                </Link>
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        </HStack>
+      ) : (
+        <HStack spacing={4}>
+          <>
+            <Button variant={"outline"} size="sm" onClick={toggleColorMode}>
+              Toggle {colorMode === "light" ? "Dark" : "Light"}
+            </Button>
+            <EventFormModal buttonSize="sm" />
+            <Spacer />
             <HStack spacing={2}>
-              <Text fontSize="sm">Blocked Users:</Text>
-              <Text fontSize="xl">{blockedUsersCount}</Text>
+              <Text fontSize="sm">Users:</Text>
+              <Text fontSize="xl">{userCount}</Text>
             </HStack>
-          </Link>
-          <Link
-            onClick={isRelayModalOpen ? onRelayModalClose : onRelayModalOpen}
-          >
-            <HStack spacing={2}>
-              <Text fontSize="sm">Relays:</Text>
-              <Text fontSize="xl">{relaysCount}</Text>
-            </HStack>
-          </Link>
-          <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
-            <HStack spacing={2}>
-              <Text fontSize="sm">Queue:</Text>
-              <Text fontSize="xl">{queueItemsCount}</Text>
-            </HStack>
-          </Link>
-          <Link
-            onClick={
-              isSubscriptionsModalOpen
-                ? onSubscriptionsModalClose
-                : onSubscriptionsModalOpen
-            }
-          >
-            <HStack spacing={2}>
-              <Text fontSize="sm">Subscriptions:</Text>
-              <Text fontSize="xl">{subscriptionsCount}</Text>
-            </HStack>
-          </Link>
-        </>
-      </HStack>
+            <Link as={NavLink} to="/blocked">
+              <HStack spacing={2}>
+                <Text fontSize="sm">Blocked Users:</Text>
+                <Text fontSize="xl">{blockedUsersCount}</Text>
+              </HStack>
+            </Link>
+            <Link
+              onClick={isRelayModalOpen ? onRelayModalClose : onRelayModalOpen}
+            >
+              <HStack spacing={2}>
+                <Text fontSize="sm">Relays:</Text>
+                <Text fontSize="xl">{relaysCount}</Text>
+              </HStack>
+            </Link>
+            <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
+              <HStack spacing={2}>
+                <Text fontSize="sm">Queue:</Text>
+                <Text fontSize="xl">{queueItemsCount}</Text>
+              </HStack>
+            </Link>
+            <Link
+              onClick={
+                isSubscriptionsModalOpen
+                  ? onSubscriptionsModalClose
+                  : onSubscriptionsModalOpen
+              }
+            >
+              <HStack spacing={2}>
+                <Text fontSize="sm">Subscriptions:</Text>
+                <Text fontSize="xl">{subscriptionsCount}</Text>
+              </HStack>
+            </Link>
+          </>
+        </HStack>
+      )}
       {SubscriptionsModal}
       {RelaysModal}
       {QueueModal}

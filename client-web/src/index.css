@@ -1,32 +1,16 @@
-/* Container holding the images */
-.image-container {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-    aspect-ratio: 1 / 1; /* Try to maintain a 1:1 aspect ratio */
-    overflow: hidden; /* Clip the excess part of images */
-  }
-  
-  /* Individual images */
-  .image-container img {
-    width: 100%; /* Full width */
-    height: auto; /* Auto height */
-    object-fit: cover; /* Clip and maintain aspect ratio of image */
-  }
-  
-  /* For two images, make each image take half of the container's width */
-  .image-container img:nth-child(2):nth-last-child(2),
-  .image-container img:nth-child(2):nth-last-child(2) ~ img {
-    flex: 1;
-  }
-  
-  /* Allow the container to shrink if images are wide */
-  @media (max-aspect-ratio: 1/1) {
-    .image-container {
-      aspect-ratio: auto;
-    }
-  }
 
-  a.is-inline {
-    text-decoration: underline
+
+a.is-inline {
+  text-decoration: underline
+}
+
+@media screen and (max-width: 600px) {
+  .responsive-stack {
+    flex-direction: column !important;
   }
+}
+@media screen and (min-width: 600px) {
+  .hide-on-mobile {
+    flex-direction: column !important;
+  }
+}

@@ -32,6 +32,17 @@ export function processEventContentFrontend(data: LightProcessedEvent) {
     }
   }
 
+  // process youtu.be links
+  // rewrite for ex. from youtu.be/THhCKAyo1As?si=0wUo3rEfsudkK9_g to youtube.com/watch?v=THhCKAyo1As
+  if (videos) {
+    for (let i = 0; i < videos.length; i++) {
+      if (videos[i].includes("youtu.be")) {
+        const videoId = videos[i].split("/").pop();
+        videos[i] = `https://youtube.com/watch?v=${videoId}`;
+      }
+    }
+  }
+
   // Remove trailing and leading whitespaces
   content = content.trim();
 

@@ -18,14 +18,12 @@ export function Slideshow({ images }: SlideshowProps) {
     adaptiveHeight: true,
   };
   return (
-    <Box width="650px">
-      <Slider {...settings}>
-        {images.map((image, index) => (
-          <Box key={index}>
-            <Image src={image} />
-          </Box>
-        ))}
-      </Slider>
-    </Box>
+    <Slider {...settings}>
+      {images.map((image, index) => (
+        <Box key={index}>
+          <Image src={image} />
+        </Box>
+      ))}
+    </Slider>
   );
 }

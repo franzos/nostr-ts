@@ -54,7 +54,7 @@ export function PrimaryLayout() {
   }, []);
 
   const Sidebar = (
-    <VStack align="start" spacing={5} w="100%">
+    <VStack align="start" spacing={5}>
       <MenuItem
         label="Home"
         to="/"

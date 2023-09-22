@@ -47,6 +47,7 @@ interface VideoProps {
 const EventVideo = (props: VideoProps) => {
   const [loadVideo, setLoadVideo] = useState(false);
   const domain = new URL(props.url).hostname;
+  const canPlay = ReactPlayer.canPlay(props.url);
 
   return (
     <>
@@ -72,8 +73,9 @@ const EventVideo = (props: VideoProps) => {
           overflowWrap="break-word"
           wordBreak="break-all"
           onClick={() => setLoadVideo(true)}
+          isDisabled={!canPlay}
         >
-          Load video from {domain}
+          {canPlay ? `Load video from ${domain}` : "Cannot play this video."}
         </Button>
       )}
     </>

@@ -17,7 +17,6 @@ import {
   UserRecord,
   UserPublicKeyAndRelays,
   LightProcessedEvent,
-  EventBaseSigned,
 } from "@nostr-ts/common";
 
 export interface NClientBase {

@@ -380,6 +380,16 @@ export class NWorker {
       };
       postMessage(msg);
     }
+
+    await this.requestInformation(
+      {
+        source: "users",
+        idsOrKeys: contacts.map((c) => c.key),
+      },
+      {
+        timeoutIn: TEN_SECONDS_IN_MS,
+      }
+    );
   }
 
   /**
@@ -1389,13 +1399,16 @@ export class NWorker {
           if (kind === NEVENT_KIND.METADATA) {
             const newUser = new NUserBase();
             newUser.fromEvent(ev);
-            const data = {
-              user: newUser,
-              relayUrls: [payload.meta.url],
-            };
             if (userRecord) {
-              await this.db.updateUser(ev.pubkey, data);
+              await this.db.updateUser(ev.pubkey, {
+                ...userRecord,
+                user: newUser,
+              });
             } else {
+              const data = {
+                user: newUser,
+                relayUrls: [payload.meta.url],
+              };
               await this.db.addUser(data);
             }
           }

@@ -2,6 +2,7 @@ import { ExternalIdentityClaim } from "../classes/identity-claim";
 import { NEVENT_KIND } from "./event-kind";
 import { UserMetadata } from "./user-metadata";
 import { EventReport } from "./report";
+import { NEventContact } from "./event-contacts";
 
 export interface EventBase {
   id?: string;
@@ -156,4 +157,8 @@ export interface iNewAuthEvent {
 export interface iNewEncryptedPrivateMessage {
   text: string;
   recipientPubkey: string;
+}
+
+export interface iNewContactList {
+  contacts: NEventContact[];
 }

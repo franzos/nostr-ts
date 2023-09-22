@@ -17,6 +17,7 @@ import {
   UserRecord,
   UserPublicKeyAndRelays,
   LightProcessedEvent,
+  EventBaseSigned,
 } from "@nostr-ts/common";
 
 export interface NClientBase {
@@ -75,6 +76,7 @@ export interface NClientBase {
   blockUser(payload: UserPublicKeyAndRelays): void;
   unblockUser(pubkey: string): Promise<void>;
   getAllUsersBlocked(): Promise<UserRecord[] | undefined>;
+  lastContactsUpdate(pubkey: string): Promise<number | undefined>;
   createList(payload: CreateListRecord): Promise<void>;
   updateList(id: string, payload: CreateListRecord): Promise<void>;
   deleteList(id: string): Promise<void>;

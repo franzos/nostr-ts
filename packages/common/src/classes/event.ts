@@ -20,6 +20,7 @@ import {
   EventEventTag,
   iNewAuthEvent,
   iNewEncryptedPrivateMessage,
+  iNewContactList,
 } from "../types";
 import {
   hash,
@@ -1001,6 +1002,24 @@ export function NewEncryptedPrivateMessage(opts: iNewEncryptedPrivateMessage) {
     kind: NEVENT_KIND.ENCRYPTED_DIRECT_MESSAGES,
   });
   nEv.addPublicKeyTag(opts.recipientPubkey);
+
+  return nEv;
+}
+
+export function NewContactList(opts: iNewContactList) {
+  const nEv = new NEvent({
+    content: "",
+    kind: NEVENT_KIND.CONTACTS,
+  });
+
+  for (const contact of opts.contacts) {
+    nEv.tags.push([
+      "p",
+      contact.key,
+      contact.relayUrl ? contact.relayUrl : "",
+      contact.petname ? contact.petname : "",
+    ]);
+  }
 
   return nEv;
 }

@@ -26,7 +26,7 @@ A new, live version builds from master on every commit: [https://franzos.github.
 
 ## Highlights
 
-- Supported NIP: 1, 4, 10, 11, 13, 14, 18, 23, 25, 36, 39, 40, 42, 45, 56
+- Supported NIP: 1, 2, 4, 10, 11, 13, 14, 18, 23, 25, 36, 39, 40, 42, 45, 56
 - Partial NIP: 19, 32, 57
 - `RelayClient` to handle websocket connection and message sending (node, web)
 - `RelayDiscovery` to make it easy to pickup new relays (node)
@@ -43,8 +43,13 @@ The goal here is to make it as easy as possible to get started, so there's usual
 On Node.js use:
 
 ```js
-import { NewShortTextNote, NFilters } from '@nostr-ts/common'
-import { RelayClient, RelayDiscovery, loadOrCreateKeypair, NUser } from '@nostr-ts/node'
+import { NewShortTextNote, NFilters } from "@nostr-ts/common";
+import {
+  RelayClient,
+  RelayDiscovery,
+  loadOrCreateKeypair,
+  NUser,
+} from "@nostr-ts/node";
 ```
 
 install with:
@@ -57,8 +62,8 @@ pnpm install @nostr-ts/common @nostr-ts/node
 In the browser use:
 
 ```js
-import { NewShortTextNote, NFilters } from '@nostr-ts/common'
-import { RelayClient, loadOrCreateKeypair, NUser } from '@nostr-ts/web'
+import { NewShortTextNote, NFilters } from "@nostr-ts/common";
+import { RelayClient, loadOrCreateKeypair, NUser } from "@nostr-ts/web";
 ```
 
 install with:
@@ -81,12 +86,12 @@ The build command will take care of `./packages/*`.
 
 ## Features
 
-- [ ] NIP-1: [Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)
+- [x] NIP-1: [Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)
 
 **Generate a keypair** (Sign up):
 
 ```js
-const keypair = await loadOrCreateKeypair('./key')
+const keypair = await loadOrCreateKeypair("./key");
 ```
 
 - This will look for a private key `./key` and a public key `./key.pub`
@@ -97,52 +102,52 @@ const keypair = await loadOrCreateKeypair('./key')
 
 ```js
 let client = new RelayClient([
-    {
-        url: 'wss://nostr.rocks',
-        read: true,
-        write: true,
-    },
-    {
-        url: 'wss://nostr.lu.ke',
-        read: true,
-        write: true,
-    },
-])
+  {
+    url: "wss://nostr.rocks",
+    read: true,
+    write: true,
+  },
+  {
+    url: "wss://nostr.lu.ke",
+    read: true,
+    write: true,
+  },
+]);
 await client.getRelayInformation();
 ```
 
 **Send a message**:
 
 ```js
-const event = NewShortTextNote({ text: 'Hello nostr!' })
-event.signAndGenerateId(keypair)
-client.sendEvent({event})
+const event = NewShortTextNote({ text: "Hello nostr!" });
+event.signAndGenerateId(keypair);
+client.sendEvent({ event });
 ```
 
 **Receive messages**:
 
 ```js
-const filters = new NFilters()
-filters.addAuthor(keypair.pub)
+const filters = new NFilters();
+filters.addAuthor(keypair.pub);
 
 client.subscribe({
-    filters
-})
+  filters,
+});
 
 client.listen((payload) => {
-    console.log(payload.meta.id, payload.meta.url)
-    logRelayMessage(payload.data)
-})
+  console.log(payload.meta.id, payload.meta.url);
+  logRelayMessage(payload.data);
+});
 ```
 
 **Recommend a relay**
 
 ```js
 const event = NewRecommendRelay({
-    relayUrl: 'wss://nostr.rocks',
-})
-event.signAndGenerateId(keypair)
-client.sendEvent({event})
+  relayUrl: "wss://nostr.rocks",
+});
+event.signAndGenerateId(keypair);
+client.sendEvent({ event });
 ```
 
 **Supported messages (events)**
@@ -221,7 +226,21 @@ event.hasExternalIdentityClaimTag()
 event.hasReportTags()
 ```
 
-- [ ] NIP-4 [Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)
+- [x] NIP-2 [Contact List and Petnames](https://github.com/nostr-protocol/nips/blob/master/02.md)
+
+```js
+const event = NewContactList({
+  contacts: [
+    {
+      key: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+      relayUrl: "wss://nostr.rocks",
+      petname: "nostros",
+    },
+  ],
+});
+```
+
+- [x] NIP-4 [Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)
 
 ```js
 const event = NewEncryptedPrivateMessage({
@@ -238,14 +257,14 @@ This is a bit ugly, as I did not want to include the encryption library in the c
 Here's what it might looks like:
 
 ```js
-import crypto from 'crypto'
-import { getSharedSecret } from '@noble/secp256k1'
+import crypto from "crypto";
+import { getSharedSecret } from "@noble/secp256k1";
 
 export async function encryptEvent(
   event: EventBase,
   keyPair: {
-    privateKey: string;
-    publicKey: string;
+    privateKey: string,
+    publicKey: string,
   }
 ) {
   const recipientPublicKey = event.tags ? event.tags[0][1] : undefined;
@@ -275,7 +294,7 @@ export async function encryptEvent(
 
 _Adapted from this example: [github.com/nostr-protocol/nips/blob/master/04](https://github.com/nostr-protocol/nips/blob/master/04.md)._
 
-- [ ] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
+- [x] NIP-11 [Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)
 
 ```js
 const infos = await client.getRelayInformation();
@@ -293,14 +312,16 @@ supportedNips [
 Event a04308c18a5f73b97be1f66fddba1741dd8dcf8a057701a2b4f1713d557ae384 not published to wss://nostr.wine because not all needed NIPS are supported.
 ```
 
-- [ ] NIP-13 [Proof of work](https://github.com/nostr-protocol/nips/blob/master/13.md)
+- [x] NIP-13 [Proof of work](https://github.com/nostr-protocol/nips/blob/master/13.md)
 
 ```js
-const difficulty = 28
-const event = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
-event.pubkey = keypair.pub
+const difficulty = 28;
+const event = NewShortTextNote({
+  text: "Let's have a discussion about Bitcoin!",
+});
+event.pubkey = keypair.pub;
 event.proofOfWork(difficulty);
-event.sign()
+event.sign();
 ```
 
 If you need anything above ~20 bits and work in the browser, there's a helper function for web worker (`proofOfWork(event, bits)`):
@@ -317,29 +338,31 @@ self.onmessage = function (e) {
 
 // client.ts
 return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {
-        type: "module",
-    });
+  const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {
+    type: "module",
+  });
 
-    // Setup an event listener to receive results from the worker
-    worker.onmessage = function (e) {
-        resolve(e.data.result);
-        // Terminate the worker after receiving the result
-        worker.terminate();
-    };
+  // Setup an event listener to receive results from the worker
+  worker.onmessage = function (e) {
+    resolve(e.data.result);
+    // Terminate the worker after receiving the result
+    worker.terminate();
+  };
 
-    // Send a message to the worker to start the calculation
-    worker.postMessage({
-        event: event,
-        bits: bits,
-    });
+  // Send a message to the worker to start the calculation
+  worker.postMessage({
+    event: event,
+    bits: bits,
+  });
 });
 ```
 
-- [ ] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
+- [x] NIP-14 [Subject tag in Text events](https://github.com/nostr-protocol/nips/blob/master/14.md)
 
 ```js
-const event = NewShortTextNote({ text: "Let's have a discussion about Bitcoin!" });
+const event = NewShortTextNote({
+  text: "Let's have a discussion about Bitcoin!",
+});
 event.addSubjectTag("All things Bitcoin");
 ```
 
@@ -347,55 +370,55 @@ If you want to respond to a note, keeping the subject:
 
 ```js
 const inResponseTo = {
-    id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
-    pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
-    created_at: 1690881792,
-    kind: 1,
-    tags: [["subject", "All things Bitcoin"]],
-    content: "Let's have a discussion about Bitcoin!",
-    sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
-}
-const relayUrl = "wss://nostr.rocks"
+  id: "e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466",
+  pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+  created_at: 1690881792,
+  kind: 1,
+  tags: [["subject", "All things Bitcoin"]],
+  content: "Let's have a discussion about Bitcoin!",
+  sig: "6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969",
+};
+const relayUrl = "wss://nostr.rocks";
 const event = NewShortTextNoteResponse({
-    text: "Sounds like a great idea. What do you think about the Lightning Network?",
-    inResponseTo,
-    relayUrl
+  text: "Sounds like a great idea. What do you think about the Lightning Network?",
+  inResponseTo,
+  relayUrl,
 });
 ```
 
 If this is the first response, we prepend the subject with `Re: ` automatically. So you'd be responding with subject `Re: All things Bitcoin`.
 
-- [ ] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
+- [x] NIP-18 [Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)
 
 ```js
 const inReponseTo = {
-        id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
-        pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
-        created_at: 1690881792,
-        kind: 1,
-        tags: [],
-        content: "Hello everyone! I am working on a new ts library for nostr. This is just a test.",
-        sig: '6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969'
-    }
+  id: "e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466",
+  pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+  created_at: 1690881792,
+  kind: 1,
+  tags: [],
+  content:
+    "Hello everyone! I am working on a new ts library for nostr. This is just a test.",
+  sig: "6cee8c1d11ca5f8c7a0bd9839d0af5d3af3cc6a5de754fc449d34188c0066eee3e5b5b4e567cd77a2e0369f8c9525d60e064db175acd02d9c5374c3c0e912969",
+};
 const event = NewQuoteRepost({
-    relayUrl: 'https://nostr.rocks',
-    inReponseTo
-})
-event.signAndGenerateId(keypair)
-client.sendEvent({event})
+  relayUrl: "https://nostr.rocks",
+  inReponseTo,
+});
+event.signAndGenerateId(keypair);
+client.sendEvent({ event });
 ```
 
 You can also utilize `NewGenericRepost` to repost any kind of event.
 
-- [ ] NIP-19 [bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)
+- [x] NIP-19 [bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)
 
 There are some utilities to get you started (WIP):
 
 - `encodeBech32(...)`
 - `decodeBech32(...)`
 
-
-- [ ] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
+- [x] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
 
 ```js
 const event = NewLongFormContent({
@@ -405,76 +428,78 @@ const event = NewLongFormContent({
 })
 ```
 
-- [ ] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
+- [x] NIP-25: [Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)
 
 ```js
 const event = NewReaction({
-    text: '+', 
-    inResponseTo: {
-        id: 'e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466',
-        pubkey: '5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70',
-    }
-})
-
-event.signAndGenerateId(keypair)
-client.sendEvent({event})
-```
-
-- [ ] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
-
-```js
-const event = NewShortTextNote({ text: "This is a test note with explicit language.", });
-event.addContentWarningTag("explicit language");
-```
-
-- [ ] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
-
-```js
-const githubClaim = new ExternalIdentityClaim({
-    type: IDENTITY_CLAIM_TYPE.GITHUB,
-    identity: "semisol",
-    proof: "9721ce4ee4fceb91c9711ca2a6c9a5ab",
-});
-
-const event = NewUpdateUserMetadata({
-    claims: [githubClaim],
-    userMetadata: {
-        name: "Semisol",
-    },
+  text: "+",
+  inResponseTo: {
+    id: "e21921600ecbcbea699a9f76c8156886bef112b71c4f79ce1b894386b5413466",
+    pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+  },
 });
 
 event.signAndGenerateId(keypair);
-client.sendEvent({event});
+client.sendEvent({ event });
 ```
 
-- [ ] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
+- [x] NIP-36 [Sensitive Content / Content Warning](https://github.com/nostr-protocol/nips/blob/master/36.md)
+
+```js
+const event = NewShortTextNote({
+  text: "This is a test note with explicit language.",
+});
+event.addContentWarningTag("explicit language");
+```
+
+- [x] NIP-39 [External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md#nip-39)
+
+```js
+const githubClaim = new ExternalIdentityClaim({
+  type: IDENTITY_CLAIM_TYPE.GITHUB,
+  identity: "semisol",
+  proof: "9721ce4ee4fceb91c9711ca2a6c9a5ab",
+});
+
+const event = NewUpdateUserMetadata({
+  claims: [githubClaim],
+  userMetadata: {
+    name: "Semisol",
+  },
+});
+
+event.signAndGenerateId(keypair);
+client.sendEvent({ event });
+```
+
+- [x] NIP-40 [Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)
 
 ```js
 const event = NewShortTextNote({ text: "Meeting starts in 10 minutes ..." });
 event.addExpirationTag(1690990889);
 ```
 
-- [ ] NIP-42 [Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)
+- [x] NIP-42 [Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)
 
-As far as I understand, relays should send the auth challenge either on connection, or when required. 
+As far as I understand, relays should send the auth challenge either on connection, or when required.
 The relay I'm testing with (gnost-relay) sends it on connection.
 
 Here's how you can respond to the challenge:
 
 ```js
-const challenge = "abc"
+const challenge = "abc";
 const event = NewAuthEvent({
-    relayUrl: "wss://nostr-ts.relay",
-    challenge: challenge,
+  relayUrl: "wss://nostr-ts.relay",
+  challenge: challenge,
 });
 event.signAndGenerateId(keypair);
 client.subscribe({
-    type: CLIENT_MESSAGE_TYPE.AUTH,
-    signedEvent: JSON.stringify(event.ToObj()),
+  type: CLIENT_MESSAGE_TYPE.AUTH,
+  signedEvent: JSON.stringify(event.ToObj()),
 });
 ```
 
-- [ ] NIP-56 [Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)
+- [x] NIP-56 [Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)
 
 The `publicKey` usually refers to the user that is being reported.
 If the report refers to another event, use the `eventId` too (for ex. spam, illegal, profanity, nudity).
@@ -485,7 +510,7 @@ Impersonation:
 const event = NewReport({
   publicKey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
   kind: NREPORT_KIND.IMPERSONATION,
-})
+});
 ```
 
 Spam:
@@ -497,78 +522,78 @@ const event = NewReport({
   kind: NREPORT_KIND.SPAM,
   // optionally pass some text
   content: "This is spam",
-})
+});
 ```
 
-- [ ] NIP-57 [Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)
+- [x] NIP-57 [Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)
 
 This is a really rudimentary example to show the steps required.
 I will follow-up with a more realistig implementation.
 
 Supports:
+
 - Zap to a user: YES
 - Zap to from / to event: NO (WIP)
 
 ```js
 const recipient = new NUser({
-    pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
-})
+  pubkey: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
+});
 
 // Get filters for subscription to get user information
-const filters = recipient.getMetadataFilter()
+const filters = recipient.getMetadataFilter();
 
 let client = new RelayClient([
-    {
-        url: 'wss://nostr.rocks',
-        read: true,
-        write: true,
-    },
-    {
-        url: 'wss://nostr.lu.ke',
-        read: true,
-        write: true,
-    },
+  {
+    url: "wss://nostr.rocks",
+    read: true,
+    write: true,
+  },
+  {
+    url: "wss://nostr.lu.ke",
+    read: true,
+    write: true,
+  },
 ]);
 await client.getRelayInformation();
 
 client.subscribe({
-    filters
-})
+  filters,
+});
 
 client.listen(async (payload) => {
-    console.log(payload.meta.id, payload.meta.url)
-    logRelayMessage(payload.data)
+  console.log(payload.meta.id, payload.meta.url);
+  logRelayMessage(payload.data);
 
-    // Don't actually do exactly this
-    // for ex. if you're subscribed to multiple relays, you'll generate multiple payments
-    // This should be part of client logic
-    if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
+  // Don't actually do exactly this
+  // for ex. if you're subscribed to multiple relays, you'll generate multiple payments
+  // This should be part of client logic
+  if (payload.data[0] === RELAY_MESSAGE_TYPE.EVENT) {
+    // Load user data from event
+    const success = recipient.fromEvent(payload.data[2]);
 
-        // Load user data from event
-        const success = recipient.fromEvent(payload.data[2])
+    if (success) {
+      // Make ZAP request
+      const { p: invoice, event } = await recipient.makeZapRequest(
+        {
+          relayUrls: ["wss://nostr.rocks"],
+          amount: 1000,
+        },
+        keypair
+      );
 
-        if (success) {
-            // Make ZAP request
-            const { p: invoice, event } = await recipient.makeZapRequest(
-                {
-                    relayUrls: ["wss://nostr.rocks"],
-                    amount: 1000,
-                },
-                keypair
-            )
+      // Pay invoice with lightning wallet then continue here
+      const bolt11FromYourWallet = "lnbc1...";
 
-            // Pay invoice with lightning wallet then continue here
-            const bolt11FromYourWallet = "lnbc1..."
-
-            const receipt = event.newZapReceipt({
-                bolt11: bolt11FromYourWallet,
-                description: 'Keep stacking sats!'
-            })
-            receipt.signAndGenerateId(keypair)
-            client.sendEvent({receipt})
-      }
+      const receipt = event.newZapReceipt({
+        bolt11: bolt11FromYourWallet,
+        description: "Keep stacking sats!",
+      });
+      receipt.signAndGenerateId(keypair);
+      client.sendEvent({ receipt });
     }
-})
+  }
+});
 ```
 
 ## Examples
@@ -581,10 +606,7 @@ client.listen(async (payload) => {
 4. Save to json file
 
 ```js
-import {
-  NFilters,
-  logRelayMessage,
-} from "@nostr-ts/common";
+import { NFilters, logRelayMessage } from "@nostr-ts/common";
 import {
   loadOrCreateKeypair,
   RelayClient,
@@ -596,16 +618,16 @@ const main = async () => {
 
   let client = new RelayClient([
     {
-        url: 'wss://nostr.rocks',
-        read: true,
-        write: true,
+      url: "wss://nostr.rocks",
+      read: true,
+      write: true,
     },
     {
-        url: 'wss://nostr.lu.ke',
-        read: true,
-        write: true,
+      url: "wss://nostr.lu.ke",
+      read: true,
+      write: true,
     },
-]);
+  ]);
 
   const relayDiscovery = new RelayDiscovery();
   const filters = new NFilters();
@@ -632,6 +654,7 @@ main();
 ```
 
 You will get two files
+
 1. `discovered-relays.json` with all valid relays
 2. `discovered-relays-error.json` with all invalid relays
 
@@ -647,16 +670,7 @@ This is what an excerpt of `discovered-relays.json` looks like (a more complete 
       "name": "relay.nostrplebs.com",
       "pubkey": "52b4a076bcbbbdc3a1aefa3735816cf74993b1b8db202b01c883c58be7fad8bd",
       "software": "git+https://github.com/hoytech/strfry.git",
-      "supported_nips": [
-        1,
-        9,
-        11,
-        12,
-        15,
-        16,
-        20,
-        22
-      ],
+      "supported_nips": [1, 9, 11, 12, 15, 16, 20, 22],
       "version": "v92-84ba68b"
     }
   },
@@ -668,20 +682,7 @@ This is what an excerpt of `discovered-relays.json` looks like (a more complete 
       "description": "Public relay for nostr development and use.",
       "pubkey": "35d26e4690cbe1a898af61cc3515661eb5fa763b57bd0b42e45099c8b32fd50f",
       "contact": "mailto:relay@wellorder.net",
-      "supported_nips": [
-        1,
-        2,
-        9,
-        11,
-        12,
-        15,
-        16,
-        20,
-        22,
-        33,
-        40,
-        42
-      ],
+      "supported_nips": [1, 2, 9, 11, 12, 15, 16, 20, 22, 33, 40, 42],
       "software": "https://git.sr.ht/~gheartsfield/nostr-rs-relay",
       "version": "0.8.9",
       "limitation": {
@@ -697,21 +698,7 @@ This is what an excerpt of `discovered-relays.json` looks like (a more complete 
       "pubkey": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
       "contact": "2e9397a8c9268585668b76479f88e359d0ee261f8e8ea07b3b3450546d1601c8",
       "supported_nips": [
-        1,
-        2,
-        4,
-        9,
-        11,
-        12,
-        15,
-        16,
-        20,
-        22,
-        26,
-        28,
-        33,
-        40,
-        111
+        1, 2, 4, 9, 11, 12, 15, 16, 20, 22, 26, 28, 33, 40, 111
       ],
       "software": "git+https://github.com/Cameri/nostream.git",
       "version": "1.22.2",
@@ -738,7 +725,7 @@ This is what an excerpt of `discovered-relays.json` looks like (a more complete 
         ]
       }
     }
-  },
+  }
 ]
 ```
 
@@ -763,7 +750,7 @@ and here's `discovered-relays-error.json`:
   },
   {
     "url": "wss://nostr-relay.wlvs.space"
-  },
+  }
 ]
 ```
 
@@ -772,6 +759,7 @@ and here's `discovered-relays-error.json`:
 Once you've collected a list of relays, you can feed them to Relay Client.
 
 A couple of points:
+
 - You might not want to connect to hundreds of relays at once
 - I will add some randomization and limits in the future
 
@@ -800,7 +788,7 @@ await client.getRelayInformation();
 If you prefer to apply limits yourself, you could do something like this:
 
 ```js
-const relays = relayDiscovery.get().slice(0, 10)
+const relays = relayDiscovery.get().slice(0, 10);
 await client.loadFromDiscovered(relays);
 ```
 

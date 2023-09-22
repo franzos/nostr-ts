@@ -162,13 +162,15 @@ export interface WorkerEvent {
       | "event:queue:new"
       | "event:queue:update"
       | "status:change"
+      | "following:update"
       | "RAW";
     view: string;
     data:
       | LightProcessedEvent
       | WebSocketEvent
       | PublishingQueueItem
-      | SystemStatus;
+      | SystemStatus
+      | string[];
   };
 }
 
@@ -187,4 +189,9 @@ export interface WorkerEventUpdate {
 export interface WorkerEventStatusChange {
   type: "status:change";
   data: SystemStatus;
+}
+
+export interface WorkerEventFollowingUpdate {
+  type: "following:update";
+  data: string[];
 }

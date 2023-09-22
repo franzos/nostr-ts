@@ -342,7 +342,6 @@ export class Database {
   async saveEvent(event: EventBaseSigned) {
     if (!this.db) throw new Error("=> DATABASE: not ready");
 
-    const start = Date.now();
     const result = await this.db.add("events", event);
 
     if (event.tags) {
@@ -356,15 +355,12 @@ export class Database {
         });
       }
     }
-
-    const took = Date.now() - start;
-    console.log(`=> DATABASE: Took ${took}ms to save event`);
-
     return result;
   }
 
   /**
    * Will make sure it's actually the newest event of this type
+   * - if newer, save and return id
    */
   async saveEventAndDeleteOlderOfType(
     event: EventBaseSigned
@@ -383,11 +379,13 @@ export class Database {
 
     // Separate events into older, newer, and keep only the newest among the new ones
     const older = sameKind[0].filter((record) => record.created_at < createdAt);
-    const newer = sameKind[0].filter((record) => record.created_at > createdAt);
+    const newer = sameKind[0].filter(
+      (record) => record.created_at >= createdAt
+    ); // Notice the change here
     const newest =
       newer.length > 0
         ? newer.reduce((acc, cur) =>
-            cur.created_at > acc.created_at ? cur : acc
+            cur.created_at >= acc.created_at ? cur : acc
           )
         : null;
 
@@ -396,15 +394,12 @@ export class Database {
       await this.db.delete("events", record.id);
     }
 
-    // Delete all newer events except the newest one
-    if (newest) {
-      const remaining = newer.filter((e) => e.id !== newest.id);
-      for (const record of remaining) {
-        await this.db.delete("events", record.id);
-      }
+    // If newest exists and is the same or newer, return its ID
+    if (newest && newest.created_at >= createdAt) {
+      return newest.id; // Return the ID of the newest (or same) event
     } else {
       // Add the event only if there are no newer events
-      return this.db.add("events", event);
+      return this.db.add("events", event); // Return the ID of the newly added event
     }
   }
 

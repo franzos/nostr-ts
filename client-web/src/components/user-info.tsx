@@ -1,5 +1,5 @@
 import {
-  Avatar,
+  Avatar as ChakraAvatar,
   Spacer,
   Button,
   Box,
@@ -14,6 +14,7 @@ import { UserInfoProps } from "../lib/user-properties";
 import { BECH32_PREFIX, encodeBech32 } from "@nostr-ts/common";
 import { ListAssignmentModal } from "./list-assignment-modal";
 import { useEffect, useState } from "react";
+import Avatar from "boring-avatars";
 
 export function UserInfo({
   user: { pubkey, data },
@@ -61,7 +62,16 @@ export function UserInfo({
       <HStack>
         <Box mr="2">
           <Link to={profileLink}>
-            <Avatar size="xs" src={picture} />
+            {picture === "" ? (
+              <Avatar
+                size={24}
+                name={pubkey}
+                variant="marble"
+                colors={["#92A1C6", "#146A7C", "#F0AB3D", "#C271B4", "#C20D90"]}
+              />
+            ) : (
+              <ChakraAvatar size="xs" src={picture} />
+            )}
           </Link>
         </Box>
         <Box overflowWrap="anywhere" maxWidth={350}>

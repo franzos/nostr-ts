@@ -117,6 +117,9 @@ export const useNClient = create<NClient>((set, get) => ({
           set({ status: payload.data as SystemStatus });
           console.log(`Status changed to ${payload.data}`);
           break;
+        case "following:update":
+          set({ followingUserIds: payload.data as string[] });
+          break;
         default:
           console.log(`Unsupported payload type: ${payload.type}`);
       }
@@ -811,6 +814,9 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   getAllUsersBlocked: async () => {
     return get().store.getAllUsersBlocked();
+  },
+  lastContactsUpdate: async (pubkey: string) => {
+    return get().store.lastContactsUpdate(pubkey);
   },
   createList: async (payload: CreateListRecord) => {
     return get().store.createList(payload);

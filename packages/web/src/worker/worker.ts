@@ -23,6 +23,7 @@ import {
   UserRecord,
   WebSocketEvent,
   decodeLightnightPayRequest,
+  eventHasContacts,
   eventHasEventTags,
   eventHasPositionalEventTag,
   eventHasPositionalEventTags,
@@ -41,6 +42,7 @@ import {
   StorageEventsQuery,
   StorageQueryResult,
   TEN_SECONDS_IN_MS,
+  WorkerEventFollowingUpdate,
   WorkerEventNew,
   WorkerEventStatusChange,
   WorkerEventUpdate,
@@ -328,25 +330,14 @@ export class NWorker {
     return await this.db.getUsersByParam("following");
   }
 
+  /**
+   * This will take an incoming event, and update local following list
+   */
   async updateUsersFollowingFromContacts(ev: EventBaseSigned) {
-    const tags = ev.tags.filter((tag) => tag[0] === "p");
-    const contacts: {
-      // 32-bytes hex key
-      key: string;
-      relayUrl?: string;
-      petName?: string;
-    }[] = [];
-    for (const tag of tags) {
-      if (tag.length === 4) {
-        contacts.push({
-          key: tag[1],
-          relayUrl: tag[2],
-          petName: tag[3],
-        });
-      }
-    }
-
+    const contacts = eventHasContacts(ev);
+    if (!contacts) return;
     const following = await this.getAllUsersFollowing();
+
     let removeFollowing = [];
     let addNew = [];
 
@@ -374,12 +365,35 @@ export class NWorker {
           user: new NUserBase({
             pubkey: contact.key,
           }),
+          following: true,
           relayUrls: [contact.relayUrl],
         });
       } else {
         await this.followUser(contact.key);
       }
     }
+
+    if (this.options.isInWebWorker) {
+      const msg: WorkerEventFollowingUpdate = {
+        type: "following:update",
+        data: contacts.map((c) => c.key),
+      };
+      postMessage(msg);
+    }
+  }
+
+  /**
+   * Check when the last contact list has been published
+   */
+  async lastContactsUpdate(pubkey: string): Promise<number | undefined> {
+    const events = await this.db.getEventsByPublicKeysAndKinds(
+      [pubkey],
+      [NEVENT_KIND.CONTACTS],
+      1,
+      Date.now() / 1000
+    );
+    // Normally there's only one event
+    return events[0].length > 0 ? events[0][0].created_at : undefined;
   }
 
   async blockUser(pubkey: string) {
@@ -1309,7 +1323,7 @@ export class NWorker {
           let subEventCountExceeded = false;
 
           if (kind !== NEVENT_KIND.METADATA) {
-            if (this.eventsInMemory.length >= 100 * 5) {
+            if (this.eventsInMemory.length >= 500) {
               return;
             }
 
@@ -1428,8 +1442,8 @@ export class NWorker {
             }
           }
 
-          const isNewer = await this.db.saveEventAndDeleteOlderOfType(ev);
-          if (this.userPubkey === ev.pubkey && isNewer) {
+          const isNewerOrSame = await this.db.saveEventAndDeleteOlderOfType(ev);
+          if (this.userPubkey === ev.pubkey && isNewerOrSame) {
             await this.updateUsersFollowingFromContacts(ev);
           }
         });

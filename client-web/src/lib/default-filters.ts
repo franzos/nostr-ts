@@ -31,6 +31,20 @@ export function filterByAuthor(pubKeys: string[], limit?: number) {
   return filters;
 }
 
+export function filterByTags(tags: string[], limit?: number) {
+  const filters = new NFilters({
+    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+    tags,
+    until: Math.round(Date.now() / 1000),
+    since: Math.round((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000),
+    limit: 50,
+  });
+  if (limit) {
+    filters.limit = limit;
+  }
+  return filters;
+}
+
 export function filterByMentions(pubKeys: string[], limit?: number) {
   const filters = new NFilters({
     kinds: [

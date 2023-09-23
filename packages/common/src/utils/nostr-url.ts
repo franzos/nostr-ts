@@ -6,7 +6,15 @@ export const NOSTR_URL_REGEX =
 
 export const NOSTR_URL_REGEX_GLOBAL =
   /(?:nostr:)?(npub|nsec|note|lnurl|nprofile|nevent)([a-zA-Z0-9]+)/g;
-// /(nostr:npub[0-9a-fA-F]{64})/g;
+
+export enum NOSTR_URL_PREFIX {
+  npub = "npub",
+  nsec = "nsec",
+  note = "note",
+  lnurl = "lnurl",
+  nprofile = "nprofile",
+  nevent = "nevent",
+}
 
 function parseNostrURL(input: string) {
   if (typeof input !== "string") {

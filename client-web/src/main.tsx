@@ -13,6 +13,7 @@ import { UserProfileRoute } from "./routes/user-profile.tsx";
 import { BlockedUsersRoute } from "./routes/blocked.tsx";
 import { ListsRoute } from "./routes/lists.tsx";
 import { EventRoute } from "./routes/event.tsx";
+import { TagRoute } from "./routes/tag.tsx";
 import "./index.css";
 import theme from "./theme.ts";
 
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/lists" element={<ListsRoute />} />
             <Route path="/p/:npub" element={<ProfileRoute />} />
             <Route path="/e/:note" element={<EventRoute />} />
+            <Route path="/t/:tag" element={<TagRoute />} />
           </Route>
         </Routes>
       </BrowserRouter>

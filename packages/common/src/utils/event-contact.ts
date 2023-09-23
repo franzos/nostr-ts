@@ -1,5 +1,5 @@
-import { EventBase, NEVENT_KIND } from "src/types";
-import { NEventContact } from "src/types/event-contacts";
+import { EventBase, NEVENT_KIND } from "../types";
+import { NEventContact } from "../types/event-contacts";
 
 export function eventHasContacts(
   event: EventBase

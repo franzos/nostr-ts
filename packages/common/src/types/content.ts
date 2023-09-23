@@ -1,16 +1,14 @@
-/**
- * Work with event content
- * - for ex. "Profile is impersonating nostr:<victim bech32 pubkey>"
- * - supports npub and nprofile right now
- * https://github.com/nostr-protocol/nips/blob/master/56.md#example-events
- */
+import { NOSTR_URL_PREFIX } from "../utils";
+
 export interface NEventContent {
-  message?: string;
-  relayUrl?: string;
-  nurls?: {
-    type?: "npub" | "nsec" | "note" | "lnurl" | "nprofile" | "nevent";
-    // TODO: Not really accurate
-    publicKeys?: string[];
-    relayUrls?: string[];
-  }[];
+  images: string[] | undefined;
+  videos: string[] | undefined;
+  nurls:
+    | {
+        type: NOSTR_URL_PREFIX;
+        data: string;
+      }[]
+    | undefined;
+  tags: string[] | undefined;
+  text: string | undefined;
 }

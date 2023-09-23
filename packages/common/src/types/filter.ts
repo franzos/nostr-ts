@@ -15,6 +15,7 @@ export interface FiltersBase {
    * a list of a kind numbers
    */
   kinds?: number[];
+  tags?: string[];
   /**
    * a list of event ids that are referenced in an "e" tag
    */

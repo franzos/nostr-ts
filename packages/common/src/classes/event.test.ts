@@ -128,24 +128,6 @@ test("eventHasContentWarning type 2", () => {
   expect(hasContentWarning).toEqual("reason");
 });
 
-// test("createEventContent: nostr", () => {
-//   const content = "Profile is impersonating";
-//   const res = createEventContent({
-//     message: "Profile is impersonating",
-//     nurls: [
-//       {
-//         type: "npub",
-//         publicKeys: [
-//           "2234567890123456789012345678901234567890123456789012345678901234",
-//         ],
-//       },
-//     ],
-//   });
-//   expect(res).toEqual(
-//     "Profile is impersonating nostr:2234567890123456789012345678901234567890123456789012345678901234"
-//   );
-// });
-
 test("eventHasExpiration", () => {
   const ev = new NEvent({
     kind: 1,

@@ -15,10 +15,10 @@ import {
   eventHasContentWarning,
   LightProcessedEvent,
   UserBase,
+  extractEventContent,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { excerpt } from "../lib/excerpt";
-import { processEventContentFrontend } from "../lib/process-event-content";
 import { EventInfoModal } from "./event/info-modal";
 import { EventContent } from "./event/content";
 import { EventReplies } from "./event/replies";
@@ -77,7 +77,7 @@ export function Event({ data, level }: EventProps) {
   const toast = useToast();
 
   useEffect(() => {
-    const content = processEventContentFrontend(data);
+    const content = extractEventContent(data.event.content);
     const contentWarning = eventHasContentWarning(data.event);
     if (content?.text && !contentWarning) {
       makeContentVisible(true);

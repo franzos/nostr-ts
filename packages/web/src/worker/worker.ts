@@ -1152,7 +1152,7 @@ export class NWorker {
             mentions:
               mentions?.map((mention) => {
                 return {
-                  pubkey: mention,
+                  pubkey: mention.data,
                   id: event.id,
                 };
               }) || [],

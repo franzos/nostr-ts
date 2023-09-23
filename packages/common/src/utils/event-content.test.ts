@@ -1,9 +1,5 @@
 import { NEVENT_KIND } from "../types";
-import {
-  createEventContent,
-  extractEventContent,
-  isValidEventContent,
-} from "./event-content";
+import { extractEventContent, isValidEventContent } from "./event-content";
 
 /**
  * VALID
@@ -161,22 +157,81 @@ test("extractEventContent: nprofile", () => {
   });
 });
 
-/**
- * CREATE
- */
-
-test("createEventContent", () => {
-  const content = "Here's whats on nostr: cool stuff";
-  const res = createEventContent({
-    message: content,
+describe("extractEventContent media", () => {
+  test("With optional query parameters", () => {
+    const singleProviderRegex =
+      /https?:\/\/www\.youtube\.com\/watch\?v=[a-zA-Z0-9_-]{6,11}(?:\?[a-zA-Z0-9_=&-]+)?/g;
+    const source = "https://www.youtube.com/watch?v=1rTOa-jV4FI";
+    const res = source.match(singleProviderRegex);
+    expect(res).toEqual(["https://www.youtube.com/watch?v=1rTOa-jV4FI"]);
   });
-  expect(res).toEqual("Here's whats on nostr: cool stuff");
-});
 
-test("createEventContent: relay", () => {
-  const content = "wss://relay.example.com";
-  const res = createEventContent({
-    relayUrl: "wss://relay.example.com",
+  test("Content with Youtube link", () => {
+    const source =
+      "Los Monstruitos - La Quintaesencia del Proletariado https://www.youtube.com/watch?v=1rTOa-jV4FI";
+    const res = extractEventContent(source);
+    expect(res).toEqual({
+      images: undefined,
+      videos: ["https://www.youtube.com/watch?v=1rTOa-jV4FI"],
+      notes: undefined,
+      tags: undefined,
+      text: "Los Monstruitos - La Quintaesencia del Proletariado",
+    });
   });
-  expect(res).toEqual("wss://relay.example.com");
+
+  test("Content with Youtube link with query string", () => {
+    const source =
+      "Who saw Saylor‘s recent speech @ BTC Innsbruck Sep 15th??\n\nSheerly alpine mountain moving developments since 2019 & what we may experience immediately ahead ✨ 🏔️ \nBig gratitude, for we are time witnesses to epochal changes 🙏 \nBest time is NOW in life to paving a fulfilling & peaceful future for our descendants ❤️ 💫\n#Bitcoin #Plebchain #UnleashYourGreatness #TheFutureIsBright #Saylor #BTC23\n\nhttps://youtu.be/4A85xqurZP8?feature=shared";
+    const res = extractEventContent(source);
+    expect(res).toEqual({
+      images: undefined,
+      videos: ["https://www.youtube.com/watch?v=4A85xqurZP8?feature=shared"],
+      notes: undefined,
+      tags: [
+        "#Bitcoin",
+        "#Plebchain",
+        "#UnleashYourGreatness",
+        "#TheFutureIsBright",
+        "#Saylor",
+        "#BTC23",
+      ],
+      text: "Who saw Saylor‘s recent speech @ BTC Innsbruck Sep 15th??\n\nSheerly alpine mountain moving developments since 2019 & what we may experience immediately ahead ✨ 🏔️ \nBig gratitude, for we are time witnesses to epochal changes 🙏 \nBest time is NOW in life to paving a fulfilling & peaceful future for our descendants ❤️ 💫\n#Bitcoin #Plebchain #UnleashYourGreatness #TheFutureIsBright #Saylor #BTC23",
+    });
+  });
+
+  test("Content with image and tags", () => {
+    const source =
+      "Anything we can do about the very chopped conifers on the other side? https://www.allforgardening.com/620312/anything-we-can-do-about-the-very-chopped-conifers-on-the-other-side/ #gardeninguk https://media.vive.im/media_attachments/files/111/111/061/177/106/314/original/3b7d17ab106cfab9.jpg";
+    const res = extractEventContent(source);
+    expect(res).toEqual({
+      images: [
+        "https://media.vive.im/media_attachments/files/111/111/061/177/106/314/original/3b7d17ab106cfab9.jpg",
+      ],
+      videos: undefined,
+      notes: undefined,
+      tags: ["#gardeninguk"],
+      text: "Anything we can do about the very chopped conifers on the other side? https://www.allforgardening.com/620312/anything-we-can-do-about-the-very-chopped-conifers-on-the-other-side/ #gardeninguk",
+    });
+  });
+
+  test("Content with image and npub", () => {
+    const source =
+      "Not very reliable. Is this a regular thing with nostr:npub1mutnyacc9uc4t5mmxvpprwsauj5p2qxq95v4a9j0jxl8wnkfvuyque23vg?\n\n\n\nhttps://image.nostr.build/adc172a180fd597c78df65fb816d86fadc243c410aee78d9fecf32d7a63ef877.jpg";
+    const res = extractEventContent(source);
+    expect(res).toEqual({
+      images: [
+        "https://image.nostr.build/adc172a180fd597c78df65fb816d86fadc243c410aee78d9fecf32d7a63ef877.jpg",
+      ],
+      videos: undefined,
+      notes: undefined,
+      nurls: [
+        {
+          type: "npub",
+          data: "1mutnyacc9uc4t5mmxvpprwsauj5p2qxq95v4a9j0jxl8wnkfvuyque23vg",
+        },
+      ],
+      tags: undefined,
+      text: "Not very reliable. Is this a regular thing with nostr:npub1mutnyacc9uc4t5mmxvpprwsauj5p2qxq95v4a9j0jxl8wnkfvuyque23vg?",
+    });
+  });
 });

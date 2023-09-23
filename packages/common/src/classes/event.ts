@@ -37,7 +37,6 @@ import {
   eventHasContentWarning,
   eventHasReport,
   generateReportTags,
-  createEventContent,
   extractEventContent,
   isValidEventContent,
   makeLnurlZapRequestUrl,
@@ -59,6 +58,7 @@ import {
   eventHasPositionalEventTags,
   proofOfWork,
   EventRelayTag,
+  NOSTR_URL_PREFIX,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -168,37 +168,21 @@ export class NEvent implements EventBase {
   }
 
   /**
-   * Mention one or more users in the event content
-   * this will merge the mentions with any existing content
-   */
-  public mentionUsers(publicKeys: string[]) {
-    const extracted = this.extractContent();
-    if (!extracted) {
-      this.content = createEventContent({
-        message: this.content,
-        nurls: [
-          {
-            type: "npub",
-            publicKeys,
-          },
-        ],
-      });
-    } else {
-      throw new Error("Already has motified content");
-    }
-  }
-
-  /**
    * Check if any user has been mentioned in the event content
    * @returns
    */
-  public hasMentions(): string[] | undefined {
+  public hasMentions():
+    | {
+        type: NOSTR_URL_PREFIX;
+        data: string;
+      }[]
+    | undefined {
     const extracted = this.extractContent();
     if (!extracted) {
       return undefined;
     }
     const publicKeys = extracted?.nurls.filter((n) => n.type === "npub");
-    return publicKeys.length > 0 ? publicKeys[0].publicKeys : undefined;
+    return publicKeys.length > 0 ? publicKeys : undefined;
   }
 
   /**
@@ -216,7 +200,7 @@ export class NEvent implements EventBase {
    * @returns
    */
   public extractContent(): NEventContent | undefined {
-    return extractEventContent(this.content, this.kind);
+    return extractEventContent(this.content);
   }
 
   public addTag(val: string[]) {

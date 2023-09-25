@@ -1,5 +1,5 @@
 import { Heading, Box, Grid, Progress } from "@chakra-ui/react";
-import { LightProcessedEvent, decodeBech32 } from "@nostr-ts/common";
+import { decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
@@ -12,14 +12,18 @@ export function EventRoute() {
   const isInitDone = useRef<boolean>(false);
 
   const eventId = useRef("");
+  const relayUrls = useRef<string[]>([]);
   const eventLoadTimeout = useRef<number | null>(null);
   const [hasTimeout, setHasTimeout] = useState<boolean>(false);
-  const [eventData, setEventData] = useState<LightProcessedEvent | null>(null);
 
   // URL params
   const { note } = useParams();
 
   const view = `event-${note}`;
+
+  const [eventData] = useNClient((state) => [
+    state.events[view] ? state.events[view][0] : null,
+  ]);
 
   const getEvent = async (retryCount = 0) => {
     await useNClient
@@ -27,11 +31,10 @@ export function EventRoute() {
       .getEvent(eventId.current, {
         view,
         retryCount,
+        relayUrls: relayUrls.current,
       })
       .then((r) => {
-        if (r) {
-          setEventData(r);
-        } else {
+        if (!r) {
           console.log(`Could not get event. Retrying...`);
           eventLoadTimeout.current = setTimeout(async () => {
             if (retryCount > 20) {
@@ -56,6 +59,8 @@ export function EventRoute() {
         if (item.type === 0) {
           eventId.current = item.value as string;
           break;
+        } else if (item.type === 1) {
+          relayUrls.current.push(item.value as string);
         }
       }
     } catch (e) {

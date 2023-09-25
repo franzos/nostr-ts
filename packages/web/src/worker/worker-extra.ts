@@ -131,7 +131,7 @@ export function relayEventsRequestFromQuery(
   let intervalAdjusted: number | undefined;
 
   if (query.filters.until && query.filters.since) {
-    intervalAdjusted = ONE_WEEK;
+    intervalAdjusted = ONE_DAY * 3;
   }
   return {
     type: CLIENT_MESSAGE_TYPE.REQ,

@@ -80,7 +80,6 @@ function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
 export const useNClient = create<NClient>((set, get) => ({
   status: "loading",
   store: wrap<NWorker>(worker),
-  hasNewerEvents: undefined,
   _processEvents: (events: WorkerEvent[]) => {
     events.forEach((event) => {
       const payload = event.data;
@@ -88,19 +87,7 @@ export const useNClient = create<NClient>((set, get) => ({
 
       switch (payload.type) {
         case "event:notify":
-          set({
-            hasNewerEvents: {
-              count: (function () {
-                const hasNotification = get().hasNewerEvents;
-                if (hasNotification) {
-                  return hasNotification.count + 1;
-                }
-                return 1;
-              })(),
-              lastTimestamp: (payload.data as LightProcessedEvent).event
-                .created_at,
-            },
-          });
+          // Deprecated
           break;
         case "event:new":
           get().addEvent(payload.data as LightProcessedEvent, payload.view);
@@ -354,12 +341,24 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   getEvent: async (
     id: string,
-    options?: {
-      token?: string;
+    options: {
+      view: string;
       retryCount?: number;
+      relayUrls?: string[];
     }
   ) => {
-    return get().store.getEvent(id, options);
+    const event = await get().store.getEvent(id, options);
+    if (event) {
+      set((state) => {
+        const events = state.events;
+        state.events[options.view] = [event];
+
+        return {
+          events: events,
+        };
+      });
+    }
+    return event;
   },
   nextQuery: undefined,
   getEvents: async (
@@ -384,10 +383,6 @@ export const useNClient = create<NClient>((set, get) => ({
     if (isFirstReq) {
       set({
         nextQuery: undefined,
-        hasNewerEvents: {
-          count: 0,
-          lastTimestamp: 0,
-        },
       });
     }
 
@@ -398,13 +393,17 @@ export const useNClient = create<NClient>((set, get) => ({
       return data.next;
     }
 
+    if (!data.events) {
+      return data.next;
+    }
+
     // find newest event by created_at
     if (!queryParams.query.reqCount || queryParams.query.reqCount === 0) {
       const newest = data.events?.reduce((prev, current) => {
         return prev.event.created_at > current.event.created_at
           ? prev
           : current;
-      }, data.events[0]);
+      });
 
       set({
         eventsNewest: {
@@ -454,6 +453,12 @@ export const useNClient = create<NClient>((set, get) => ({
     set((state) => {
       const events = state.events[token] || [];
       const newerEvents = state.eventsNewer[token] || [];
+
+      // Give it one last sort
+      newerEvents.sort((a, b) => {
+        return a.event.created_at > b.event.created_at ? -1 : 1;
+      });
+
       get().requestInformation(
         {
           source: "events:related",
@@ -494,16 +499,21 @@ export const useNClient = create<NClient>((set, get) => ({
   addEvent: (payload: LightProcessedEvent, token: string) => {
     set((state) => {
       const newest = state.eventsNewest[token] || 0;
-      const isNewer = payload.event.created_at > newest;
+      const isNewer = newest === 0 ? true : payload.event.created_at > newest;
       const target = isNewer ? "eventsNewer" : "events";
 
       const events = state[target][token] || [];
-      return {
-        [target]: {
-          ...state[target],
-          [token]: [...events, payload],
-        },
-      };
+      const exists = events.find((e) => e.event.id === payload.event.id);
+      if (!exists) {
+        return {
+          [target]: {
+            ...state[target],
+            [token]: [...events, payload],
+          },
+        };
+      } else {
+        return state;
+      }
     });
   },
   updateEvent: (payload: LightProcessedEvent, token?: string) => {

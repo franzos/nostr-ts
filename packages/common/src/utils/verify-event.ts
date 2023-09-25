@@ -3,7 +3,12 @@ import { EventBase } from "../types";
 import { hashEvent } from "./hash-event";
 
 export function verifyEvent(event: EventBase): boolean {
-  const content = hashEvent(event);
-  const valid = schnorr.verify(event.sig, content, event.pubkey);
-  return valid;
+  try {
+    const content = hashEvent(event);
+    const valid = schnorr.verify(event.sig, content, event.pubkey);
+    return valid;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
 }

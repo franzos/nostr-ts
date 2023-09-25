@@ -29,15 +29,9 @@ import {
   eventHasPositionalEventTags,
   verifyEvent,
 } from "@nostr-ts/common";
-import {
-  Database,
-  NewProcessedEventFromDB,
-  mergePopular,
-  sortAndTrimPopular,
-} from "./database";
+import { Database } from "./database";
 import {
   ONE_MINUTE,
-  ONE_SECOND,
   ProcessedToLightProcessedEvent,
   StorageEventsQuery,
   StorageQueryResult,
@@ -49,8 +43,12 @@ import {
   calculateEventsRequestRange,
   relayEventsRequestFromQuery,
 } from "./worker-extra";
-import { IncomingEventsQueue } from "./worker-queue";
 import { CreateListRecord } from "./lists";
+import {
+  NewProcessedEventFromDB,
+  mergePopular,
+  sortAndTrimPopular,
+} from "./database-helper";
 
 export class NWorker {
   status: "online" | "offline" | "loading";
@@ -86,20 +84,10 @@ export class NWorker {
     isInWebWorker?: boolean;
   };
 
-  // Track and limit the number of events a subscription may yield
-  subscriptionEventsCount: {
-    [id: string]: {
-      count: number;
-      limit: number;
-      createdAt: number;
-    };
-  } = {};
-
   lastQuery: StorageEventsQuery | undefined;
 
   // Triggered if subscription yields new event
   lastQueryHasNewerEvents: number | undefined;
-  incomingEventsQueue: IncomingEventsQueue;
 
   constructor(options?: { isInWebWorker?: boolean }) {
     this.status = "loading";
@@ -116,8 +104,6 @@ export class NWorker {
 
     this.lastQuery = undefined;
     this.lastQueryHasNewerEvents = undefined;
-
-    this.incomingEventsQueue = new IncomingEventsQueue();
   }
 
   relayClient: RelayClient;
@@ -150,11 +136,6 @@ export class NWorker {
   async init() {
     await this.db.init();
     this.updateWorkerStatus("database", true);
-
-    // Calculate popular users and events
-    setTimeout(async () => {
-      await this.calculatePopular();
-    }, 30 * ONE_SECOND * 1000);
   }
 
   setUserPubkey(pubkey: string) {
@@ -291,15 +272,13 @@ export class NWorker {
   }
 
   async addUser(payload: ProcessedUserBase) {
-    const { user } = payload;
     await this.db.addUser({
-      user,
-      relayUrls: payload.relayUrls,
+      ...payload,
     });
   }
   async updateUser(pubkey: string, payload: ProcessedUserBase) {
     const record = await this.db.getUser(pubkey);
-    await this.db.updateUser(pubkey, Object.assign(record, payload));
+    await this.db.updateUser(Object.assign(record, payload));
   }
 
   async countUsers() {
@@ -309,7 +288,7 @@ export class NWorker {
   async followUser(pubkey: string) {
     const record = await this.db.getUser(pubkey);
     if (record) {
-      await this.db.updateUser(pubkey, {
+      await this.db.updateUser({
         ...record,
         following: true,
       });
@@ -319,7 +298,7 @@ export class NWorker {
   async unfollowUser(pubkey: string) {
     const record = await this.db.getUser(pubkey);
     if (record) {
-      await this.db.updateUser(pubkey, {
+      await this.db.updateUser({
         ...record,
         following: false,
       });
@@ -341,17 +320,21 @@ export class NWorker {
     let removeFollowing = [];
     let addNew = [];
 
-    for (const prev of following) {
-      const found = contacts.find((c) => c.key === prev.user.pubkey);
-      if (!found) {
-        removeFollowing.push(prev.user.pubkey);
+    if (following && following.length > 0) {
+      for (const prev of following) {
+        const found = contacts.find((c) => c.key === prev.user.pubkey);
+        if (!found) {
+          removeFollowing.push(prev.user.pubkey);
+        }
       }
-    }
-    for (const contact of contacts) {
-      const found = following.find((f) => f.user.pubkey === contact.key);
-      if (!found) {
-        addNew.push(contact);
+      for (const contact of contacts) {
+        const found = following.find((f) => f.user.pubkey === contact.key);
+        if (!found) {
+          addNew.push(contact);
+        }
       }
+    } else {
+      addNew = contacts;
     }
 
     for (const pubkey of removeFollowing) {
@@ -397,10 +380,12 @@ export class NWorker {
    */
   async lastContactsUpdate(pubkey: string): Promise<number | undefined> {
     const events = await this.db.getEventsByPublicKeysAndKinds(
-      [pubkey],
-      [NEVENT_KIND.CONTACTS],
-      1,
-      Date.now() / 1000
+      new NFilters({
+        kinds: [NEVENT_KIND.CONTACTS],
+        authors: [pubkey],
+        since: 0,
+        until: Date.now() / 1000,
+      })
     );
     // Normally there's only one event
     return events[0].length > 0 ? events[0][0].created_at : undefined;
@@ -409,7 +394,7 @@ export class NWorker {
   async blockUser(pubkey: string) {
     const record = await this.db.getUser(pubkey);
     if (record) {
-      await this.db.updateUser(pubkey, {
+      await this.db.updateUser({
         ...record,
         isBlocked: true,
       });
@@ -419,7 +404,7 @@ export class NWorker {
   async unblockUser(pubkey: string) {
     const record = await this.db.getUser(pubkey);
     if (record) {
-      await this.db.updateUser(pubkey, {
+      await this.db.updateUser({
         ...record,
         isBlocked: false,
       });
@@ -513,7 +498,9 @@ export class NWorker {
     for (const id of ids) {
       const event = await this.db.getEvent(id);
       if (event) {
-        events.push(event);
+        events.push(
+          ProcessedToLightProcessedEvent(NewProcessedEventFromDB(event))
+        );
       }
     }
     return events ? events : undefined;
@@ -597,6 +584,14 @@ export class NWorker {
 
   ////////////////////////////////// EVENTS //////////////////////////////////
 
+  private async attachUser(data: ProcessedEventWithEvents) {
+    const userData = await this.db.getUser(data.event.pubkey);
+    return {
+      ...data,
+      user: userData ? userData.user : undefined,
+    };
+  }
+
   /**
    * Load related events from the database and merge with event
    */
@@ -651,16 +646,10 @@ export class NWorker {
     data.replies = [...data.replies, ...newReplies];
     data.zapReceipts = [...data.zapReceipts, ...zapReceipts];
 
-    const userData = await this.db.getUser(data.event.pubkey);
-
-    return {
-      ...data,
-      user: userData ? userData.user : undefined,
-    };
+    return this.attachUser(data);
   }
 
-  addToMemoryAndFrontend(event: ProcessedEventWithEvents, view: string) {
-    console.log(`=> WORKER: addToMemoryAndFrontend`, event);
+  addEventToMemoryAndFrontend(event: ProcessedEventWithEvents, view: string) {
     this.eventsInMemory.push(event);
     if (this.options.isInWebWorker) {
       const workerEvent: WorkerEventNew = {
@@ -721,7 +710,14 @@ export class NWorker {
         ? this.eventsQueryMemory[reqCount - 1]
         : undefined;
 
-    const result = await this.db.getEvents(query.filters, memory);
+    const memoryEventIds = this.eventsInMemory.map((e) => e.event.id);
+    const eventIds = memory
+      ? [...memory.eventIds, ...memoryEventIds]
+      : memoryEventIds;
+
+    const result = await this.db.getEvents(query.filters, {
+      eventIds: eventIds,
+    });
     const events = result[0];
     const totalEvents = result[1];
 
@@ -855,16 +851,15 @@ export class NWorker {
    * - defaults interval to last 24h if no range (since, until) is specified
    */
   async getEvents(params: StorageEventsQuery): Promise<StorageQueryResult> {
-    const start = Date.now();
     if (!params.query.reqCount || params.query.reqCount === 0) {
       this.eventsInMemory = [];
       this.lastQueryHasNewerEvents = undefined;
-      if (params.query.isOffline === true) {
-        console.warn(`=> WORKER: Offline mode`);
-      } else {
-        console.log(`=> WORKER: Online mode`);
-        await this.subscribe(relayEventsRequestFromQuery(params));
-      }
+    }
+    if (params.query.isOffline === true) {
+      console.warn(`=> WORKER: Offline mode`);
+    } else {
+      console.log(`=> WORKER: Online mode`);
+      await this.subscribe(relayEventsRequestFromQuery(params));
     }
 
     this.lastQuery = params;
@@ -900,16 +895,14 @@ export class NWorker {
 
     const events = [];
     for (const event of result.events) {
-      const withRelated = await this.attachRelatedEvents(
-        NewProcessedEventFromDB(event)
-      );
-      this.eventsInMemory.push(withRelated);
-      events.push(ProcessedToLightProcessedEvent(withRelated));
+      const formatted = await this.attachUser(NewProcessedEventFromDB(event));
+      this.eventsInMemory.push(formatted);
+      events.push(ProcessedToLightProcessedEvent(formatted));
     }
 
     const end = Date.now();
     console.log(
-      `=> WORKER: getEvents RL: ${events.length} events in ${
+      `=> WORKER: getEvents: ${result.events.length} events in ${
         (end - milestone) / 1000
       }s`
     );
@@ -923,33 +916,93 @@ export class NWorker {
 
   async getEvent(
     id: string,
-    options?: {
-      token?: string;
+    options: {
+      view: string;
+      retryCount?: number;
+      relayUrls?: string[];
+      isLive?: boolean;
     }
   ) {
-    const event = await this.db.getEvent(id);
+    let event = this.eventsInMemory.find((ev) => ev.event.id === id);
     if (!event) {
+      console.log(
+        `=> WORKER: Event not found in memory.`,
+        this.eventsInMemory.length,
+        event
+      );
+      const dbEvent = await this.db.getEvent(id);
+      if (dbEvent) {
+        event = NewProcessedEventFromDB(dbEvent);
+      }
+    }
+    if (event) {
+      await this.requestInformation(
+        {
+          source: "events:related",
+          idsOrKeys: [id],
+        },
+        {
+          timeoutIn: TEN_SECONDS_IN_MS,
+          view: options.view,
+          isLive: true,
+        }
+      );
+
+      const user = await this.db.getUser(event.event.pubkey);
+      event.user = user
+        ? user.user
+        : {
+            pubkey: event.event.pubkey,
+          };
+      if (!user) {
+        await this.requestInformation(
+          {
+            source: "users",
+            idsOrKeys: [event.event.pubkey],
+          },
+          {
+            timeoutIn: TEN_SECONDS_IN_MS,
+            view: options.view,
+            isLive: true,
+          }
+        );
+      }
+      return ProcessedToLightProcessedEvent(event);
+    }
+    if (!event && (!options?.retryCount || options.retryCount === 0)) {
+      if (options.relayUrls) {
+        for (const url of options.relayUrls) {
+          const relay = this.relayClient.relays.find((r) => r.url === url);
+          if (!relay) {
+            this.relayClient.connectRelay({
+              url,
+              read: true,
+              write: false,
+            });
+          }
+        }
+      }
+
       console.log(`=> WORKER: Event not found in DB, requesting from relay.`);
+
       await this.subscribe({
         type: CLIENT_MESSAGE_TYPE.REQ,
         filters: new NFilters({
+          kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
           ids: [id],
         }),
         options: {
           timeoutIn: TEN_SECONDS_IN_MS,
-          view: options?.token ? options.token : undefined,
+          view: options?.view ? options.view : undefined,
+          isLive: true,
         },
       });
+
       return undefined;
     }
-    const withRelated = await this.attachRelatedEvents(
-      NewProcessedEventFromDB(event)
-    );
-    this.eventsInMemory.push(withRelated);
-    return ProcessedToLightProcessedEvent(withRelated);
   }
 
-  private async mergeEventWithActive(
+  private mergeEventWithActive(
     event: EventBaseSigned,
     relayUrl: string,
     view?: string,
@@ -1073,7 +1126,10 @@ export class NWorker {
         this.updateEventInMemoryAndFrontend(ev, view);
         return;
       }
-    } else if (event.kind === NEVENT_KIND.SHORT_TEXT_NOTE) {
+    } else if (
+      event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+      event.kind === NEVENT_KIND.LONG_FORM_CONTENT
+    ) {
       /**
        * SHORT TEXT NOTE
        * can also be reply
@@ -1137,32 +1193,23 @@ export class NWorker {
           (ev) => ev.event.id === event.id
         );
         if (!exists) {
-          console.log(`=> WORKER: YES Adding live event to memory`);
-          // TODO: This is probably not needed
-          const userData = await this.getUser(event.pubkey);
-          const mentions = new NEvent(event).hasMentions();
-          const newEvent: ProcessedEventWithEvents = {
-            eventRelayUrls: [relayUrl],
-            user: userData ? userData.user : undefined,
-            event: new NEvent(event),
-            reactions: [],
-            reposts: [],
-            badgeAwards: [],
-            replies: [],
-            mentions:
-              mentions?.map((mention) => {
-                return {
-                  pubkey: mention.data,
-                  id: event.id,
-                };
-              }) || [],
-            zapReceipts: [],
-          };
-
-          this.addToMemoryAndFrontend(newEvent, view);
+          this.getUser(event.pubkey).then((userData) => {
+            const newEvent: ProcessedEventWithEvents = {
+              eventRelayUrls: [relayUrl],
+              user: userData ? userData.user : undefined,
+              event: new NEvent(event),
+              reactions: [],
+              reposts: [],
+              badgeAwards: [],
+              replies: [],
+              mentions: [],
+              zapReceipts: [],
+            };
+            this.addEventToMemoryAndFrontend(newEvent, view);
+          });
         }
       } else {
-        console.log(`=> WORKER: NOT LIVE`, event, view, isLive);
+        console.log(`=> WORKER: NOT LIVE.`, event.id);
       }
 
       this.notifyOfNewEvent(event);
@@ -1174,38 +1221,20 @@ export class NWorker {
     payload: WebSocketEvent,
     subscription?: RelaySubscription
   ) {
-    this.incomingEventsQueue.enqueueBackground(async () => {
-      if (kind === RELAY_MESSAGE_TYPE.OK) {
-        const eventId = payload.data[1];
-        const status = payload.data[2] as boolean;
-        const message = payload.data[3] as string;
+    if (kind === RELAY_MESSAGE_TYPE.OK) {
+      const eventId = payload.data[1];
+      const status = payload.data[2] as boolean;
+      const message = payload.data[3] as string;
 
-        const itemIsQueued = this.eventsPublishingQueue.find(
-          (item) => item.event.id === eventId
-        );
-        if (itemIsQueued) {
-          this.updateQueueItem({
-            ...itemIsQueued,
-            accepted: status,
-            error: status === false ? message : undefined,
-          });
-
-          if (this.options.isInWebWorker) {
-            postMessage({
-              type: "relay:message",
-              data: payload,
-            });
-          }
-        }
-
-        return;
-      } else if (kind === RELAY_MESSAGE_TYPE.EOSE) {
-        if (subscription) {
-          this.relayClient.updateSubscription({
-            ...subscription,
-            eose: true,
-          });
-        }
+      const itemIsQueued = this.eventsPublishingQueue.find(
+        (item) => item.event.id === eventId
+      );
+      if (itemIsQueued) {
+        this.updateQueueItem({
+          ...itemIsQueued,
+          accepted: status,
+          error: status === false ? message : undefined,
+        });
 
         if (this.options.isInWebWorker) {
           postMessage({
@@ -1213,52 +1242,68 @@ export class NWorker {
             data: payload,
           });
         }
-
-        return;
-      } else if (kind === RELAY_MESSAGE_TYPE.COUNT) {
-        const subscription = this.relayClient?.getSubscriptions();
-        const itemIsSubscription = subscription?.find(
-          (item) => item.id === payload.data[1]
-        );
-        if (itemIsSubscription) {
-          this.relayClient.updateSubscription({
-            ...itemIsSubscription,
-            result: JSON.stringify(payload.data[2]),
-          });
-        }
-
-        return;
-      } else if (kind === RELAY_MESSAGE_TYPE.NOTICE) {
-        const subscription = this.relayClient?.getSubscriptions();
-        const itemIsSubscription = subscription?.find(
-          (item) => item.id === payload.data[1]
-        );
-        if (itemIsSubscription) {
-          this.relayClient.updateSubscription({
-            ...itemIsSubscription,
-            result: payload.data[1],
-          });
-        }
-
-        if (this.options.isInWebWorker) {
-          postMessage({
-            type: "relay:message",
-            data: payload,
-          });
-        }
-
-        return;
-      } else if (kind === RELAY_MESSAGE_TYPE.AUTH) {
-        if (this.options.isInWebWorker) {
-          postMessage({
-            type: "relay:message",
-            data: payload,
-          });
-        }
-
-        return;
       }
-    });
+
+      return;
+    } else if (kind === RELAY_MESSAGE_TYPE.EOSE) {
+      if (subscription) {
+        this.relayClient.updateSubscription({
+          ...subscription,
+          eose: true,
+        });
+      }
+
+      if (this.options.isInWebWorker) {
+        postMessage({
+          type: "relay:message",
+          data: payload,
+        });
+      }
+
+      return;
+    } else if (kind === RELAY_MESSAGE_TYPE.COUNT) {
+      const subscription = this.relayClient?.getSubscriptions();
+      const itemIsSubscription = subscription?.find(
+        (item) => item.id === payload.data[1]
+      );
+      if (itemIsSubscription) {
+        this.relayClient.updateSubscription({
+          ...itemIsSubscription,
+          result: JSON.stringify(payload.data[2]),
+        });
+      }
+
+      return;
+    } else if (kind === RELAY_MESSAGE_TYPE.NOTICE) {
+      const subscription = this.relayClient?.getSubscriptions();
+      const itemIsSubscription = subscription?.find(
+        (item) => item.id === payload.data[1]
+      );
+      if (itemIsSubscription) {
+        this.relayClient.updateSubscription({
+          ...itemIsSubscription,
+          result: payload.data[1],
+        });
+      }
+
+      if (this.options.isInWebWorker) {
+        postMessage({
+          type: "relay:message",
+          data: payload,
+        });
+      }
+
+      return;
+    } else if (kind === RELAY_MESSAGE_TYPE.AUTH) {
+      if (this.options.isInWebWorker) {
+        postMessage({
+          type: "relay:message",
+          data: payload,
+        });
+      }
+
+      return;
+    }
   }
 
   async processEvent(payload: WebSocketEvent) {
@@ -1268,6 +1313,18 @@ export class NWorker {
     }
 
     const payLoadKind = payload.data[0];
+
+    if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
+      // Before all other processing
+      const ev = payload.data[2] as EventBaseSigned;
+      const inMemory = this.eventsInMemory.find(
+        (item) => item.event.id === ev.id
+      );
+
+      if (inMemory) {
+        return;
+      }
+    }
 
     /**
      * Determine if related to subscription and view
@@ -1288,15 +1345,11 @@ export class NWorker {
       associatedWithView = subscription?.options?.view;
       isLive = subscription?.options?.isLive || false;
 
-      if (!isLive) {
-        console.log(`=> WORKER: Not live`, subscription);
-      }
-
       /**
        * Make sure event signature is correct
        */
       if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
-        const isVald = await verifyEvent(payload.data[2]);
+        const isVald = verifyEvent(payload.data[2]);
         if (!isVald) {
           console.log(`=> WORKER: Invalid event signature`, payload.data[2]);
           return;
@@ -1315,7 +1368,7 @@ export class NWorker {
       payLoadKind === RELAY_MESSAGE_TYPE.COUNT ||
       payLoadKind === RELAY_MESSAGE_TYPE.EOSE
     ) {
-      await this.processRelayNotice(payLoadKind, payload, subscription);
+      this.processRelayNotice(payLoadKind, payload, subscription);
     }
 
     /**
@@ -1324,96 +1377,28 @@ export class NWorker {
 
     if (payLoadKind === RELAY_MESSAGE_TYPE.EVENT) {
       const kind = payload.data[2].kind;
-      if (
-        kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-        kind === NEVENT_KIND.LONG_FORM_CONTENT ||
-        kind === NEVENT_KIND.METADATA
-      ) {
-        this.incomingEventsQueue.enqueuePriority(async () => {
-          let subEventCountExceeded = false;
+      if (kind === NEVENT_KIND.METADATA) {
+        const ev = payload.data[2] as EventBaseSigned;
 
-          if (kind !== NEVENT_KIND.METADATA) {
-            if (this.eventsInMemory.length >= 500) {
-              return;
-            }
-
-            if (subscription && subscription.id) {
-              if (this.subscriptionEventsCount[subscription.id]) {
-                this.subscriptionEventsCount[subscription.id].count++;
-                if (
-                  this.subscriptionEventsCount[subscription.id].count >
-                  this.subscriptionEventsCount[subscription.id].limit
-                ) {
-                  console.log(`=> WORKER: Subscription limit reached`);
-                  subEventCountExceeded = true;
-                }
-              } else {
-                this.subscriptionEventsCount[subscription.id] = {
-                  count: 1,
-                  limit: 10,
-                  createdAt: Date.now(),
-                };
-              }
-            }
-          }
-
-          const ev = payload.data[2] as EventBaseSigned;
-          const userRecord = await this.db.getUser(ev.pubkey);
-          let following = false;
+        const newUser = new NUserBase();
+        newUser.fromEvent(ev);
+        this.db.getUser(ev.pubkey).then((userRecord) => {
           if (userRecord) {
             if (userRecord.isBlocked) {
               return;
             }
-            following = userRecord.following;
+            this.db.updateUser({
+              ...userRecord,
+              user: newUser,
+            });
+          } else {
+            const data = {
+              user: newUser,
+              relayUrls: [payload.meta.url],
+            };
+            this.db.addUser(data);
           }
-
-          /**
-           * We save the record to DB if
-           * - We are not live
-           * - We follow the user
-           * - It has positional tags
-           *
-           * We do
-           */
-          const hasPositional = eventHasPositionalEventTag(ev);
-
-          // If live, don't save
-          let saveEvent = !isLive;
-          if (hasPositional) {
-            // if it has positional tags, save
-            saveEvent = true;
-          }
-          if (subEventCountExceeded) {
-            // if the count is exceeded, don't save; even if positional
-            saveEvent = false;
-          }
-          if (following) {
-            // if we follow the user, save
-            saveEvent = true;
-          }
-
-          if (saveEvent) {
-            await this.db.saveEvent(ev);
-          }
-
-          if (kind === NEVENT_KIND.METADATA) {
-            const newUser = new NUserBase();
-            newUser.fromEvent(ev);
-            if (userRecord) {
-              await this.db.updateUser(ev.pubkey, {
-                ...userRecord,
-                user: newUser,
-              });
-            } else {
-              const data = {
-                user: newUser,
-                relayUrls: [payload.meta.url],
-              };
-              await this.db.addUser(data);
-            }
-          }
-
-          await this.mergeEventWithActive(
+          this.mergeEventWithActive(
             ev,
             payload.meta.url,
             associatedWithView,
@@ -1421,44 +1406,61 @@ export class NWorker {
           );
         });
       } else if (
+        kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
+        kind === NEVENT_KIND.LONG_FORM_CONTENT
+      ) {
+        const ev = payload.data[2] as EventBaseSigned;
+        this.getUser(ev.pubkey).then((userData) => {
+          if (!userData || !userData.isBlocked) {
+            this.mergeEventWithActive(
+              ev,
+              payload.meta.url,
+              associatedWithView,
+              isLive
+            );
+          }
+          if (userData && userData.following) {
+            this.db.saveEvent(ev);
+          }
+        });
+      } else if (
         kind === NEVENT_KIND.ZAP_RECEIPT ||
         kind === NEVENT_KIND.REACTION ||
         kind === NEVENT_KIND.REPOST
       ) {
-        this.incomingEventsQueue.enqueueBackground(async () => {
-          const ev = payload.data[2] as EventBaseSigned;
-          const userRecord = await this.db.getUser(ev.pubkey);
-          if (userRecord) {
-            if (userRecord.isBlocked) {
-              return;
-            }
-          }
+        const ev = payload.data[2] as EventBaseSigned;
 
-          if (!isLive) {
-            await this.db.saveEvent(ev);
+        this.getUser(ev.pubkey).then((userData) => {
+          if (!userData || !userData.isBlocked) {
+            this.mergeEventWithActive(
+              ev,
+              payload.meta.url,
+              associatedWithView,
+              isLive
+            );
           }
-
-          await this.mergeEventWithActive(
-            ev,
-            payload.meta.url,
-            associatedWithView,
-            isLive
-          );
         });
       } else if (kind === NEVENT_KIND.CONTACTS) {
-        this.incomingEventsQueue.enqueueBackground(async () => {
-          const ev = payload.data[2] as EventBaseSigned;
-          const userRecord = await this.db.getUser(ev.pubkey);
+        const ev = payload.data[2] as EventBaseSigned;
+        const userRecord = await this.db.getUser(ev.pubkey);
+        if (userRecord) {
+          if (userRecord.isBlocked) {
+            return;
+          }
+        }
+
+        this.db.getUser(ev.pubkey).then((userRecord) => {
           if (userRecord) {
             if (userRecord.isBlocked) {
               return;
             }
           }
 
-          const isNewerOrSame = await this.db.saveEventAndDeleteOlderOfType(ev);
-          if (this.userPubkey === ev.pubkey && isNewerOrSame) {
-            await this.updateUsersFollowingFromContacts(ev);
-          }
+          this.db.saveEventAndDeleteOlderOfType(ev).then((isNewerOrSame) => {
+            if (isNewerOrSame) {
+              this.updateUsersFollowingFromContacts(ev);
+            }
+          });
         });
       }
     }
@@ -1622,13 +1624,6 @@ export class NWorker {
         NEVENT_KIND.REPOST,
       ];
       if (queued.includes(kind)) {
-        // Set event
-        // TODO: Not sure if we should set it directly, or wait for the relay to send it back
-        // this.addEvent({
-        //   event: payload.event,
-        //   eventRelayUrls: result.map((r) => r.relayUrl),
-        // });
-        // Set queue item
         this.mergeEventWithActive(payload.event, result[0].relayUrl);
       }
 
@@ -1665,8 +1660,6 @@ export class NWorker {
   }
 
   clearEvents() {
-    this.incomingEventsQueue.clearPriority();
-    this.incomingEventsQueue.clearBackground();
     this.eventsInMemory = [];
   }
 }

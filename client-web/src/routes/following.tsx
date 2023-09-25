@@ -24,6 +24,22 @@ export function FollowingUsersRoute() {
   ]);
   const [followingUsers, setFollowingUsers] = useState<UserRecord[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    update();
+    const updateInterval = setInterval(update, 3000);
+
+    return () => clearInterval(updateInterval);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 3000);
+    }
+  }, [isLoading]);
 
   const update = async () => {
     await useNClient
@@ -48,6 +64,7 @@ export function FollowingUsersRoute() {
   };
 
   const loadContacts = async () => {
+    setIsLoading(true);
     await useNClient.getState().subscribe({
       type: CLIENT_MESSAGE_TYPE.REQ,
       filters: new NFilters({
@@ -61,6 +78,7 @@ export function FollowingUsersRoute() {
   };
 
   const publish = async () => {
+    setIsLoading(true);
     const ev = NewContactList({
       contacts: followingUsers.map((item) => {
         return {
@@ -73,13 +91,6 @@ export function FollowingUsersRoute() {
       event: ev,
     });
   };
-
-  useEffect(() => {
-    update();
-    const updateInterval = setInterval(update, 2000);
-
-    return () => clearInterval(updateInterval);
-  }, []);
 
   return (
     <Box>
@@ -95,13 +106,15 @@ export function FollowingUsersRoute() {
             <ButtonGroup>
               <Button
                 onClick={loadContacts}
-                isDisabled={!publicKey && status === "online"}
+                isDisabled={!publicKey || status !== "online"}
+                isLoading={isLoading}
               >
                 Load
               </Button>
               <Button
                 onClick={publish}
-                isDisabled={!publicKey && status === "online"}
+                isDisabled={!publicKey || status !== "online"}
+                isLoading={isLoading}
               >
                 Publish
               </Button>
@@ -129,9 +142,19 @@ export function FollowingUsersRoute() {
       ) : (
         <>
           <Text>
-            Follow users to subscribe to their messages. The information is
-            stored in your browser and not shared with relays.
+            Follow users to easily access their content. By default, this list
+            is not public.
           </Text>
+
+          <Box pb={2} pt={2}>
+            <Button
+              onClick={loadContacts}
+              isDisabled={!publicKey || status !== "online"}
+              isLoading={isLoading}
+            >
+              Load followers
+            </Button>
+          </Box>
           <Text fontWeight="bold">You are not following anyone.</Text>
         </>
       )}

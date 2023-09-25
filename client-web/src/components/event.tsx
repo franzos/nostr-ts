@@ -39,23 +39,39 @@ export function Event({ data, level }: EventProps) {
   ]);
 
   const [replies, setReplies] = useState<LightProcessedEvent[]>();
-  const [contentIsVisible, makeContentVisible] = useState(true);
-  const [user, setUser] = useState<UserBase>({
-    pubkey: data.event.pubkey,
-  });
-  const [properties, setProperties] = useState<{
+  const [user, setUser] = useState<UserBase>(
+    data.user
+      ? data.user
+      : {
+          pubkey: data.event.pubkey,
+        }
+  );
+
+  const content = extractEventContent(data.event.content);
+  const contentWarning = eventHasContentWarning(data.event);
+
+  let visible;
+  if (content?.text && !contentWarning) {
+    visible = true;
+  } else if (contentWarning) {
+    visible = false;
+  }
+
+  const properties: {
     isLoaded: boolean;
     contentWarning: string | undefined;
     images: string[] | undefined;
     videos: string[] | undefined;
     text: string | undefined;
-  }>({
-    isLoaded: false,
-    contentWarning: undefined,
-    images: undefined,
-    videos: undefined,
-    text: undefined,
-  });
+  } = {
+    isLoaded: true,
+    contentWarning,
+    images: content.images,
+    videos: content.videos,
+    text: content.text,
+  };
+
+  const [contentIsVisible, makeContentVisible] = useState(visible);
 
   const userOptions = {
     showFollowing: true,
@@ -75,24 +91,6 @@ export function Event({ data, level }: EventProps) {
   } = useDisclosure();
 
   const toast = useToast();
-
-  useEffect(() => {
-    const content = extractEventContent(data.event.content);
-    const contentWarning = eventHasContentWarning(data.event);
-    if (content?.text && !contentWarning) {
-      makeContentVisible(true);
-    } else if (contentWarning) {
-      makeContentVisible(false);
-    }
-    const newProps = {
-      isLoaded: true,
-      contentWarning,
-      images: content?.images,
-      videos: content?.videos,
-      text: content?.text,
-    };
-    setProperties(newProps);
-  }, [data.event.content]);
 
   useEffect(() => {
     if (level === 0) {

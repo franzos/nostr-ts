@@ -3,6 +3,7 @@ import {
   WebSocketClientInfo,
   DiscoveredRelay,
   Relay,
+  RelayConnection,
 } from "@nostr-ts/common";
 import { WebSocketClient } from "../utils/ws";
 import { getRelayInformationDocument } from "../utils/relay-information";
@@ -64,6 +65,35 @@ export class RelayClient extends RelayClientBase {
         }
       }
     }
+  }
+
+  public connectRelay(relayCnf: Relay) {
+    console.log(`=> Connecting to ${relayCnf.url} ...`);
+    const relay = new RelayConnection(relayCnf);
+
+    try {
+      relay.ws = new WebSocketClient();
+      relay.ws.connect(relay.url);
+      relay.ws.connection.onopen = () => {
+        console.log(`Websocket connected to ${relay.url}`);
+      };
+      relay.ws.connection.onclose = (event: CloseEvent) => {
+        console.log(`WebSocket to ${relay.url} closed.`, JSON.stringify(event));
+      };
+      relay.ws.connection.onerror = (event: Event) => {
+        console.log(
+          `WebSocket disconnected from ${relay.url}`,
+          JSON.stringify(event)
+        );
+        relay.error = JSON.stringify(event);
+      };
+    } catch (e) {
+      const err = e as Error;
+      console.error("Error connecting to relay", err.message);
+      relay.error = err.message;
+    }
+
+    this.relays.push(relay);
   }
 
   /**

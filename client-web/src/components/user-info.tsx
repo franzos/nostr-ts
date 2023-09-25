@@ -29,7 +29,7 @@ export function UserInfo({
   },
 }: UserInfoProps) {
   const name = data && data.name ? data.name : "Anonymous";
-  const displayName = data && data.display_name ? data.display_name : "";
+  const displayName = data && data.display_name ? data.display_name : name;
   const picture = data && data.picture ? data.picture : "";
   const banner = data && data.banner ? data.banner : undefined;
   const about = data && data.about ? data.about : undefined;
@@ -76,9 +76,9 @@ export function UserInfo({
         </Box>
         <Box overflowWrap="anywhere" maxWidth={350}>
           <Link to={profileLink}>
-            <Text size="sm">{name}</Text>
+            <Text size="sm">{displayName}</Text>
           </Link>
-          {!displayNameEqName && <Text size="xs">{displayName}</Text>}
+          {!displayNameEqName && <Text fontSize={12}>{name}</Text>}
         </Box>
 
         <Spacer />

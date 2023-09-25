@@ -59,9 +59,10 @@ export interface NClient extends NClientBase {
   countEvents: () => Promise<number>;
   getEvent: (
     id: string,
-    options?: {
-      view?: string;
+    options: {
+      view: string;
       retryCount?: number;
+      relayUrls?: string[];
     }
   ) => Promise<LightProcessedEvent | undefined>;
   getEvents: (
@@ -110,12 +111,6 @@ export interface NClient extends NClientBase {
   // updateEvents: (payload: LightProcessedEvent[]) => void;
 
   nextQuery: StorageQueryResult | undefined;
-  hasNewerEvents:
-    | {
-        count: number;
-        lastTimestamp: number;
-      }
-    | undefined;
   unsubscribeByToken: (token: string) => Promise<void>;
 
   /**

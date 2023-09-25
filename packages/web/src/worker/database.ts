@@ -4,7 +4,7 @@ import {
   FiltersBase,
   NEVENT_KIND,
   NEvent,
-  ProcessedEventWithEvents,
+  NFilters,
   ProcessedUserBase,
   UserRecord,
 } from "@nostr-ts/common";
@@ -13,44 +13,12 @@ import { ONE_DAY } from "./worker-extra";
 import { CreateListRecord, ListRecord, ProcessedListRecord } from "./lists";
 import { nanoid } from "nanoid";
 import { NUser } from "../classes";
-
-export function sortAndTrimPopular(
-  data: { [key: string]: number },
-  max = 10
-): { [key: string]: number } {
-  const sorted = Object.entries(data)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, max);
-  return Object.fromEntries(sorted);
-}
-
-export function mergePopular(
-  firstObj: { [key: string]: number },
-  secondObj: { [key: string]: number }
-): { [key: string]: number } {
-  const merged = { ...firstObj };
-  for (const [key, value] of Object.entries(secondObj)) {
-    merged[key] = (merged[key] || 0) + value;
-  }
-  return merged;
-}
-
-export function NewProcessedEventFromDB(
-  event: EventBaseSigned
-): ProcessedEventWithEvents {
-  return {
-    event: event,
-    user: undefined,
-    eventRelayUrls: undefined,
-
-    reactions: [],
-    reposts: [],
-    badgeAwards: [],
-    mentions: [],
-    replies: [],
-    zapReceipts: [],
-  };
-}
+import {
+  DEFAULT_TAGS,
+  eventMatchesFilters,
+  isNotReply,
+  sortAndTrimPopular,
+} from "./database-helper";
 
 export class Database {
   db: IDBPDatabase<NClientDB> | null;
@@ -112,14 +80,12 @@ export class Database {
     return this.db.put("users", data);
   }
 
-  async updateUser(pubkey: string, data: ProcessedUserBase) {
+  async updateUser(data: ProcessedUserBase) {
     if (!this.db) throw new Error("=> DATABASE: not ready");
+    if (!data.user.pubkey) throw new Error("=> DATABASE: no pubkey provided");
 
     return this.db.put("users", {
       ...data,
-      user: {
-        ...data.user,
-      },
     });
   }
 
@@ -133,34 +99,14 @@ export class Database {
    * EVENT HANDLINE
    */
 
-  async getEvent(id: string) {
+  async getEvent(id: string): Promise<EventBaseSigned> {
     if (!this.db) throw new Error("=> DATABASE: not ready");
 
     return this.db.get("events", id);
   }
 
-  isValidEvent(event: EventBaseSigned) {
-    if (
-      event.kind === NEVENT_KIND.SHORT_TEXT_NOTE ||
-      event.kind === NEVENT_KIND.LONG_FORM_CONTENT
-    ) {
-      // TODO: We need to be able to select these specifically
-      const hasTags = new NEvent(event).hasEventTags();
-      const hasRootOrReply = hasTags
-        ? hasTags.find((tag) => tag.marker === "root" || tag.marker === "reply")
-        : undefined;
-      if (hasRootOrReply) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   async getEventsByPublicKeysAndKinds(
-    pubkeys: string[],
-    kinds: NEVENT_KIND[],
-    since: number,
-    until: number,
+    filters: FiltersBase,
     memoryIds?: string[]
   ): Promise<[EventBaseSigned[], number]> {
     const tx = this.db?.transaction("events", "readonly");
@@ -170,23 +116,83 @@ export class Database {
     const events: EventBaseSigned[] = [];
     let total = 0;
 
-    for (const pubkey of pubkeys) {
-      for (const kind of kinds) {
+    for (const pubkey of filters.authors) {
+      for (const kind of filters.kinds) {
         let cursor = await index?.openCursor([kind, pubkey], "prev");
         while (cursor) {
-          if (
-            cursor.value.created_at > since &&
-            cursor.value.created_at < until &&
-            (!memoryIds || !memoryIds.includes(cursor.value.id)) &&
-            this.isValidEvent(cursor.value)
-          ) {
-            events.push(new NEvent(cursor.value));
+          const ev: EventBaseSigned = cursor.value;
+
+          const isIdInMemory = memoryIds && memoryIds.includes(ev.id);
+          const isWithinLimit = filters.limit
+            ? events.length < filters.limit
+            : true;
+          const match = eventMatchesFilters(filters, ev);
+
+          if (!isIdInMemory && isNotReply(ev) && match) {
+            total++;
+            if (isWithinLimit) {
+              events.push(ev);
+            }
           }
-          total++;
+
           if (total > 500) {
             break;
           }
           cursor = await cursor.continue();
+        }
+      }
+    }
+
+    return [events, total];
+  }
+
+  // TODO: The type here is unnecessary
+  async getEventsByTypesAndValues(
+    type: "e" | "p" | "t",
+    values: string[],
+    filters: FiltersBase,
+    memoryIds?: string[]
+  ): Promise<[EventBaseSigned[], number]> {
+    const tx = this.db?.transaction("tags", "readonly");
+    const store = tx?.objectStore("tags");
+    const index = store?.index("typeAndValue");
+
+    const eventIds = [];
+    const events: EventBaseSigned[] = [];
+    let total = 0;
+
+    for (const value of values) {
+      let cursor = await index?.openCursor([type, value], "prev");
+      while (cursor) {
+        const ev = cursor.value;
+
+        const isInMemory = memoryIds && memoryIds.includes(ev.eventId);
+        if (!isInMemory) {
+          eventIds.push(ev.eventId);
+        }
+
+        total++;
+
+        if (total > 500) {
+          break;
+        }
+        cursor = await cursor.continue();
+      }
+    }
+
+    for (const id of eventIds) {
+      const event = await this.getEvent(id);
+      if (event) {
+        const isIdInMemory = memoryIds && memoryIds.includes(event.id);
+        const isWithinLimit = filters.limit
+          ? events.length < filters.limit
+          : true;
+        const match = eventMatchesFilters(filters, event);
+        if (!isIdInMemory && match) {
+          total++;
+          if (isWithinLimit) {
+            events.push(event);
+          }
         }
       }
     }
@@ -205,19 +211,33 @@ export class Database {
     const {
       kinds,
       authors,
+      "#e": eTags,
+      "#p": pTags,
+      "#t": tTags,
       since = Date.now() - ONE_DAY,
       until = Date.now(),
       limit = 20,
     } = filters;
 
+    const inMemory = memory && memory.eventIds ? memory.eventIds : [];
+
     if (authors && authors.length > 0 && kinds && kinds.length > 0) {
-      return this.getEventsByPublicKeysAndKinds(
-        authors,
-        kinds,
-        since,
-        until,
-        memory?.eventIds
-      );
+      return this.getEventsByPublicKeysAndKinds(filters, inMemory);
+    }
+
+    // TODO
+    if (tTags && tTags.length > 0) {
+      return this.getEventsByTypesAndValues("t", tTags, filters, inMemory);
+    }
+
+    // TODO
+    if (eTags && eTags.length > 0) {
+      return this.getEventsByTypesAndValues("e", eTags, filters, inMemory);
+    }
+
+    // TODO
+    if (pTags && pTags.length > 0) {
+      return this.getEventsByTypesAndValues("p", pTags, filters, inMemory);
     }
 
     let events: EventBaseSigned[] = [];
@@ -241,28 +261,18 @@ export class Database {
       );
 
       while (cursor) {
-        const { id, kind, pubkey } = cursor.value;
+        const ev: EventBaseSigned = cursor.value;
 
-        const isKindMatch = !kinds || kinds.includes(kind);
+        const isIdInMemory = inMemory.includes(ev.id);
+        const isWithinLimit = filters.limit
+          ? events.length < filters.limit
+          : true;
+        const match = eventMatchesFilters(filters, ev);
 
-        // Check if the event author is in the filter list, if provided
-        const matchOrNoAuthor = !authors || authors.includes(pubkey);
-
-        // Check if the event ID is already in memory
-        const isIdInMemory = memory && memory.eventIds.includes(id);
-
-        // Make sure we don't exceed the limit
-        const isWithinLimit = events.length < limit;
-
-        if (
-          isKindMatch &&
-          matchOrNoAuthor &&
-          !isIdInMemory &&
-          this.isValidEvent(cursor.value)
-        ) {
+        if (!isIdInMemory && isNotReply(ev) && match) {
           total++;
           if (isWithinLimit) {
-            events.push(cursor.value);
+            events.push(ev);
           }
         }
 
@@ -342,20 +352,36 @@ export class Database {
   async saveEvent(event: EventBaseSigned) {
     if (!this.db) throw new Error("=> DATABASE: not ready");
 
-    const result = await this.db.add("events", event);
-
-    if (event.tags) {
-      const tags = event.tags.filter((tag) => tag[0] === "e" || tag[0] === "p");
-      for (const tag of tags) {
-        await this.db.add("tags", {
-          eventId: event.id,
-          id: `${event.id.slice(0, 10)}-${tag[0]}-${tag[1].slice(0, 10)}}`,
-          type: tag[0],
-          value: tag[1],
-        });
+    try {
+      await this.db.add("events", event);
+    } catch (err) {
+      const error = err as DOMException;
+      if (error.name !== "ConstraintError") {
+        console.error("An error occurred:", error.message);
       }
     }
-    return result;
+
+    if (event.tags) {
+      const tags = event.tags.filter((tag) => DEFAULT_TAGS.includes(tag[0]));
+      if (tags.length === 0) return;
+
+      for (const tag of tags) {
+        try {
+          await this.db.add("tags", {
+            eventId: event.id,
+            id: `${event.id.slice(0, 10)}-${tag[0]}-${tag[1].slice(0, 10)}}`,
+            type: tag[0],
+            value: tag[1],
+          });
+        } catch (err) {
+          const error = err as DOMException;
+          if (error.name !== "ConstraintError") {
+            console.error("An error occurred:", error.message);
+          }
+        }
+      }
+    }
+    return;
   }
 
   /**
@@ -369,10 +395,12 @@ export class Database {
 
     // Fetch all events of the same kind and public key
     const sameKind = await this.getEventsByPublicKeysAndKinds(
-      [event.pubkey],
-      [event.kind],
-      0,
-      Date.now()
+      new NFilters({
+        authors: [event.pubkey],
+        kinds: [event.kind],
+        since: 0,
+        until: Date.now(),
+      })
     );
 
     const createdAt = event.created_at;

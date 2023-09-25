@@ -33,11 +33,12 @@ describe("Relay events request", () => {
       type: CLIENT_MESSAGE_TYPE.REQ,
       filters: {
         ...reqFilter,
-        since: Math.round(date - 3 * ONE_DAY),
+        since: Math.round(date - 7 * ONE_DAY),
         until: date,
       },
       options: {
-        timeoutIn: TEN_SECONDS_IN_MS,
+        isLive: undefined,
+        timeoutIn: TEN_SECONDS_IN_MS * 6,
         view: "test",
       },
     });
@@ -65,11 +66,12 @@ describe("Relay events request", () => {
       type: CLIENT_MESSAGE_TYPE.REQ,
       filters: {
         ...reqFilter,
-        since: Math.round(date - 3 * ONE_DAY),
+        since: Math.round(date - 7 * ONE_DAY),
         until: date,
       },
       options: {
-        timeoutIn: TEN_SECONDS_IN_MS,
+        isLive: undefined,
+        timeoutIn: TEN_SECONDS_IN_MS * 6,
         view: "test",
       },
     });
@@ -107,7 +109,8 @@ describe("Relay events request", () => {
         until: undefined,
       },
       options: {
-        timeoutIn: TEN_SECONDS_IN_MS,
+        isLive: undefined,
+        timeoutIn: TEN_SECONDS_IN_MS * 6,
         view: "test",
       },
     });

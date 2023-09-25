@@ -11,7 +11,6 @@ import {
 } from "@chakra-ui/react";
 import { ReactionsCount } from "@nostr-ts/common";
 import InformationOutlineIcon from "mdi-react/InformationOutlineIcon";
-import { useState, useEffect } from "react";
 import { filterReactions } from "../../lib/event-reactions-filter";
 import { unixTimeToRelative } from "../../lib/relative-time";
 import { EventActionButtons } from "./action-buttons";
@@ -59,12 +58,7 @@ export const EventCardFooter = ({
 
   onAction,
 }: CardFooterProps) => {
-  const [reactions, setReactions] = useState<ReactionsCount>({});
-
-  useEffect(() => {
-    const filtered = filterReactions(reactionsCount);
-    setReactions(filtered);
-  }, [reactionsCount]);
+  const reactions = filterReactions(reactionsCount);
 
   return (
     <CardFooter pl={4} pr={4} pt={2} pb={2}>

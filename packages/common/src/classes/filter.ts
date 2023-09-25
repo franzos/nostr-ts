@@ -4,9 +4,9 @@ export class NFilters implements FiltersBase {
   ids?: string[] | undefined;
   authors?: string[] | undefined;
   kinds?: number[] | undefined;
-  tags?: string[] | undefined;
   "#e"?: string[] | undefined;
   "#p"?: string[] | undefined;
+  "#t"?: string[] | undefined;
   since?: number | undefined;
   until?: number | undefined;
   limit?: number | undefined;
@@ -15,9 +15,10 @@ export class NFilters implements FiltersBase {
     this.ids = data?.ids;
     this.authors = data?.authors;
     this.kinds = data?.kinds;
-    this.tags = data?.tags;
     this["#e"] = data?.["#e"];
     this["#p"] = data?.["#p"];
+    this["#t"] = data?.["#t"];
+
     this.since = data?.since;
     this.until = data?.until;
     this.limit = data?.limit;

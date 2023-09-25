@@ -51,8 +51,6 @@ describe("Paginate by day, over days - sticky interval", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
   });
 
   test("Expect first page with 6 results", async () => {
@@ -128,8 +126,6 @@ describe("Paginate by hour, over days - sticky interval", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
   });
 
   test("First hour", async () => {
@@ -321,7 +317,6 @@ describe("Retry the first request, if no results", () => {
         },
       });
     }
-    await worker.incomingEventsQueue.process();
 
     secondRes = await worker._getEventsQueryProcessor({
       token: "test",
@@ -356,8 +351,6 @@ describe("Inverse request; expect older results next", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
   });
 
   test("First page", async () => {
@@ -453,8 +446,6 @@ describe("Event updates", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
   });
 
   test("Expect note event with reaction", async () => {
@@ -489,8 +480,6 @@ describe("Event updates", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
 
     expect(worker.eventsInMemory.length).toBe(1);
     expect(worker.eventsInMemory[0].reactions.length).toBe(2);
@@ -538,8 +527,6 @@ describe("Get popular related", () => {
         },
       });
     }
-
-    await worker.incomingEventsQueue.process();
   });
 
   test("Expect first page with 6 results", async () => {
@@ -550,5 +537,63 @@ describe("Get popular related", () => {
     const result = await worker.getPopularUsers();
 
     console.log(result);
+  });
+});
+
+describe("Get tagged", () => {
+  const noteEvent = new NEvent({
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
+    content: `Test`,
+    created_at: Math.round(Date.now() / 1000),
+    tags: [["t", "test"]],
+  });
+
+  noteEvent.signAndGenerateId(keypair);
+
+  const noteEventTwo = new NEvent({
+    kind: NEVENT_KIND.SHORT_TEXT_NOTE,
+    content: `Test`,
+    created_at: Math.round(Date.now() / 1000),
+    tags: [["t", "another"]],
+  });
+
+  noteEventTwo.signAndGenerateId(keypair);
+
+  const worker = new NWorker();
+
+  beforeAll(async () => {
+    await worker.init();
+    await worker.db.deleteAll();
+
+    // Simulate incoming events
+    for (const event of [noteEvent, noteEventTwo]) {
+      await worker.processEvent({
+        data: [RELAY_MESSAGE_TYPE.EVENT, "test", event.ToObj()],
+        meta: {
+          url: "wss://test.com",
+          read: true,
+          write: true,
+        },
+      });
+    }
+  });
+
+  test("Expect one tagged event", async () => {
+    const filters = new NFilters({
+      kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
+      ["#t"]: ["test"],
+      limit: 1,
+    });
+
+    const events = await worker.getEvents({
+      token: "test",
+      query: {
+        filters,
+        stickyInterval: true,
+        isOffline: true,
+      },
+    });
+
+    expect(events.events.length).toBe(1);
   });
 });

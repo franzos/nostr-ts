@@ -17,7 +17,10 @@ export const NSFWContentToggle = ({
       wordBreak="break-all"
       onClick={() => setShowNSFWContent(true)}
     >
-      Show content {contentWarning !== "" ? `(${contentWarning})` : `(NSFW)`}
+      Show content{" "}
+      {contentWarning && contentWarning !== ""
+        ? `(${contentWarning})`
+        : `(NSFW)`}
     </Button>
   );
 };

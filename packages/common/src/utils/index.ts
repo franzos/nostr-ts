@@ -16,6 +16,8 @@ export * from "./event-recommendation";
 export * from "./event-relays";
 export * from "./event-reporting";
 export * from "./event-subject";
+export * from "./event-tags";
+export * from "./event-zap";
 export * from "./generate-keypair";
 export * from "./hash-event";
 export * from "./lnurl-zap";

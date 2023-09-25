@@ -82,6 +82,7 @@ export function ProfileRoute() {
       }
       if (!pk) return;
       pubkey.current = pk;
+      setUserData(null);
       await getUser(pk);
       await count(pk);
     } catch (e) {

@@ -33,6 +33,9 @@ export function EventsFeeds() {
     // Set the default, "initial" view
     isInitDone.current = true;
 
+    activeFilters.current = filterDefault();
+    setView("global");
+
     await useNClient.getState().getEvents({
       token: view,
       query: {
@@ -47,6 +50,9 @@ export function EventsFeeds() {
   };
 
   useEffect(() => {
+    if (["online", "offline"].includes(useNClient.getState().status)) {
+      onMount();
+    }
     return () => {
       useNClient.getState().unsubscribeByToken(view);
     };
@@ -63,7 +69,8 @@ export function EventsFeeds() {
 
   const changeFeed = async (feedName: string) => {
     changingView.current = true;
-    // useNClient.getState().setView(feedName);
+
+    await useNClient.getState().unsubscribeByToken(view);
     setView(feedName);
 
     if (feedName === "global") {
@@ -77,7 +84,7 @@ export function EventsFeeds() {
       if (list && list.userPubkeys) {
         activeFilters.current = filterByAuthor(list.userPubkeys);
       } else {
-        console.warn("List not found.");
+        console.error("List not found.");
         changingView.current = false;
         return;
       }

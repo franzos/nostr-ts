@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Box, Button } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-
 import { Virtuoso } from "react-virtuoso";
 
 interface EventsProps {
@@ -11,13 +10,11 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, eventsNewerCount, hasNewerEvents] = useNClient((state) => [
+  const [events, eventsNewerCount] = useNClient((state) => [
     state.events[view] || [],
     state.eventsNewer[view]?.length || 0,
-    state.hasNewerEvents,
   ]);
   const throttleTimestamp = useRef(Date.now());
-  const [isLoading, setIsLoading] = useState(false);
 
   const loadEvents = async () => {
     if (
@@ -26,7 +23,6 @@ export function Events({ view, changingView }: EventsProps) {
     ) {
       return;
     }
-    setIsLoading(true);
     throttleTimestamp.current = Date.now();
 
     const nextQuery = useNClient.getState().nextQuery;
@@ -55,7 +51,6 @@ export function Events({ view, changingView }: EventsProps) {
     } else {
       await useNClient.getState().getEvents();
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -64,11 +59,11 @@ export function Events({ view, changingView }: EventsProps) {
     }
   }, []);
 
-  useEffect(() => {
-    if (hasNewerEvents && hasNewerEvents.count > 0 && !isLoading) {
-      loadEvents();
-    }
-  }, [hasNewerEvents, isLoading]);
+  // useEffect(() => {
+  //   if (hasNewerEvents && hasNewerEvents.count > 0 && !isLoading) {
+  //     loadEvents();
+  //   }
+  // }, [hasNewerEvents, isLoading]);
 
   // const loadNewerEvents = async () => {
   //   setIsLoading(true);
@@ -120,10 +115,6 @@ export function Events({ view, changingView }: EventsProps) {
         )}
         endReached={() => {
           loadEvents();
-        }}
-        overscan={{
-          main: 4000,
-          reverse: 4000,
         }}
       />
     </>

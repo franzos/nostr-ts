@@ -15,7 +15,6 @@ export interface FiltersBase {
    * a list of a kind numbers
    */
   kinds?: number[];
-  tags?: string[];
   /**
    * a list of event ids that are referenced in an "e" tag
    */
@@ -24,6 +23,10 @@ export interface FiltersBase {
    * a list of pubkeys that are referenced in a "p" tag
    */
   "#p"?: string[];
+  /**
+   * a list of tags that are referenced in a "t" tag
+   */
+  "#t"?: string[];
   /**
    * an integer unix timestamp in seconds, events must be newer than this to pass
    */

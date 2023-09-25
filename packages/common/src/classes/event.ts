@@ -59,6 +59,7 @@ import {
   proofOfWork,
   EventRelayTag,
   NOSTR_URL_PREFIX,
+  eventHasTags,
 } from "../utils";
 import {
   eventHasExternalIdentityClaim,
@@ -239,6 +240,14 @@ export class NEvent implements EventBase {
     } else {
       return eventHasEventTags(this);
     }
+  }
+
+  /**
+   * Event tags (t) in tags array
+   * @returns
+   */
+  public hasTags(): string[] | undefined {
+    return eventHasTags(this);
   }
 
   /**

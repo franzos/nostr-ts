@@ -236,7 +236,7 @@ export function Event({ data, level }: EventProps) {
           />
         )}
         <Box p={2}>
-          <User user={user} options={userOptions} />
+          <User user={user} opts={userOptions} />
         </Box>
       </CardHeader>
       {/* BODY */}

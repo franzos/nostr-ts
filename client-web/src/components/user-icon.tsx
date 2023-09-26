@@ -11,13 +11,12 @@ import {
   PopoverTrigger,
 } from "@chakra-ui/react";
 import { UserBase } from "@nostr-ts/common";
-import { useNClient } from "../state/client";
-import { UserInfo } from "./user-info";
 import { UserOptions } from "../lib/user-properties";
+import { User } from "./user";
 
 export function UserIcon({
   user,
-  options: {
+  opts: {
     showAbout,
     showBanner,
     showFollowing,
@@ -28,12 +27,8 @@ export function UserIcon({
   },
 }: {
   user: UserBase;
-  options: UserOptions;
+  opts: UserOptions;
 }) {
-  const [following] = useNClient((state) => [
-    state.followingUserIds.find((f) => f === user.pubkey),
-  ]);
-
   const picture = user.data && user.data.picture ? user.data.picture : "";
 
   return (
@@ -75,12 +70,11 @@ export function UserIcon({
           <PopoverCloseButton />
           <PopoverHeader>{title}</PopoverHeader>
           <PopoverBody>
-            <UserInfo
+            <User
               user={user}
               opts={{
                 showAbout,
                 showBanner,
-                following: !!following,
                 showFollowing,
                 relayUrls,
                 title,

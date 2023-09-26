@@ -76,7 +76,7 @@ export function UserProfileRoute() {
       {user ? (
         <User
           user={user}
-          options={{
+          opts={{
             relayUrls,
           }}
         />

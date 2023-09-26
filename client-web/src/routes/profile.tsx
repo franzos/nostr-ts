@@ -136,7 +136,7 @@ export function ProfileRoute() {
           <Box mb={4}>
             <User
               user={userData.user}
-              options={{
+              opts={{
                 showAbout: true,
                 showBanner: true,
                 showFollowing: true,

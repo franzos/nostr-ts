@@ -356,14 +356,6 @@ export class NWorker {
       }
     }
 
-    if (this.options.isInWebWorker) {
-      const msg: WorkerEventFollowingUpdate = {
-        type: "following:update",
-        data: contacts.map((c) => c.key),
-      };
-      postMessage(msg);
-    }
-
     await this.requestInformation(
       {
         source: "users",

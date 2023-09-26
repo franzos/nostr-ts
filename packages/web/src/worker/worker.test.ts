@@ -10,7 +10,7 @@ import { NWorker } from "./worker";
 import "fake-indexeddb/auto";
 import { ONE_DAY, ONE_HOUR, ONE_MINUTE } from "./worker-extra";
 
-indexedDB.deleteDatabase("nostros");
+indexedDB.deleteDatabase("nostrop");
 
 const keypair = generateClientKeys();
 

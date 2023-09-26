@@ -9,8 +9,8 @@ import {
 } from "@chakra-ui/react";
 import { UserRecord } from "@nostr-ts/common";
 import { useEffect, useRef, useState } from "react";
-import { UserInfo } from "./user-info";
 import { useNClient } from "../state/client";
+import { User } from "./user";
 
 export function PopularUsersList() {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -102,14 +102,13 @@ export function PopularUsersList() {
 
       {users.length > 0
         ? users.map((user, index) => (
-            <UserInfo
+            <User
               key={index}
               user={user.user}
               opts={{
                 showAbout: false,
                 showBanner: false,
-                following: false,
-                showFollowing: false,
+                showFollowing: true,
                 showBlock: false,
                 relayUrls: [],
                 isBlocked: false,

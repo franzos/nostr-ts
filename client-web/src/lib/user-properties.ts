@@ -3,7 +3,6 @@ import { UserBase } from "@nostr-ts/common";
 export interface UserOptions {
   showAbout?: boolean;
   showBanner?: boolean;
-  following?: boolean;
   showFollowing?: boolean;
   /**
    * Show block button

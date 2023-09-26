@@ -18,6 +18,7 @@ import LanDisconnectIcon from "mdi-react/LanDisconnectIcon";
 import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
+import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
 import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 import Logo from "../assets/logo.svg";
@@ -73,7 +74,7 @@ export function PrimaryLayout() {
           <MenuItem
             label="Lists"
             to="/lists"
-            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
+            leftIcon={<Icon as={PlaylistEditIcon} marginRight={1} />}
           />
 
           {publicKey && publicKey !== "" && (

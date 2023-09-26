@@ -234,7 +234,7 @@ const event = NewContactList({
     {
       key: "5276ac499c9c6a353634d3d2cb6f4ada5167c3b886108ab4ddeb8ddf7b0fff70",
       relayUrl: "wss://nostr.rocks",
-      petname: "nostros",
+      petname: "nostrop",
     },
   ],
 });

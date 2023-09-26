@@ -131,7 +131,7 @@ export function FollowingUsersRoute() {
               <User
                 user={item.user}
                 key={item.user.pubkey}
-                options={{
+                opts={{
                   showFollowing: true,
                   relayUrls: item.relayUrls,
                 }}

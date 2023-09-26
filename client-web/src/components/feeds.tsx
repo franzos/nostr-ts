@@ -11,14 +11,11 @@ import {
 } from "../lib/default-filters";
 
 export function EventsFeeds() {
-  const [status, followingUserIds, keypairIsLoaded, keypair] = useNClient(
-    (state) => [
-      state.status,
-      state.followingUserIds,
-      state.keypairIsLoaded,
-      state.keypair,
-    ]
-  );
+  const [status, keypairIsLoaded, keypair] = useNClient((state) => [
+    state.status,
+    state.keypairIsLoaded,
+    state.keypair,
+  ]);
 
   const isInitDone = useRef<boolean>(false);
 
@@ -76,7 +73,12 @@ export function EventsFeeds() {
     if (feedName === "global") {
       activeFilters.current = filterDefault();
     } else if (feedName === "following") {
-      activeFilters.current = filterByAuthor(followingUserIds);
+      const following = await useNClient.getState().getAllUsersFollowing();
+      if (following) {
+        activeFilters.current = filterByAuthor(
+          following?.map((f) => f.user.pubkey)
+        );
+      }
     } else if (feedName === "mentions") {
       activeFilters.current = filterByMentions([keypair.publicKey]);
     } else {
@@ -105,7 +107,7 @@ export function EventsFeeds() {
     <Box>
       <Box p={2}>
         <ListSelection
-          showFollowing={followingUserIds.length > 0}
+          showFollowing={true}
           showMentions={keypairIsLoaded}
           changeFeed={changeFeed}
         />

@@ -68,8 +68,6 @@ export interface NClientBase {
   followUser(payload: UserPublicKeyAndRelays): Promise<void>;
   unfollowUser(pubkey: string): Promise<void>;
   followingUser(pubkey: string): Promise<boolean>;
-  // For reactive updates
-  followingUserIds: string[];
   getAllUsersFollowing(): Promise<UserRecord[] | undefined>;
   unfollowUser(pubkey: string): Promise<void>;
   blockUser(payload: UserPublicKeyAndRelays): void;

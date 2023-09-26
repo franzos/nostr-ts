@@ -104,9 +104,6 @@ export const useNClient = create<NClient>((set, get) => ({
           set({ status: payload.data as SystemStatus });
           console.log(`Status changed to ${payload.data}`);
           break;
-        case "following:update":
-          set({ followingUserIds: payload.data as string[] });
-          break;
         default:
           console.log(`Unsupported payload type: ${payload.type}`);
       }
@@ -120,11 +117,6 @@ export const useNClient = create<NClient>((set, get) => ({
       worker.addEventListener("message", throttledEvents);
 
       await get().store.init();
-
-      const following = await get().store.getAllUsersFollowing();
-      if (following) {
-        set({ followingUserIds: following.map((u) => u.user.pubkey) });
-      }
     } catch (err) {
       console.error("Initialization failed:", err);
     }
@@ -777,23 +769,14 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   followUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
     await get().store.followUser(payload.pubkey);
-    const folowing = await get().store.getAllUsersFollowing();
-    if (folowing) {
-      set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
-    }
   },
   unfollowUser: async (pubkey: string) => {
     await get().store.unfollowUser(pubkey);
-    const folowing = await get().store.getAllUsersFollowing();
-    if (folowing) {
-      set({ followingUserIds: folowing.map((u) => u.user.pubkey) });
-    }
   },
   followingUser: async (pubkey: string) => {
     const userData = await get().store.getUser(pubkey);
     return userData?.following || false;
   },
-  followingUserIds: [],
   getAllUsersFollowing: async () => {
     return get().store.getAllUsersFollowing();
   },

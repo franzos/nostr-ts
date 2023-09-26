@@ -24,7 +24,7 @@ import { useNClient } from "../state/client";
 import { useEffect, useState } from "react";
 import { ProcessedListRecord } from "../state/base-types";
 import { UserIcon } from "../components/user-icon";
-import { UserInfo } from "../components/user-info";
+import { User } from "../components/user";
 
 export function ListsRoute() {
   const [lists, setLists] = useState<ProcessedListRecord[]>([]);
@@ -95,7 +95,7 @@ export function ListsRoute() {
               <UserIcon
                 key={u.user.pubkey}
                 user={u.user}
-                options={{
+                opts={{
                   avatarSize: "sm",
                   relayUrls: u.relayUrls,
                 }}
@@ -118,7 +118,7 @@ export function ListsRoute() {
               return (
                 <Box p={1} key={u.user.pubkey}>
                   <HStack>
-                    <UserInfo
+                    <User
                       key={u.user.pubkey}
                       user={u.user}
                       opts={{

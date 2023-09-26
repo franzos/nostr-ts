@@ -11,7 +11,7 @@ export function EventUser({ data }: EventUserProps) {
       {data.user && data.user.pubkey ? (
         <User
           user={data.user}
-          options={{
+          opts={{
             showFollowing: true,
             relayUrls: data.eventRelayUrls,
             showBlock: true,
@@ -22,7 +22,7 @@ export function EventUser({ data }: EventUserProps) {
           user={{
             pubkey: data.event.pubkey,
           }}
-          options={{
+          opts={{
             showFollowing: true,
             relayUrls: data.eventRelayUrls,
             showBlock: true,

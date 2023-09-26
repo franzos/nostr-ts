@@ -385,7 +385,7 @@ export const useNClient = create<NClient>((set, get) => ({
       return data.next;
     }
 
-    if (!data.events) {
+    if (!data.events || data.events.length === 0) {
       return data.next;
     }
 
@@ -435,9 +435,19 @@ export const useNClient = create<NClient>((set, get) => ({
 
     return data.next;
   },
+  getEventReplies: async (id: string, view: string, isLive: boolean) => {
+    const replies = await get().store.getEventReplies(id, view, isLive);
+    if (replies) {
+      set((state) => {
+        const events = state.events;
+        state.events[view] = replies;
 
-  getEventReplies: async (id: string) => {
-    return get().store.getEventReplies(id);
+        return {
+          events: events,
+        };
+      });
+      return replies.length;
+    }
   },
   events: {},
   eventsNewest: {},

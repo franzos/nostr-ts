@@ -1,7 +1,6 @@
 import {
   Avatar as ChakraAvatar,
   Spacer,
-  Button,
   Box,
   Image,
   Text,
@@ -75,7 +74,7 @@ export function User({
         </Box>
       )}
       <HStack>
-        <Box mr="2">
+        <Box>
           <Link to={profileLink}>
             {picture === "" ? (
               <Avatar

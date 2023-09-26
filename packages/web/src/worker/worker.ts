@@ -1140,8 +1140,11 @@ export class NWorker {
 
             const data = {
               id: event.id,
+              kind: event.kind,
               pubkey: event.pubkey,
               content: event.content,
+              created_at: event.created_at,
+              sig: event.sig,
             };
             if (ev.replies) {
               if (ev.replies.find((r) => r.id === data.id)) return;
@@ -1162,8 +1165,11 @@ export class NWorker {
 
             const data = {
               id: event.id,
+              kind: event.kind,
               pubkey: event.pubkey,
               content: event.content,
+              created_at: event.created_at,
+              sig: event.sig,
             };
             if (ev.replies) {
               if (ev.replies.find((r) => r.id === data.id)) return;
@@ -1582,9 +1588,21 @@ export class NWorker {
 
   async getEventReplies(
     id: string,
-    view?: string | undefined
+    view: string | undefined,
+    isLive: boolean
   ): Promise<LightProcessedEvent[]> {
-    return this.db
+    await this.requestInformation(
+      {
+        source: "events:related",
+        idsOrKeys: [id],
+      },
+      {
+        timeoutIn: TEN_SECONDS_IN_MS,
+        view,
+        isLive,
+      }
+    );
+    let events = await this.db
       .getRelatedEvents(id, [NEVENT_KIND.SHORT_TEXT_NOTE])
       .then((evs) =>
         Promise.all(
@@ -1593,6 +1611,25 @@ export class NWorker {
           })
         )
       );
+    const liveEvent = this.eventsInMemory.find((ev) => ev.event.id === id);
+    if (liveEvent && liveEvent.replies) {
+      events.push(
+        ...liveEvent.replies.map((ev) =>
+          ProcessedToLightProcessedEvent(NewProcessedEventFromDB(ev))
+        )
+      );
+    }
+
+    // de-duplicate and sort
+    events = events.filter(
+      (item, index, self) =>
+        index === self.findIndex((t) => t.event.id === item.event.id)
+    );
+    events.sort((a, b) => {
+      return b.event.created_at - a.event.created_at;
+    });
+
+    return events;
   }
 
   /**

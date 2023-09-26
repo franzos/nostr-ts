@@ -25,7 +25,7 @@ export class Database {
 
   async init() {
     console.log(`=> DATABASE: Initializing database...`);
-    this.db = await openDB<NClientDB>("nostros", 4, {
+    this.db = await openDB<NClientDB>("nostrop", 4, {
       upgrade(database, oldVersion, newVersion, transaction) {
         dbMigration(database, oldVersion, newVersion, transaction);
       },

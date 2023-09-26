@@ -2,25 +2,41 @@ import { LightProcessedEvent } from "@nostr-ts/common";
 import { CreateEventForm } from "../create-event-form";
 import { Event } from "../event";
 import { Box } from "@chakra-ui/react";
+import { useNClient } from "../../state/client";
+import { useEffect } from "react";
 
 interface EventRepliesProps {
   data: LightProcessedEvent;
-  replies: LightProcessedEvent[] | undefined;
-  isReplyOpen: boolean;
+  isOpen: boolean;
   sendCallback: (eventId: string) => void;
   level: number;
 }
 
 export function EventReplies({
   data,
-  replies,
-  isReplyOpen,
+  isOpen,
   sendCallback,
   level,
 }: EventRepliesProps) {
+  const view = `event-${data.event.id}_replies`;
+
+  const [replies] = useNClient((state) => [
+    state.events[`event-${data.event.id}_replies`],
+  ]);
+
+  const loadReplies = async () => {
+    await useNClient.getState().getEventReplies(data.event.id, view, true);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadReplies();
+    }
+  }, [isOpen]);
+
   return (
     <>
-      {isReplyOpen && (
+      {isOpen && (
         <Box
           padding={4}
           marginBottom={2}
@@ -39,7 +55,7 @@ export function EventReplies({
       )}
 
       {replies &&
-        isReplyOpen &&
+        isOpen &&
         replies.map((r) => {
           const user = r.user ? r.user : { pubkey: r.event.pubkey };
           return (

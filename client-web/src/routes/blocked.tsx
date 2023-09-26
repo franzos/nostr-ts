@@ -35,7 +35,7 @@ export function BlockedUsersRoute() {
               <User
                 user={item.user}
                 key={item.user.pubkey}
-                options={{
+                opts={{
                   showFollowing: false,
                   showBlock: true,
                   relayUrls: item.relayUrls,

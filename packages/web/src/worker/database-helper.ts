@@ -3,7 +3,6 @@ import {
   FiltersBase,
   NEVENT_KIND,
   NEvent,
-  NFilters,
   ProcessedEventWithEvents,
   eventHasTags,
 } from "@nostr-ts/common";

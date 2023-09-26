@@ -12,10 +12,10 @@ export function EventContent({ content }: EventContentProps) {
         <Box
           overflowWrap={"break-word"}
           wordBreak={"break-word"}
-          pl={4}
-          pr={4}
-          pt={2}
-          pb={2}
+          pl={2}
+          pr={2}
+          pt={1}
+          pb={1}
           background={"blackAlpha.100"}
           borderRadius={4}
           style={{ overflowWrap: "anywhere" }}

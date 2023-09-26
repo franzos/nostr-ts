@@ -38,7 +38,6 @@ export function Event({ data, level }: EventProps) {
       state.keystore !== "none",
   ]);
 
-  const [replies, setReplies] = useState<LightProcessedEvent[]>();
   const [user, setUser] = useState<UserBase>(
     data.user
       ? data.user
@@ -84,10 +83,11 @@ export function Event({ data, level }: EventProps) {
     onOpen: onInfoModalOpen,
     onClose: onInfoModalClose,
   } = useDisclosure();
+
   const {
-    isOpen: isReplyOpen,
-    onOpen: onReplyOpen,
-    onClose: onReplyClose,
+    isOpen: isRepliesOpen,
+    onOpen: onRepliesOpen,
+    onClose: onRepliesClose,
   } = useDisclosure();
 
   const toast = useToast();
@@ -104,12 +104,6 @@ export function Event({ data, level }: EventProps) {
   }, [data.user]);
 
   useEffect(() => {
-    if (isReplyOpen) {
-      loadReplies();
-    }
-  }, [isReplyOpen]);
-
-  useEffect(() => {
     const loadUser = async () => {
       const user = await useNClient.getState().getUser(data.event.pubkey);
       if (user) {
@@ -121,22 +115,15 @@ export function Event({ data, level }: EventProps) {
     }
   }, [data.event.pubkey]);
 
-  const loadReplies = async () => {
-    const evData = await useNClient.getState().getEventReplies(data.event.id);
-    if (evData) {
-      setReplies(evData);
-    }
-  };
-
-  const sendCallback = () => {
-    onReplyClose();
-  };
-
   const relatedRelay = async () => {
     if (!data.eventRelayUrls) return;
     const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay && relay.write) return relay;
+  };
+
+  const replyCallback = async (eventId: string) => {
+    console.log("replyCallback", eventId);
   };
 
   /**
@@ -235,7 +222,7 @@ export function Event({ data, level }: EventProps) {
             setShowNSFWContent={makeContentVisible}
           />
         )}
-        <Box p={2}>
+        <Box p={1} pl={2}>
           <User user={user} opts={userOptions} />
         </Box>
       </CardHeader>
@@ -261,9 +248,9 @@ export function Event({ data, level }: EventProps) {
         repostCount={data.repostsCount}
         zapReceiptCount={data.zapReceiptCount}
         zapReceiptAmount={data.zapReceiptAmount}
-        isReplyOpen={isReplyOpen}
-        onReplyOpen={onReplyOpen}
-        onReplyClose={onReplyClose}
+        isReplyOpen={isRepliesOpen}
+        onReplyOpen={onRepliesOpen}
+        onReplyClose={onRepliesClose}
         isInfoModalOpen={isInfoModalOpen}
         onInfoModalOpen={onInfoModalOpen}
         onInfoModalClose={onInfoModalClose}
@@ -272,9 +259,8 @@ export function Event({ data, level }: EventProps) {
 
       <EventReplies
         data={data}
-        replies={replies}
-        isReplyOpen={isReplyOpen}
-        sendCallback={sendCallback}
+        isOpen={isRepliesOpen}
+        sendCallback={replyCallback}
         level={level}
       />
       <EventInfoModal

@@ -61,7 +61,7 @@ export const EventCardFooter = ({
   const reactions = filterReactions(reactionsCount);
 
   return (
-    <CardFooter pl={4} pr={4} pt={2} pb={2}>
+    <CardFooter p={1} pl={2} pr={2}>
       <VStack align="stretch">
         <Box overflowWrap={"break-word"} wordBreak={"break-word"}>
           {reactions &&
@@ -95,11 +95,14 @@ export const EventCardFooter = ({
             />
 
             <Spacer />
-            <Text fontSize={12}>{unixTimeToRelative(createdAt)}</Text>
+            <Text fontSize={12} color="gray.500">
+              {unixTimeToRelative(createdAt)}
+            </Text>
             <IconButton
               aria-label="Event info"
               size={"xs"}
               variant="outline"
+              color="gray.500"
               icon={<Icon as={InformationOutlineIcon} />}
               onClick={() =>
                 isInfoModalOpen ? onInfoModalClose() : onInfoModalOpen()

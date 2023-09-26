@@ -138,6 +138,7 @@ export interface LightProcessedEvent extends ProcessedEventBase {
 export interface BareEvent {
   id: string;
   pubkey: string;
+  content?: string;
 }
 
 export interface BareEventContent extends BareEvent {
@@ -152,7 +153,7 @@ export interface ProcessedEventWithEvents extends ProcessedEventBase {
   reactions: BareEventContent[];
   reposts: BareEvent[];
   badgeAwards: BareEventContent[];
-  replies: BareEvent[];
+  replies: EventBaseSigned[];
   mentions: BareEvent[];
   zapReceipts: BareEventContentWithNumber[];
 }

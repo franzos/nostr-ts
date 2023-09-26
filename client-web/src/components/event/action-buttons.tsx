@@ -40,6 +40,7 @@ export function EventActionButtons({
       <Button
         size="xs"
         variant="outline"
+        color="gray.500"
         colorScheme="blue"
         leftIcon={<Icon as={ReplyIcon} />}
         onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
@@ -50,6 +51,7 @@ export function EventActionButtons({
       <Button
         size="xs"
         variant="outline"
+        color="gray.500"
         aria-label="Upvote"
         leftIcon={<Icon as={ThumbUpIcon} />}
         onClick={() => onAction("reaction", "+")}
@@ -60,6 +62,7 @@ export function EventActionButtons({
       <Button
         size="xs"
         variant="outline"
+        color="gray.500"
         aria-label="Downvote"
         leftIcon={<Icon as={ThumbDownIcon} />}
         onClick={() => onAction("reaction", "-")}
@@ -70,6 +73,7 @@ export function EventActionButtons({
       <Button
         size="xs"
         variant="outline"
+        color="gray.500"
         aria-label="Repost"
         leftIcon={<Icon as={RepeatIcon} />}
         onClick={() => onAction("quote")}
@@ -80,6 +84,7 @@ export function EventActionButtons({
       <Button
         size="xs"
         variant="outline"
+        color="gray.500"
         aria-label="ZAP"
         leftIcon={<Icon as={CurrencyBtcIcon} />}
         isDisabled={!isReady}

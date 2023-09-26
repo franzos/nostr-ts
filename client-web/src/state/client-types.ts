@@ -71,8 +71,9 @@ export interface NClient extends NClientBase {
   ) => Promise<StorageQueryParams>;
   getEventReplies: (
     id: string,
-    view?: string
-  ) => Promise<LightProcessedEvent[] | undefined>;
+    view: string,
+    isLive: boolean
+  ) => Promise<number | undefined>;
   sendEvent: (events: PublishingRequest) => Promise<PublishingQueueItem[]>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 

@@ -211,63 +211,70 @@ export function Event({ data, level }: EventProps) {
   };
 
   return (
-    <Card>
-      {/* HEADER */}
-      <CardHeader p={0}>
-        {contentIsVisible ? (
-          <EventBanner images={properties.images} videos={properties.videos} />
-        ) : (
-          <NSFWContentToggle
-            contentWarning={properties.contentWarning}
-            setShowNSFWContent={makeContentVisible}
-          />
-        )}
-        <Box p={1} pl={2}>
-          <User user={user} opts={userOptions} />
-        </Box>
-      </CardHeader>
-      {/* BODY */}
-      <CardBody p={0}>
-        {contentIsVisible && (
-          <Skeleton isLoaded={properties.isLoaded}>
-            <EventContent
-              content={
-                properties.isLoaded ? properties.text : data.event.content
-              }
+    <>
+      <Card>
+        {/* HEADER */}
+        <CardHeader p={0}>
+          {contentIsVisible ? (
+            <EventBanner
+              images={properties.images}
+              videos={properties.videos}
             />
-          </Skeleton>
-        )}
-      </CardBody>
-      {/* FOOTER */}
-      <EventCardFooter
-        isReady={isReady}
-        level={level}
-        createdAt={data.event.created_at}
-        repliesCount={data.repliesCount}
-        reactionsCount={data.reactionsCount}
-        repostCount={data.repostsCount}
-        zapReceiptCount={data.zapReceiptCount}
-        zapReceiptAmount={data.zapReceiptAmount}
-        isReplyOpen={isRepliesOpen}
-        onReplyOpen={onRepliesOpen}
-        onReplyClose={onRepliesClose}
-        isInfoModalOpen={isInfoModalOpen}
-        onInfoModalOpen={onInfoModalOpen}
-        onInfoModalClose={onInfoModalClose}
-        onAction={newAction}
-      />
+          ) : (
+            <NSFWContentToggle
+              contentWarning={properties.contentWarning}
+              setShowNSFWContent={makeContentVisible}
+            />
+          )}
+          <Box p={1} pl={2}>
+            <User user={user} opts={userOptions} />
+          </Box>
+        </CardHeader>
+        {/* BODY */}
+        <CardBody p={0}>
+          {contentIsVisible && (
+            <Skeleton isLoaded={properties.isLoaded}>
+              <EventContent
+                content={
+                  properties.isLoaded ? properties.text : data.event.content
+                }
+              />
+            </Skeleton>
+          )}
+        </CardBody>
+        {/* FOOTER */}
+        <EventCardFooter
+          isReady={isReady}
+          level={level}
+          createdAt={data.event.created_at}
+          repliesCount={data.repliesCount}
+          reactionsCount={data.reactionsCount}
+          repostCount={data.repostsCount}
+          zapReceiptCount={data.zapReceiptCount}
+          zapReceiptAmount={data.zapReceiptAmount}
+          isReplyOpen={isRepliesOpen}
+          onReplyOpen={onRepliesOpen}
+          onReplyClose={onRepliesClose}
+          isInfoModalOpen={isInfoModalOpen}
+          onInfoModalOpen={onInfoModalOpen}
+          onInfoModalClose={onInfoModalClose}
+          onAction={newAction}
+        />
+      </Card>
 
-      <EventReplies
-        data={data}
-        isOpen={isRepliesOpen}
-        sendCallback={replyCallback}
-        level={level}
-      />
+      {isRepliesOpen && (
+        <EventReplies
+          data={data}
+          isOpen={isRepliesOpen}
+          sendCallback={replyCallback}
+          level={level}
+        />
+      )}
       <EventInfoModal
         data={data}
         isOpen={isInfoModalOpen}
         onClose={onInfoModalClose}
       />
-    </Card>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { Box, Grid, Spinner, Text } from "@chakra-ui/react";
+import { Box, Grid } from "@chakra-ui/react";
 import { UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { User } from "../components/user";
 import { Events } from "../components/events";
 import { filterByAuthor } from "../lib/default-filters";
+import { Loading } from "../components/loading";
 
 export function ProfileRoute() {
   const [status] = useNClient((state) => [state.status]);
@@ -138,10 +139,7 @@ export function ProfileRoute() {
       <Box>
         <Box mb={4}>
           {isLoadingUser && (
-            <Box textAlign="center">
-              <Text>Just a sec ... Searching the Matrix for the user.</Text>
-              <Spinner p={10} mt={2} />
-            </Box>
+            <Loading text="Just a sec ... Searching the Matrix for the user." />
           )}
 
           {userData && (

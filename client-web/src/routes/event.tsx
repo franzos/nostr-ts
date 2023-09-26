@@ -1,9 +1,10 @@
-import { Heading, Box, Grid, Text, Spinner } from "@chakra-ui/react";
+import { Heading, Box, Grid } from "@chakra-ui/react";
 import { decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
 import { Event } from "../components/event";
+import { Loading } from "../components/loading";
 
 export function EventRoute() {
   const [connected] = useNClient((state) => [state.connected]);
@@ -104,10 +105,7 @@ export function EventRoute() {
                 relays.
               </Heading>
             ) : (
-              <Box textAlign="center">
-                <Text>Just a sec ... Searching the Matrix for the event.</Text>
-                <Spinner p={10} mt={2} />
-              </Box>
+              <Loading text="Just a sec ... Searching the Matrix for the event." />
             )}
           </>
         )}

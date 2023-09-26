@@ -3,7 +3,8 @@ import { CreateEventForm } from "../create-event-form";
 import { Event } from "../event";
 import { Box } from "@chakra-ui/react";
 import { useNClient } from "../../state/client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Loading } from "../loading";
 
 interface EventRepliesProps {
   data: LightProcessedEvent;
@@ -19,13 +20,47 @@ export function EventReplies({
   level,
 }: EventRepliesProps) {
   const view = `event-${data.event.id}_replies`;
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [replies] = useNClient((state) => [
     state.events[`event-${data.event.id}_replies`],
   ]);
 
   const loadReplies = async () => {
-    await useNClient.getState().getEventReplies(data.event.id, view, true);
+    setIsLoading(true);
+    try {
+      await useNClient.getState().getEventReplies(data.event.id, view, true);
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (replies && replies.length > 0) {
+      await useNClient.getState().requestInformation(
+        {
+          source: "events:related",
+          idsOrKeys: [...replies.map((r) => r.event.id)],
+        },
+        {
+          timeoutIn: 20000,
+          view,
+          isLive: true,
+        }
+      );
+      let pubkeys = replies.map((r) => r.event.pubkey);
+      pubkeys = [...new Set(pubkeys)];
+      await useNClient.getState().requestInformation(
+        {
+          source: "users",
+          idsOrKeys: [...pubkeys],
+        },
+        {
+          timeoutIn: 10000,
+          view,
+          isLive: true,
+        }
+      );
+    }
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -68,6 +103,10 @@ export function EventReplies({
             </Box>
           );
         })}
+
+      {isLoading && isOpen && (
+        <Loading text="Just a sec ... Loading replies." />
+      )}
     </>
   );
 }

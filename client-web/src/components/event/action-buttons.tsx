@@ -44,7 +44,7 @@ export function EventActionButtons({
         colorScheme="blue"
         leftIcon={<Icon as={ReplyIcon} />}
         onClick={() => (isReplyOpen ? onReplyClose() : onReplyOpen())}
-        isDisabled={!isReady || level >= 1}
+        isDisabled={!isReady || level >= 2}
       >
         {repliesCount}
       </Button>

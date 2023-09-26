@@ -12,6 +12,13 @@ import {
   MenuList,
   IconButton,
   Icon,
+  Button,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverCloseButton,
+  PopoverContent,
+  PopoverTrigger,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
@@ -24,6 +31,7 @@ import DotsVerticalCircleOutlineIcon from "mdi-react/DotsVerticalCircleOutlineIc
 import { ListAssignmentModal } from "./list-assignment-modal";
 import { useEffect, useState } from "react";
 import Avatar from "boring-avatars";
+import { ZapModal } from "./event/zap-modal";
 
 export function User({
   user: { pubkey, data },
@@ -41,6 +49,9 @@ export function User({
   const picture = data && data.picture ? data.picture : "";
   const banner = data && data.banner ? data.banner : undefined;
   const about = data && data.about ? data.about : undefined;
+  const lud06 = data && data.lud06 ? data.lud06 : undefined;
+  const lud16 = data && data.lud16 ? data.lud16 : undefined;
+  const nip05 = data && data.nip05 ? data.nip05 : undefined;
 
   const displayNameEqName = displayName === name;
 
@@ -65,6 +76,27 @@ export function User({
   // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // TOOO: Finish implementing this
+
+  const { isOpen: zapModalIsOpen, onClose: onZapModalClose } = useDisclosure();
+
+  const LUDPopover = ({ lud, name }: { lud: string; name: string }) => {
+    return (
+      <Popover>
+        <PopoverTrigger>
+          <Button size="xs" variant="outline" color="gray.500">
+            {name}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent>
+          <PopoverArrow />
+          <PopoverCloseButton />
+          <PopoverBody>{lud && <Text fontSize={12}>{lud}</Text>}</PopoverBody>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   return (
     <>
@@ -92,8 +124,13 @@ export function User({
           <Link to={profileLink}>
             <Text size="sm">{displayName}</Text>
           </Link>
-          {!displayNameEqName && <Text fontSize={12}>{name}</Text>}
+          <Text fontSize={10}>
+            {!displayNameEqName && name} {nip05 && nip05}
+          </Text>
         </Box>
+
+        {lud06 && <LUDPopover lud={lud06} name="LUD06" />}
+        {lud16 && <LUDPopover lud={lud16} name="LUD16" />}
 
         <Spacer />
 
@@ -146,6 +183,11 @@ export function User({
         {showAbout && about && <Text fontSize="sm">{about}</Text>}
       </Box>
       <ListAssignmentModal pubkey={pubkey} isOpen={isOpen} onClose={onClose} />
+      <ZapModal
+        user={{ pubkey, data }}
+        isOpen={zapModalIsOpen}
+        onClose={onZapModalClose}
+      />
     </>
   );
 }

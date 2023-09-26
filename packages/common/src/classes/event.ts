@@ -847,7 +847,10 @@ export function NewZapRequest(opts: iNewZAPRequest) {
     kind: NEVENT_KIND.ZAP_REQUEST,
   });
 
-  nEv.addRelaysTag(opts.relayUrls);
+  if (opts.relayUrls && opts.relayUrls.length > 0) {
+    nEv.addRelaysTag(opts.relayUrls);
+  }
+
   nEv.addAmountTag(opts.amount.toString());
   nEv.addLnurlTag(opts.lnurl);
   nEv.addPublicKeyTag(opts.recipientPubkey);

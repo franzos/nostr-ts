@@ -34,7 +34,7 @@ export interface CardFooterProps {
   onInfoModalOpen: () => void;
   onInfoModalClose: () => void;
 
-  onAction: (type: "quote" | "reaction", reaction?: string) => void;
+  onAction: (type: "quote" | "reaction" | "zap", reaction?: string) => void;
 }
 
 export const EventCardFooter = ({

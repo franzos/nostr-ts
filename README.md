@@ -574,7 +574,7 @@ client.listen(async (payload) => {
 
     if (success) {
       // Make ZAP request
-      const { p: invoice, event } = await recipient.makeZapRequest(
+      const { pr: invoice, event } = await recipient.makeZapRequest(
         {
           relayUrls: ["wss://nostr.rocks"],
           amount: 1000,

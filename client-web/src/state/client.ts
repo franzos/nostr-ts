@@ -674,14 +674,47 @@ export const useNClient = create<NClient>((set, get) => ({
   sendEvent: async (event: PublishingRequest) => {
     return get().store.sendEvent(event);
   },
+  signEvent: async (event: NEvent) => {
+    const keystore = get().keystore;
+
+    if (!event.pubkey) {
+      event.pubkey = get().keypair.publicKey;
+    }
+
+    if (!event.id) {
+      event.generateId();
+    }
+
+    if (keystore === "localstore") {
+      const keypair = get().keypair;
+      if (!keypair) {
+        throw new Error("Keypair not initialized");
+      }
+      event.sign({
+        privateKey: keypair.privateKey || "",
+        publicKey: keypair.publicKey,
+      });
+      return event;
+    } else if (keystore === "nos2x") {
+      if (window.nostr && window.nostr.signEvent) {
+        const signedEv = await window.nostr.signEvent(event.ToObj());
+        if (!signedEv.sig) {
+          throw new Error("No signature");
+        }
+        event.sig = signedEv.sig;
+        return event;
+      } else {
+        throw new Error("Nostr not initialized");
+      }
+    } else {
+      throw new Error("Invalid keystore");
+    }
+  },
   signAndSendEvent: async (payload: PublishingRequest) => {
     const keypair = get().keypair;
     if (!keypair) {
       throw new Error("Keypair not initialized");
     }
-
-    const keystore = get().keystore;
-
     let ev = payload.event;
     ev.pubkey = keypair.publicKey;
     ev.generateId();
@@ -733,24 +766,7 @@ export const useNClient = create<NClient>((set, get) => ({
       }
     }
 
-    if (keystore === "localstore") {
-      ev.sign({
-        privateKey: keypair.privateKey || "",
-        publicKey: keypair.publicKey,
-      });
-    } else if (keystore === "nos2x") {
-      if (window.nostr && window.nostr.signEvent) {
-        const signedEv = await window.nostr.signEvent(ev.ToObj());
-        if (!signedEv.sig) {
-          throw new Error("No signature");
-        }
-        ev.sig = signedEv.sig;
-      } else {
-        throw new Error("Nostr not initialized");
-      }
-    } else {
-      throw new Error("Invalid keystore");
-    }
+    ev = await get().signEvent(ev);
 
     ev.isReadyToPublishOrThrow();
 

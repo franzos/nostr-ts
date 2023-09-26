@@ -19,7 +19,7 @@ export interface EventActionButtonsProps {
   isReplyOpen: boolean;
   onReplyOpen: () => void;
   onReplyClose: () => void;
-  onAction: (type: "quote" | "reaction", reaction?: string) => void;
+  onAction: (type: "quote" | "reaction" | "zap", reaction?: string) => void;
 }
 
 export function EventActionButtons({
@@ -87,6 +87,7 @@ export function EventActionButtons({
         color="gray.500"
         aria-label="ZAP"
         leftIcon={<Icon as={CurrencyBtcIcon} />}
+        onClick={() => onAction("zap")}
         isDisabled={!isReady}
       >
         {zapReceiptCount} ({zapReceiptAmount})

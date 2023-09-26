@@ -26,6 +26,7 @@ import { NSFWContentToggle } from "./event/nsfw-toggle";
 import { EventCardFooter } from "./event/card-footer";
 import { EventBanner } from "./event/banner";
 import { User } from "./user";
+import { ZapModal } from "./event/zap-modal";
 
 export interface EventProps {
   data: LightProcessedEvent;
@@ -88,6 +89,12 @@ export function Event({ data, level }: EventProps) {
     isOpen: isRepliesOpen,
     onOpen: onRepliesOpen,
     onClose: onRepliesClose,
+  } = useDisclosure();
+
+  const {
+    isOpen: zapModalIsOpen,
+    onOpen: onZapModalOpen,
+    onClose: onZapModalClose,
   } = useDisclosure();
 
   const toast = useToast();
@@ -158,7 +165,10 @@ export function Event({ data, level }: EventProps) {
   /**
    * Quote or react to an event
    */
-  const newAction = async (type: "quote" | "reaction", reaction?: string) => {
+  const newAction = async (
+    type: "quote" | "reaction" | "zap",
+    reaction?: string
+  ) => {
     const relay = await relatedRelay();
 
     let ev: NEvent;
@@ -181,6 +191,9 @@ export function Event({ data, level }: EventProps) {
           relayUrl: relay ? relay.url : undefined,
         });
         break;
+      case "zap":
+        onZapModalOpen();
+        return;
       default:
         return;
     }
@@ -274,6 +287,12 @@ export function Event({ data, level }: EventProps) {
         data={data}
         isOpen={isInfoModalOpen}
         onClose={onInfoModalClose}
+      />
+      <ZapModal
+        user={user}
+        relatedEvent={data.event}
+        isOpen={zapModalIsOpen}
+        onClose={onZapModalClose}
       />
     </>
   );

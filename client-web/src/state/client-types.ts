@@ -75,6 +75,7 @@ export interface NClient extends NClientBase {
     isLive: boolean
   ) => Promise<number | undefined>;
   sendEvent: (events: PublishingRequest) => Promise<PublishingQueueItem[]>;
+  signEvent: (eventWithId: NEvent) => Promise<NEvent>;
   signAndSendEvent: (event: PublishingRequest) => Promise<string>;
 
   setMaxEvents: (max: number) => Promise<void>;

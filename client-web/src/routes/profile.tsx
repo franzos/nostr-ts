@@ -1,4 +1,4 @@
-import { Box, Grid } from "@chakra-ui/react";
+import { Box, Grid, Spinner, Text } from "@chakra-ui/react";
 import { UserRecord, decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
@@ -15,6 +15,7 @@ export function ProfileRoute() {
   const pubkey = useRef<string | null>(null);
   const userLoadTimeout = useRef<number | null>(null);
   const [userData, setUserData] = useState<UserRecord | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState<boolean>(false);
 
   // URL params
   const { npub } = useParams();
@@ -30,12 +31,14 @@ export function ProfileRoute() {
   };
 
   const getUser = async (pk: string, retryCount = 0) => {
+    setIsLoadingUser(true);
     await useNClient
       .getState()
       .getUser(pk)
       .then((r) => {
         if (r) {
           setUserData(r);
+          setIsLoadingUser(false);
           if (userLoadTimeout.current) {
             clearTimeout(userLoadTimeout.current);
           }
@@ -54,6 +57,7 @@ export function ProfileRoute() {
                 }
               );
             } else if (retryCount > 20) {
+              setIsLoadingUser(false);
               if (userLoadTimeout.current) {
                 clearTimeout(userLoadTimeout.current);
               }
@@ -132,8 +136,15 @@ export function ProfileRoute() {
   return (
     <Grid templateColumns={["1fr", "2fr 1fr"]} gap={20}>
       <Box>
-        {userData && (
-          <Box mb={4}>
+        <Box mb={4}>
+          {isLoadingUser && (
+            <Box textAlign="center">
+              <Text>Just a sec ... Searching the Matrix for the user.</Text>
+              <Spinner p={10} mt={2} />
+            </Box>
+          )}
+
+          {userData && (
             <User
               user={userData.user}
               opts={{
@@ -144,17 +155,12 @@ export function ProfileRoute() {
                 showBlock: true,
               }}
             />
-          </Box>
-        )}
+          )}
+        </Box>
         <Events view={view} />
       </Box>
 
-      <Box display="flex" flexDirection="column">
-        {/* <Heading as="h2" size="md" marginBottom={4}>
-          Broadcast to the Network
-        </Heading>
-        <CreateEventForm /> */}
-      </Box>
+      <Box display="flex" flexDirection="column"></Box>
     </Grid>
   );
 }

@@ -274,6 +274,11 @@ export function BottomBar() {
                   </HStack>
                 </Link>
               </MenuItem>
+              <MenuItem>
+                <Link href="https://github.com/franzos/nostr-ts">
+                  <Text>NostrOP source (v{APP_VERSION})</Text>
+                </Link>
+              </MenuItem>
             </MenuList>
           </Menu>
         </HStack>
@@ -320,6 +325,9 @@ export function BottomBar() {
                 <Text fontSize="sm">Subscriptions:</Text>
                 <Text fontSize="xl">{subscriptionsCount}</Text>
               </HStack>
+            </Link>
+            <Link href="https://github.com/franzos/nostr-ts">
+              <Text>NostrOP v{APP_VERSION}</Text>
             </Link>
           </>
         </HStack>

@@ -1,9 +1,8 @@
-import { Heading, Box, Grid, Progress } from "@chakra-ui/react";
+import { Heading, Box, Grid, Text, Spinner } from "@chakra-ui/react";
 import { decodeBech32 } from "@nostr-ts/common";
 import { useState, useEffect, useRef } from "react";
 import { useNClient } from "../state/client";
 import { useParams } from "react-router-dom";
-import { CreateEventForm } from "../components/create-event-form";
 import { Event } from "../components/event";
 
 export function EventRoute() {
@@ -105,23 +104,16 @@ export function EventRoute() {
                 relays.
               </Heading>
             ) : (
-              <>
-                <Heading as="h2" size="md" marginBottom={4}>
-                  Loading event...
-                </Heading>
-                <Progress size="xs" mb={2} hasStripe isIndeterminate />
-              </>
+              <Box textAlign="center">
+                <Text>Just a sec ... Searching the Matrix for the event.</Text>
+                <Spinner p={10} mt={2} />
+              </Box>
             )}
           </>
         )}
       </Box>
 
-      <Box display="flex" flexDirection="column">
-        <Heading as="h2" size="md" marginBottom={4}>
-          Broadcast to the Network
-        </Heading>
-        <CreateEventForm />
-      </Box>
+      <Box display="flex" flexDirection="column"></Box>
     </Grid>
   );
 }

@@ -1,5 +1,6 @@
 import {
   CLIENT_MESSAGE_TYPE,
+  EventBaseSigned,
   EventsRequest,
   FiltersBase,
   LightProcessedEvent,
@@ -109,6 +110,10 @@ export interface StorageQueryParams {
 
   // No subscription
   isOffline?: boolean;
+}
+
+export function isUserEvent(event: EventBaseSigned, pubkey: string): boolean {
+  return event.pubkey === pubkey;
 }
 
 export interface StorageEventsQuery {

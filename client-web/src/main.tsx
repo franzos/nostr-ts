@@ -34,6 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route element={<PrimaryLayout />}>
             <Route path="/" element={<WelcomeRoute />} />
             <Route path="/account" element={<AccountRoute />} />
+            {/* <Route path="/notifications" element={<NotificationsRoute />} /> */}
             <Route path="/profile" element={<UserProfileRoute />} />
             <Route path="/following" element={<FollowingUsersRoute />} />
             <Route path="/blocked" element={<BlockedUsersRoute />} />

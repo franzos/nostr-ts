@@ -36,11 +36,11 @@ import {
   StorageEventsQuery,
   StorageQueryResult,
   TEN_SECONDS_IN_MS,
-  WorkerEventFollowingUpdate,
   WorkerEventNew,
   WorkerEventStatusChange,
   WorkerEventUpdate,
   calculateEventsRequestRange,
+  isUserEvent,
   relayEventsRequestFromQuery,
 } from "./worker-extra";
 import { CreateListRecord } from "./lists";
@@ -1380,6 +1380,7 @@ export class NWorker {
 
         const newUser = new NUserBase();
         newUser.fromEvent(ev);
+
         this.db.getUser(ev.pubkey).then((userRecord) => {
           if (userRecord) {
             if (userRecord.isBlocked) {
@@ -1408,6 +1409,8 @@ export class NWorker {
         kind === NEVENT_KIND.LONG_FORM_CONTENT
       ) {
         const ev = payload.data[2] as EventBaseSigned;
+
+        const isActiveUserEvent = isUserEvent(ev, this.userPubkey);
         this.getUser(ev.pubkey).then((userData) => {
           if (!userData || !userData.isBlocked) {
             this.mergeEventWithActive(
@@ -1417,7 +1420,7 @@ export class NWorker {
               isLive
             );
           }
-          if (userData && userData.following) {
+          if (isActiveUserEvent || (userData && userData.following)) {
             this.db.saveEvent(ev);
           }
         });
@@ -1633,7 +1636,7 @@ export class NWorker {
   }
 
   /**
-   *
+   * Send event to relays
    * - Adds event to queue after sending
    * @param event
    * @returns
@@ -1659,29 +1662,32 @@ export class NWorker {
       // TODO: This is bad
       this.addQueueItems(result);
 
-      for (const item of result) {
-        this.updateQueueItem({
-          ...item,
-        });
-      }
       return result;
     } else {
       throw new Error("Failed to send event");
     }
   }
 
-  sendQueueItems(payload: PublishingQueueItem[]) {
+  /**
+   * Send a queued event to relays
+   * - Updates queue item after sending
+   * @param payload
+   * @returns
+   */
+  async sendQueueItems(payload: PublishingQueueItem[]) {
     if (!this.relayClient) {
       throw new Error("Client not initialized");
     }
     this.addQueueItems(payload);
     const result = this.relayClient.sendQueueItems(payload);
     if (result) {
-      result.map((item) => {
+      for (const item of result) {
         this.updateQueueItem({
           ...item,
         });
-      });
+
+        await this.db.saveEvent(item.event);
+      }
       return result;
     } else {
       throw new Error("Failed to send event");

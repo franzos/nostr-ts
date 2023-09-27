@@ -16,6 +16,7 @@ import {
   LightProcessedEvent,
   UserBase,
   extractEventContent,
+  NOSTR_URL_PREFIX,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { excerpt } from "../lib/excerpt";
@@ -62,12 +63,19 @@ export function Event({ data, level }: EventProps) {
     contentWarning: string | undefined;
     images: string[] | undefined;
     videos: string[] | undefined;
+    nurls:
+      | {
+          type: NOSTR_URL_PREFIX;
+          data: string;
+        }[]
+      | undefined;
     text: string | undefined;
   } = {
     isLoaded: true,
     contentWarning,
     images: content.images,
     videos: content.videos,
+    nurls: content.nurls,
     text: content.text,
   };
 
@@ -76,6 +84,7 @@ export function Event({ data, level }: EventProps) {
   const userOptions = {
     showFollowing: true,
     showBlock: true,
+    showLud: true,
     relayUrls: data.eventRelayUrls,
   };
 
@@ -244,8 +253,9 @@ export function Event({ data, level }: EventProps) {
           </Box>
         </CardHeader>
         {/* BODY */}
-        <CardBody p={0}>
-          {contentIsVisible && (
+
+        {contentIsVisible && (
+          <CardBody p={0}>
             <Skeleton isLoaded={properties.isLoaded}>
               <EventContent
                 content={
@@ -253,8 +263,8 @@ export function Event({ data, level }: EventProps) {
                 }
               />
             </Skeleton>
-          )}
-        </CardBody>
+          </CardBody>
+        )}
         {/* FOOTER */}
         <EventCardFooter
           isReady={isReady}

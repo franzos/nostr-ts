@@ -31,6 +31,38 @@ export class RelayClient extends RelayClientBase {
     }
   }
 
+  private scheduleReconnect(relay: RelayConnection) {
+    setTimeout(() => {
+      for (const r of this.relays) {
+        if (r.url === relay.url) {
+          r.ws = this.connect(r);
+        }
+      }
+    }, 30000);
+  }
+
+  private connect(relay: RelayConnection) {
+    relay.ws = new WebSocketClient();
+    relay.ws.connect(relay.url);
+    relay.ws.connection.onopen = () => {
+      console.log(`Websocket connected to ${relay.url}`);
+    };
+    relay.ws.connection.onclose = (event: CloseEvent) => {
+      console.log(`WebSocket to ${relay.url} closed.`, JSON.stringify(event));
+      console.log(`Scheduling reconnect to ${relay.url} in 30s ...`);
+      this.scheduleReconnect(relay);
+    };
+    relay.ws.connection.onerror = (event: Event) => {
+      console.log(
+        `WebSocket disconnected from ${relay.url}`,
+        JSON.stringify(event)
+      );
+      relay.error = JSON.stringify(event);
+    };
+
+    return relay.ws;
+  }
+
   /**
    * Initiates the connection to all relays
    */
@@ -40,24 +72,7 @@ export class RelayClient extends RelayClientBase {
       if (!relay.isConnected()) {
         console.log(`=> Connecting to ${relay.url} ...`);
         try {
-          relay.ws = new WebSocketClient();
-          relay.ws.connect(relay.url);
-          relay.ws.connection.onopen = () => {
-            console.log(`Websocket connected to ${relay.url}`);
-          };
-          relay.ws.connection.onclose = (event: CloseEvent) => {
-            console.log(
-              `WebSocket to ${relay.url} closed.`,
-              JSON.stringify(event)
-            );
-          };
-          relay.ws.connection.onerror = (event: Event) => {
-            console.log(
-              `WebSocket disconnected from ${relay.url}`,
-              JSON.stringify(event)
-            );
-            relay.error = JSON.stringify(event);
-          };
+          relay.ws = this.connect(relay);
         } catch (e) {
           const err = e as Error;
           console.error("Error connecting to relay", err.message);
@@ -72,21 +87,7 @@ export class RelayClient extends RelayClientBase {
     const relay = new RelayConnection(relayCnf);
 
     try {
-      relay.ws = new WebSocketClient();
-      relay.ws.connect(relay.url);
-      relay.ws.connection.onopen = () => {
-        console.log(`Websocket connected to ${relay.url}`);
-      };
-      relay.ws.connection.onclose = (event: CloseEvent) => {
-        console.log(`WebSocket to ${relay.url} closed.`, JSON.stringify(event));
-      };
-      relay.ws.connection.onerror = (event: Event) => {
-        console.log(
-          `WebSocket disconnected from ${relay.url}`,
-          JSON.stringify(event)
-        );
-        relay.error = JSON.stringify(event);
-      };
+      relay.ws = this.connect(relay);
     } catch (e) {
       const err = e as Error;
       console.error("Error connecting to relay", err.message);

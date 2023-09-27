@@ -109,7 +109,7 @@ const videoProvidersPattern = StreamingProvider.map((provider) => {
 
 const videoFormatsPattern = VideoFormats.join("|");
 
-const videoRegexPattern = `https?:\\/\\/(${videoProvidersPattern})\\/([a-zA-Z0-9_-]+)(\\?[a-zA-Z0-9_=&-]+)?|https?:\\/\\/\\S+\\.(${videoFormatsPattern})`;
+const videoRegexPattern = `https?:\\/\\/(${videoProvidersPattern})\\/\\w+\\/([a-zA-Z0-9_-]+)(?:\\?[a-zA-Z0-9_=&-]+)?|https?:\\/\\/\\S+\\.(${videoFormatsPattern})`;
 export const videoRegex = new RegExp(videoRegexPattern, "gi");
 
 //

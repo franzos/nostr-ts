@@ -8,6 +8,7 @@ export interface UserOptions {
    * Show block button
    */
   showBlock?: boolean;
+  showLud?: boolean;
   relayUrls: string[];
   isBlocked?: boolean;
   lists?: {

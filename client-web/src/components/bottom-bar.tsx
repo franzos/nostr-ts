@@ -228,15 +228,15 @@ export function BottomBar() {
             <MenuList>
               <MenuItem>
                 <HStack spacing={2}>
-                  <Text fontSize="sm">Users:</Text>
-                  <Text fontSize="xl">{userCount}</Text>
+                  <Text fontSize="xs">Users:</Text>
+                  <Text fontSize="sm">{userCount}</Text>
                 </HStack>
               </MenuItem>
               <MenuItem>
                 <Link as={NavLink} to="/blocked">
                   <HStack spacing={2}>
-                    <Text fontSize="sm">Blocked Users:</Text>
-                    <Text fontSize="xl">{blockedUsersCount}</Text>
+                    <Text fontSize="xs">Blocked Users:</Text>
+                    <Text fontSize="sm">{blockedUsersCount}</Text>
                   </HStack>
                 </Link>
               </MenuItem>
@@ -247,16 +247,16 @@ export function BottomBar() {
                   }
                 >
                   <HStack spacing={2}>
-                    <Text fontSize="sm">Relays:</Text>
-                    <Text fontSize="xl">{relaysCount}</Text>
+                    <Text fontSize="xs">Relays:</Text>
+                    <Text fontSize="sm">{relaysCount}</Text>
                   </HStack>
                 </Link>
               </MenuItem>
               <MenuItem>
                 <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
                   <HStack spacing={2}>
-                    <Text fontSize="sm">Queue:</Text>
-                    <Text fontSize="xl">{queueItemsCount}</Text>
+                    <Text fontSize="xs">Queue:</Text>
+                    <Text fontSize="sm">{queueItemsCount}</Text>
                   </HStack>
                 </Link>
               </MenuItem>
@@ -269,8 +269,8 @@ export function BottomBar() {
                   }
                 >
                   <HStack spacing={2}>
-                    <Text fontSize="sm">Subscriptions:</Text>
-                    <Text fontSize="xl">{subscriptionsCount}</Text>
+                    <Text fontSize="xs">Subscriptions:</Text>
+                    <Text fontSize="sm">{subscriptionsCount}</Text>
                   </HStack>
                 </Link>
               </MenuItem>
@@ -291,27 +291,27 @@ export function BottomBar() {
             <EventFormModal buttonSize="sm" />
             <Spacer />
             <HStack spacing={2}>
-              <Text fontSize="sm">Users:</Text>
-              <Text fontSize="xl">{userCount}</Text>
+              <Text fontSize="xs">Users:</Text>
+              <Text fontSize="sm">{userCount}</Text>
             </HStack>
             <Link as={NavLink} to="/blocked">
               <HStack spacing={2}>
-                <Text fontSize="sm">Blocked Users:</Text>
-                <Text fontSize="xl">{blockedUsersCount}</Text>
+                <Text fontSize="xs">Blocked Users:</Text>
+                <Text fontSize="sm">{blockedUsersCount}</Text>
               </HStack>
             </Link>
             <Link
               onClick={isRelayModalOpen ? onRelayModalClose : onRelayModalOpen}
             >
               <HStack spacing={2}>
-                <Text fontSize="sm">Relays:</Text>
-                <Text fontSize="xl">{relaysCount}</Text>
+                <Text fontSize="xs">Relays:</Text>
+                <Text fontSize="sm">{relaysCount}</Text>
               </HStack>
             </Link>
             <Link onClick={isQueueOpen ? onQueueClose : onQueueOpen}>
               <HStack spacing={2}>
-                <Text fontSize="sm">Queue:</Text>
-                <Text fontSize="xl">{queueItemsCount}</Text>
+                <Text fontSize="xs">Queue:</Text>
+                <Text fontSize="sm">{queueItemsCount}</Text>
               </HStack>
             </Link>
             <Link
@@ -322,12 +322,12 @@ export function BottomBar() {
               }
             >
               <HStack spacing={2}>
-                <Text fontSize="sm">Subscriptions:</Text>
-                <Text fontSize="xl">{subscriptionsCount}</Text>
+                <Text fontSize="xs">Subscriptions:</Text>
+                <Text fontSize="sm">{subscriptionsCount}</Text>
               </HStack>
             </Link>
             <Link href="https://github.com/franzos/nostr-ts">
-              <Text>NostrOP v{APP_VERSION}</Text>
+              <Text fontSize="xs">NostrOP v{APP_VERSION}</Text>
             </Link>
           </>
         </HStack>

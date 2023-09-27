@@ -40,6 +40,7 @@ export function User({
     showBanner,
     showFollowing,
     showBlock,
+    showLud,
     relayUrls,
     isBlocked,
   },
@@ -51,7 +52,7 @@ export function User({
   const about = data && data.about ? data.about : undefined;
   const lud06 = data && data.lud06 ? data.lud06 : undefined;
   const lud16 = data && data.lud16 ? data.lud16 : undefined;
-  const nip05 = data && data.nip05 ? data.nip05 : undefined;
+  // const nip05 = data && data.nip05 ? data.nip05 : undefined;
 
   const displayNameEqName = displayName === name;
 
@@ -120,17 +121,21 @@ export function User({
             )}
           </Link>
         </Box>
-        <Box overflowWrap="anywhere" maxWidth={350}>
+        <Box overflowWrap="anywhere" maxWidth={80}>
           <Link to={profileLink}>
             <Text size="sm">{displayName}</Text>
           </Link>
-          <Text fontSize={10}>
-            {!displayNameEqName && name} {nip05 && nip05}
-          </Text>
+        </Box>
+        <Box overflowWrap="anywhere" maxWidth={80}>
+          <Text fontSize={10}>{!displayNameEqName && name}</Text>
         </Box>
 
-        {lud06 && <LUDPopover lud={lud06} name="LUD06" />}
-        {lud16 && <LUDPopover lud={lud16} name="LUD16" />}
+        {showLud && (
+          <>
+            {lud06 && <LUDPopover lud={lud06} name="LUD06" />}
+            {lud16 && <LUDPopover lud={lud16} name="LUD16" />}
+          </>
+        )}
 
         <Spacer />
 

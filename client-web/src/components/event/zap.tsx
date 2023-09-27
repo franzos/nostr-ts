@@ -207,7 +207,7 @@ export const Zap = ({
         <VStack>
           <Text mb={2}>
             Request a ligning invoice, pay it with your ligtning wallet, and
-            enter the bolt11 in the next step.
+            enter the bolt11 invoice receipt from your wallet in the next step.
           </Text>
           <InputGroup>
             <InputLeftAddon children="Sats" />

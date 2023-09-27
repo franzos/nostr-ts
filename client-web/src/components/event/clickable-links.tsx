@@ -1,6 +1,8 @@
 import { Link } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import { excerpt } from "../../lib/excerpt";
+import { OnDemandEvent } from "../on-demand-event";
+import { OnDemandUsername } from "../on-demand-username";
 
 interface EventContentWithLinksProps {
   text: string;
@@ -37,28 +39,12 @@ export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
         if (noteRegex.test(token)) {
           const noteId = token.split(":").pop();
           return (
-            <Link
-              as={RouterLink}
-              key={index}
-              to={`/e/${noteId}`}
-              color={"gray.500"}
-            >
-              {token}
-            </Link>
+            noteId && <OnDemandEvent key={index} note={noteId} index={index} />
           );
         }
         if (profileRegex.test(token)) {
           const profileId = token.split(":").pop();
-          return (
-            <Link
-              as={RouterLink}
-              key={index}
-              to={`/p/${profileId}`}
-              color={"gray.500"}
-            >
-              {token}
-            </Link>
-          );
+          return <OnDemandUsername npub={profileId} key={index} />;
         }
         if (tagsRegex.test(token)) {
           return (

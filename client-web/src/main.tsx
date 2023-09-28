@@ -1,7 +1,7 @@
 import React from "react";
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import ReactDOM from "react-dom/client";
-import { Route, BrowserRouter, Routes } from "react-router-dom";
+import { Route, Routes, HashRouter } from "react-router-dom";
 import { useNClient } from "./state/client.ts";
 import { AccountRoute } from "./routes/account.tsx";
 import { PrimaryLayout } from "./layouts/primary.tsx";
@@ -29,7 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ColorModeScript initialColorMode={theme.config.initialColorMode} />
     <ChakraProvider theme={theme}>
-      <BrowserRouter basename={import.meta.env.VITE_CLIENT_WEB_BASE_URL}>
+      <HashRouter basename={import.meta.env.VITE_CLIENT_WEB_BASE_URL}>
         <Routes>
           <Route element={<PrimaryLayout />}>
             <Route path="/" element={<WelcomeRoute />} />
@@ -44,7 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/t/:tag" element={<TagRoute />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ChakraProvider>
   </React.StrictMode>
 );

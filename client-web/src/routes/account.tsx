@@ -10,8 +10,14 @@ import {
   HStack,
   useToast,
 } from "@chakra-ui/react";
-import { generateClientKeys } from "@nostr-ts/common";
+import {
+  decodeBech32,
+  generateClientKeys,
+  isNostrUrl,
+  publicKeyFromPrivateKey,
+} from "@nostr-ts/common";
 import { useNClient } from "../state/client";
+import { QrReader } from "react-qr-reader";
 
 export function AccountRoute() {
   const [keystore, keypairIsLoaded, keypair, publicKey, privateKey] =
@@ -27,6 +33,8 @@ export function AccountRoute() {
   const [keyInputIsActive, setKeyInputIsActive] = useState(false);
   const [newPublicKey, setNewPublicKey] = useState("");
   const [newPrivateKey, setNewPrivateKey] = useState("");
+
+  const [loadKeyFromQr, setLoadKeyFromQr] = useState<boolean>(false);
 
   useEffect(() => {
     setNewPublicKey(publicKey);
@@ -91,6 +99,107 @@ export function AccountRoute() {
     }
   };
 
+  const setFromQr = (data: string) => {
+    if (isNostrUrl(data)) {
+      const parts = data.split(":");
+      const decoded = decodeBech32(parts[1]);
+      if (!decoded) {
+        toast({
+          title: "Invalid QR code",
+          description: `QR code is not a valid nostr url.`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      const prefix = decoded.prefix;
+      if (prefix !== "npub" && prefix !== "nsec") {
+        toast({
+          title: "Invalid QR code",
+          description: `QR code is not a valid public or private key.`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      let foundKey: string | undefined = undefined;
+
+      for (const item of decoded.tlvItems) {
+        if (item.type === 0) {
+          foundKey = item.value as string;
+        }
+      }
+
+      if (!foundKey) {
+        toast({
+          title: "Invalid QR code",
+          description: `QR code is not a valid public or private key.`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      if (prefix === "npub") {
+        console.log(`Setting public key from QR code`, foundKey);
+        if (newPublicKey === foundKey) {
+          return;
+        }
+        setNewPublicKey(foundKey);
+        useNClient.getState().setKeyStore({
+          keystore: "localstore",
+          publicKey: foundKey,
+          privateKey: "",
+        });
+        toast({
+          title: "Public key loaded",
+          description: `Public key loaded from QR code.`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+      } else if (prefix === "nsec") {
+        console.log(`Setting private key from QR code`, foundKey);
+        if (newPrivateKey === foundKey) {
+          return;
+        }
+        setNewPrivateKey(foundKey);
+        const publicKey = publicKeyFromPrivateKey(foundKey);
+        useNClient.getState().setKeyStore({
+          keystore: "localstore",
+          publicKey: publicKey,
+          privateKey: foundKey,
+        });
+        toast({
+          title: "Keys loaded",
+          description: `Private and public key loaded from QR code.`,
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        console.log(`Invalid prefix`, prefix);
+      }
+
+      setLoadKeyFromQr(false);
+      return;
+    } else {
+      toast({
+        title: "Invalid QR code",
+        description: `QR code is not a valid nostr url.`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+  };
+
   const saveKeyPair = () => {
     if (newPublicKey.length !== 64) {
       toast({
@@ -129,6 +238,10 @@ export function AccountRoute() {
     setKeyInputIsActive(false);
   };
 
+  const toggleQrReader = () => {
+    setLoadKeyFromQr(!loadKeyFromQr);
+  };
+
   return (
     <Box>
       <Heading size="lg">Account</Heading>
@@ -148,24 +261,47 @@ export function AccountRoute() {
         </>
       )}
 
+      {loadKeyFromQr && (
+        <>
+          <Box marginBottom={2}>
+            <Text marginBottom={2}>
+              Take a picture of your public or private key.
+            </Text>
+            <Button onClick={toggleQrReader}>Close QR Reader</Button>
+          </Box>
+          <QrReader
+            onResult={(result, error) => {
+              if (!!result) {
+                setFromQr(result.toString());
+              }
+
+              if (!!error) {
+                console.info(error);
+              }
+            }}
+            constraints={{ facingMode: "environment" }}
+          />
+        </>
+      )}
+
       <HStack marginTop={4}>
-        {!keystore ||
-          (keystore === "none" ? (
-            <>
-              <Button onClick={generateKeypair}>New keypair</Button>
-              <Button onClick={() => setKeyInputIsActive(true)}>
-                Enter keypair
-              </Button>
-              <Button
-                isLoading={loadingPublicKeyNosx2}
-                onClick={() => publicKeyFromExtention()}
-              >
-                Load from nos2x
-              </Button>
-            </>
-          ) : (
-            <Button onClick={reset}>Reset</Button>
-          ))}
+        {!loadKeyFromQr && (!keystore || keystore === "none") ? (
+          <>
+            <Button onClick={generateKeypair}>New keypair</Button>
+            <Button onClick={() => setKeyInputIsActive(true)}>
+              Enter keypair
+            </Button>
+            <Button onClick={toggleQrReader}>Scan from QR</Button>
+            <Button
+              isLoading={loadingPublicKeyNosx2}
+              onClick={() => publicKeyFromExtention()}
+            >
+              Load from nos2x
+            </Button>
+          </>
+        ) : (
+          <Button onClick={reset}>Reset</Button>
+        )}
       </HStack>
       {keypair && (
         <Box mt={4}>
@@ -199,7 +335,9 @@ export function AccountRoute() {
             </FormControl>
           )}
 
-          {keyInputIsActive && <Button onClick={saveKeyPair}>Save</Button>}
+          {keyInputIsActive && (
+            <Button onClick={() => saveKeyPair()}>Save</Button>
+          )}
         </Box>
       )}
     </Box>

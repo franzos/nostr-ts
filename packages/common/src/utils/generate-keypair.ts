@@ -19,3 +19,7 @@ export function generateClientKeys(): {
     publicKey: bytesToHex(publicKey),
   };
 }
+
+export function publicKeyFromPrivateKey(privateKey: string): string {
+  return bytesToHex(schnorr.getPublicKey(Buffer.from(privateKey, "hex")));
+}

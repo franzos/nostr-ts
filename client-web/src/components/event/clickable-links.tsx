@@ -1,8 +1,8 @@
 import { Link } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
-import { excerpt } from "../../lib/excerpt";
 import { OnDemandEvent } from "../on-demand-event";
 import { OnDemandUsername } from "../on-demand-username";
+import { LinkPreview } from "./link-preview";
 
 interface EventContentWithLinksProps {
   text: string;
@@ -24,17 +24,7 @@ export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
     <>
       {tokens.map((token, index) => {
         if (urlRegex.test(token)) {
-          return (
-            <Link
-              color={"gray.500"}
-              key={index}
-              href={token}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {excerpt(token, 40)}
-            </Link>
-          );
+          return <LinkPreview url={token} />;
         }
         if (noteRegex.test(token)) {
           const noteId = token.split(":").pop();

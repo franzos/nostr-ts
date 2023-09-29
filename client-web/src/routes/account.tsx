@@ -100,9 +100,15 @@ export function AccountRoute() {
   };
 
   const setFromQr = (data: string) => {
-    if (isNostrUrl(data)) {
+    const isNostr = isNostrUrl(data);
+
+    let prefix;
+    let decoded;
+
+    if (isNostr) {
       const parts = data.split(":");
-      const decoded = decodeBech32(parts[1]);
+      decoded = decodeBech32(parts[1]);
+      prefix = decoded.prefix;
       if (!decoded) {
         toast({
           title: "Invalid QR code",
@@ -113,91 +119,89 @@ export function AccountRoute() {
         });
         return;
       }
+    }
 
-      const prefix = decoded.prefix;
-      if (prefix !== "npub" && prefix !== "nsec") {
-        toast({
-          title: "Invalid QR code",
-          description: `QR code is not a valid public or private key.`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
+    if (data.startsWith("npub")) {
+      prefix = "npub";
+      decoded = decodeBech32(data);
+    } else if (data.startsWith("nsec")) {
+      prefix = "nsec";
+      decoded = decodeBech32(data);
+    }
 
-      let foundKey: string | undefined = undefined;
-
-      for (const item of decoded.tlvItems) {
-        if (item.type === 0) {
-          foundKey = item.value as string;
-        }
-      }
-
-      if (!foundKey) {
-        toast({
-          title: "Invalid QR code",
-          description: `QR code is not a valid public or private key.`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      if (prefix === "npub") {
-        console.log(`Setting public key from QR code`, foundKey);
-        if (newPublicKey === foundKey) {
-          return;
-        }
-        setNewPublicKey(foundKey);
-        useNClient.getState().setKeyStore({
-          keystore: "localstore",
-          publicKey: foundKey,
-          privateKey: "",
-        });
-        toast({
-          title: "Public key loaded",
-          description: `Public key loaded from QR code.`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-      } else if (prefix === "nsec") {
-        console.log(`Setting private key from QR code`, foundKey);
-        if (newPrivateKey === foundKey) {
-          return;
-        }
-        setNewPrivateKey(foundKey);
-        const publicKey = publicKeyFromPrivateKey(foundKey);
-        useNClient.getState().setKeyStore({
-          keystore: "localstore",
-          publicKey: publicKey,
-          privateKey: foundKey,
-        });
-        toast({
-          title: "Keys loaded",
-          description: `Private and public key loaded from QR code.`,
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        console.log(`Invalid prefix`, prefix);
-      }
-
-      setLoadKeyFromQr(false);
-      return;
-    } else {
+    if ((prefix !== "npub" && prefix !== "nsec") || !decoded) {
       toast({
         title: "Invalid QR code",
-        description: `QR code is not a valid nostr url.`,
+        description: `QR code is not a valid public or private key.`,
         status: "error",
         duration: 5000,
         isClosable: true,
       });
       return;
     }
+
+    let foundKey: string | undefined = undefined;
+
+    for (const item of decoded.tlvItems) {
+      if (item.type === 0) {
+        foundKey = item.value as string;
+      }
+    }
+
+    if (!foundKey) {
+      toast({
+        title: "Invalid QR code",
+        description: `QR code is not a valid public or private key.`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (prefix === "npub") {
+      console.log(`Setting public key from QR code`, foundKey);
+      if (newPublicKey === foundKey) {
+        return;
+      }
+      setNewPublicKey(foundKey);
+      useNClient.getState().setKeyStore({
+        keystore: "localstore",
+        publicKey: foundKey,
+        privateKey: "",
+      });
+      toast({
+        title: "Public key loaded",
+        description: `Public key loaded from QR code.`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+    } else if (prefix === "nsec") {
+      console.log(`Setting private key from QR code`, foundKey);
+      if (newPrivateKey === foundKey) {
+        return;
+      }
+      setNewPrivateKey(foundKey);
+      const publicKey = publicKeyFromPrivateKey(foundKey);
+      useNClient.getState().setKeyStore({
+        keystore: "localstore",
+        publicKey: publicKey,
+        privateKey: foundKey,
+      });
+      toast({
+        title: "Keys loaded",
+        description: `Private and public key loaded from QR code.`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+    } else {
+      console.log(`Invalid prefix`, prefix);
+    }
+
+    setLoadKeyFromQr(false);
+    return;
   };
 
   const saveKeyPair = () => {

@@ -286,12 +286,12 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   setKeyStore: (config: NClientKeystore) => {
     if (config.keystore === "localstore") {
-      if (config.publicKey && config.privateKey) {
+      if (config.publicKey) {
         set({
           keystore: config.keystore,
           keypair: {
             publicKey: config.publicKey,
-            privateKey: config.privateKey,
+            privateKey: config.privateKey || "",
           },
           keypairIsLoaded: true,
         });

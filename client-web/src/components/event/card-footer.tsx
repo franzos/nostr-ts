@@ -8,17 +8,26 @@ import {
   Box,
   Text,
   VStack,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  useToast,
 } from "@chakra-ui/react";
 import { ReactionsCount } from "@nostr-ts/common";
 import InformationOutlineIcon from "mdi-react/InformationOutlineIcon";
 import { filterReactions } from "../../lib/event-reactions-filter";
 import { unixTimeToRelative } from "../../lib/relative-time";
 import { EventActionButtons } from "./action-buttons";
+import CodeJsonIcon from "mdi-react/CodeJsonIcon";
+import ContentCopyIcon from "mdi-react/ContentCopyIcon";
+import { excerpt } from "../../lib/excerpt";
 
 export interface CardFooterProps {
   isReady: boolean;
 
   level: number;
+  nEventString: string;
   createdAt: number;
   repliesCount: number;
   reactionsCount: ReactionsCount;
@@ -40,8 +49,9 @@ export interface CardFooterProps {
 export const EventCardFooter = ({
   isReady,
 
-  createdAt,
   level,
+  nEventString,
+  createdAt,
   repliesCount,
   reactionsCount,
   repostCount,
@@ -58,7 +68,19 @@ export const EventCardFooter = ({
 
   onAction,
 }: CardFooterProps) => {
+  const toast = useToast();
   const reactions = filterReactions(reactionsCount);
+
+  const copyEventLinkToClipboard = () => {
+    const url = `${window.location.origin}/#/e/${nEventString}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      description: `Copied ${excerpt(url, 40)} to clipboard`,
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
 
   return (
     <CardFooter p={1} pl={2} pr={2}>
@@ -93,21 +115,35 @@ export const EventCardFooter = ({
               onReplyClose={onReplyClose}
               onAction={onAction}
             />
-
             <Spacer />
             <Text fontSize={12} color="gray.500">
               {unixTimeToRelative(createdAt)}
             </Text>
-            <IconButton
-              aria-label="Event info"
-              size={"xs"}
-              variant="outline"
-              color="gray.500"
-              icon={<Icon as={InformationOutlineIcon} />}
-              onClick={() =>
-                isInfoModalOpen ? onInfoModalClose() : onInfoModalOpen()
-              }
-            ></IconButton>
+            <Menu>
+              <MenuButton
+                as={IconButton}
+                size="xs"
+                variant="outline"
+                color="gray.500"
+                icon={<Icon as={InformationOutlineIcon} />}
+              />
+              <MenuList>
+                <MenuItem
+                  icon={<Icon as={ContentCopyIcon} />}
+                  onClick={copyEventLinkToClipboard}
+                >
+                  Copy direct event link
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={CodeJsonIcon} />}
+                  onClick={() =>
+                    isInfoModalOpen ? onInfoModalClose() : onInfoModalOpen()
+                  }
+                >
+                  Event JSON
+                </MenuItem>
+              </MenuList>
+            </Menu>
           </HStack>
         </Box>
       </VStack>

@@ -9,26 +9,23 @@ import {
   Text,
   Link,
 } from "@chakra-ui/react";
-import {
-  BECH32_PREFIX,
-  LightProcessedEvent,
-  encodeBech32,
-} from "@nostr-ts/common";
+import { LightProcessedEvent } from "@nostr-ts/common";
 import { Link as RouterLink } from "react-router-dom";
 
 interface EventInfoModalProps {
   data: LightProcessedEvent;
+  nEventString: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function EventInfoModal({ data, isOpen, onClose }: EventInfoModalProps) {
-  const eventLink = `/e/${encodeBech32(BECH32_PREFIX.NoteIDs, [
-    {
-      type: 0,
-      value: data.event.id,
-    },
-  ])}`;
+export function EventInfoModal({
+  data,
+  nEventString,
+  isOpen,
+  onClose,
+}: EventInfoModalProps) {
+  const eventLink = `${window.location.origin}/e/${nEventString}`;
 
   const relay = data.eventRelayUrls
     ? data.eventRelayUrls[0]

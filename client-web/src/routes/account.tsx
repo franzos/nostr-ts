@@ -9,8 +9,11 @@ import {
   Input,
   HStack,
   useToast,
+  Icon,
+  VStack,
 } from "@chakra-ui/react";
 import {
+  BECH32_PREFIX,
   decodeBech32,
   generateClientKeys,
   isNostrUrl,
@@ -18,6 +21,11 @@ import {
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { QrReader } from "react-qr-reader";
+import PlusIcon from "mdi-react/PlusIcon";
+import QrcodeScanIcon from "mdi-react/QrcodeScanIcon";
+import KeyChainVariantIcon from "mdi-react/KeyChainVariantIcon";
+import ToyBrickOutlineIcon from "mdi-react/ToyBrickOutlineIcon";
+import { QRCodeModal } from "../components/qrcode";
 
 export function AccountRoute() {
   const [keystore, keypairIsLoaded, keypair, publicKey, privateKey] =
@@ -49,6 +57,8 @@ export function AccountRoute() {
       setKeyInputIsActive(false);
     }
   }, [keystore]);
+
+  const showPublicKeyInput = keyInputIsActive || publicKey !== "";
 
   const showPrivateKeyInput =
     (keyInputIsActive || keystore === "localstore") && keystore !== "nos2x";
@@ -160,10 +170,6 @@ export function AccountRoute() {
     }
 
     if (prefix === "npub") {
-      console.log(`Setting public key from QR code`, foundKey);
-      if (newPublicKey === foundKey) {
-        return;
-      }
       setNewPublicKey(foundKey);
       useNClient.getState().setKeyStore({
         keystore: "localstore",
@@ -257,10 +263,8 @@ export function AccountRoute() {
             Keypair is not loaded.
           </Text>
           <Text marginBottom={2}>
-            If you generate a new keypair, it will be stored in the browser
-            local store (insecure). Alternatively get nos2x for Chrome, or
-            nos2x-fox for Firefox, and store your keys in the extention (less
-            insecure).
+            To post to Nostr, and respond to other users, you need to
+            authenticate yourself.
           </Text>
         </>
       )}
@@ -269,17 +273,18 @@ export function AccountRoute() {
         <>
           <Box marginBottom={2}>
             <Text marginBottom={2}>
-              Take a picture of your public or private key.
+              To post, scan your private key. Otherwise the public key is
+              enough.
             </Text>
             <Button onClick={toggleQrReader}>Close QR Reader</Button>
           </Box>
           <QrReader
             onResult={(result, error) => {
-              if (!!result) {
+              if (result) {
                 setFromQr(result.toString());
               }
 
-              if (!!error) {
+              if (error) {
                 console.info(error);
               }
             }}
@@ -290,34 +295,64 @@ export function AccountRoute() {
 
       <HStack marginTop={4}>
         {!loadKeyFromQr && (!keystore || keystore === "none") ? (
-          <>
-            <Button onClick={generateKeypair}>New keypair</Button>
-            <Button onClick={() => setKeyInputIsActive(true)}>
-              Enter keypair
-            </Button>
-            <Button onClick={toggleQrReader}>Scan from QR</Button>
+          <VStack>
             <Button
+              leftIcon={<Icon as={PlusIcon} />}
+              onClick={generateKeypair}
+              width="100%"
+            >
+              New Account
+            </Button>
+            <Text>Have an account?</Text>
+            <Button
+              leftIcon={<Icon as={KeyChainVariantIcon} />}
+              onClick={() => setKeyInputIsActive(true)}
+              width="100%"
+            >
+              Enter Keypair
+            </Button>
+            <Button
+              leftIcon={<Icon as={QrcodeScanIcon} />}
+              onClick={toggleQrReader}
+              width="100%"
+            >
+              Scan QR
+            </Button>
+            <Button
+              leftIcon={<Icon as={ToyBrickOutlineIcon} />}
               isLoading={loadingPublicKeyNosx2}
               onClick={() => publicKeyFromExtention()}
+              width="100%"
             >
-              Load from nos2x
+              From Extention
             </Button>
-          </>
+          </VStack>
         ) : (
           <Button onClick={reset}>Reset</Button>
         )}
       </HStack>
       {keypair && (
         <Box mt={4}>
-          <FormControl marginBottom={4}>
-            <FormLabel>Public key:</FormLabel>
-            <Input
-              type="text"
-              value={newPublicKey}
-              onChange={(e) => setNewPublicKey(e.target.value)}
-              isReadOnly
-            />
-          </FormControl>
+          {showPublicKeyInput && (
+            <>
+              <FormControl marginBottom={4}>
+                <FormLabel>Public key:</FormLabel>
+                <HStack spacing={2}>
+                  <Input
+                    type="text"
+                    value={newPublicKey}
+                    onChange={(e) => setNewPublicKey(e.target.value)}
+                    isReadOnly
+                  />
+
+                  <QRCodeModal
+                    kind={BECH32_PREFIX.PublicKeys}
+                    value={newPublicKey}
+                  />
+                </HStack>
+              </FormControl>
+            </>
+          )}
 
           {showPrivateKeyInput && (
             <FormControl marginBottom={4}>
@@ -329,12 +364,13 @@ export function AccountRoute() {
                   onChange={(e) => setNewPrivateKey(e.target.value)}
                   isReadOnly={!keyInputIsActive}
                 />
-                <Button
-                  size="sm"
-                  onClick={() => setShowPrivateKey(!showPrivateKey)}
-                >
+                <Button onClick={() => setShowPrivateKey(!showPrivateKey)}>
                   {showPrivateKey ? "Hide" : "Show"}
                 </Button>
+                <QRCodeModal
+                  kind={BECH32_PREFIX.PrivateKeys}
+                  value={newPrivateKey}
+                />
               </HStack>
             </FormControl>
           )}

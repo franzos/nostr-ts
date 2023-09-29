@@ -17,6 +17,8 @@ import {
   UserBase,
   extractEventContent,
   NOSTR_URL_PREFIX,
+  encodeBech32,
+  BECH32_PREFIX,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { excerpt } from "../lib/excerpt";
@@ -50,6 +52,13 @@ export function Event({ data, level }: EventProps) {
 
   const content = extractEventContent(data.event.content);
   const contentWarning = eventHasContentWarning(data.event);
+
+  const nevent = encodeBech32(BECH32_PREFIX.Event, [
+    {
+      type: 0,
+      value: data.event.id,
+    },
+  ]);
 
   let visible;
   if (content?.text && !contentWarning) {
@@ -269,6 +278,7 @@ export function Event({ data, level }: EventProps) {
         <EventCardFooter
           isReady={isReady}
           level={level}
+          nEventString={nevent}
           createdAt={data.event.created_at}
           repliesCount={data.repliesCount}
           reactionsCount={data.reactionsCount}
@@ -295,6 +305,7 @@ export function Event({ data, level }: EventProps) {
       )}
       <EventInfoModal
         data={data}
+        nEventString={nevent}
         isOpen={isInfoModalOpen}
         onClose={onInfoModalClose}
       />

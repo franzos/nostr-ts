@@ -19,6 +19,7 @@ import {
   PopoverCloseButton,
   PopoverContent,
   PopoverTrigger,
+  useToast,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
@@ -28,10 +29,13 @@ import CancelIcon from "mdi-react/CancelIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
 import DotsVerticalCircleOutlineIcon from "mdi-react/DotsVerticalCircleOutlineIcon";
+import ContentCopyIcon from "mdi-react/ContentCopyIcon";
 import { ListAssignmentModal } from "./list-assignment-modal";
 import { useEffect, useState } from "react";
 import Avatar from "boring-avatars";
 import { ZapModal } from "./event/zap-modal";
+import { QRCodeModal } from "./qrcode";
+import { excerpt } from "../lib/excerpt";
 
 export function User({
   user: { pubkey, data },
@@ -45,6 +49,8 @@ export function User({
     isBlocked,
   },
 }: UserInfoProps) {
+  const toast = useToast();
+
   const name = data && data.name ? data.name : "Anonymous";
   const displayName = data && data.display_name ? data.display_name : name;
   const picture = data && data.picture ? data.picture : "";
@@ -68,6 +74,17 @@ export function User({
     ]);
     setProfileLink(`/p/${npub}`);
   }, [pubkey]);
+
+  const copyUserLinkToClipboard = () => {
+    const url = `${window.location.origin}/#${profileLink}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      description: `Copied ${excerpt(url, 40)} to clipboard`,
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
 
   const loadFollowingStatus = async () => {
     const following = await useNClient.getState().followingUser(pubkey);
@@ -139,10 +156,13 @@ export function User({
 
         <Spacer />
 
+        <QRCodeModal kind={BECH32_PREFIX.Profile} value={pubkey} size="xs" />
         <Menu isLazy onOpen={loadFollowingStatus}>
           <MenuButton
             as={IconButton}
             size="xs"
+            variant="outline"
+            color="gray.500"
             icon={<Icon as={DotsVerticalCircleOutlineIcon} />}
           >
             Actions
@@ -181,6 +201,13 @@ export function User({
                 {following ? "Unfollow" : "Follow"}
               </MenuItem>
             )}
+
+            <MenuItem
+              icon={<Icon as={ContentCopyIcon} />}
+              onClick={copyUserLinkToClipboard}
+            >
+              Copy direct profile link
+            </MenuItem>
           </MenuList>
         </Menu>
       </HStack>

@@ -10,7 +10,7 @@ import {
 } from "@nostr-ts/common";
 import { Remote } from "comlink";
 import { NClientBase } from "./base-types";
-import { NClientKeystore } from "./keystore";
+import { NClientLocalStore, NClientNos2xStore } from "./keystore";
 import {
   NWorker,
   StorageEventsQuery,
@@ -50,7 +50,7 @@ export interface NClient extends NClientBase {
   loadKeyStore: () => void;
   saveKeyStore: () => void;
   resetKeyStore: () => void;
-  setKeyStore: (config: NClientKeystore) => void;
+  setKeyStore: (config: NClientLocalStore | NClientNos2xStore) => void;
   keypair: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;
 

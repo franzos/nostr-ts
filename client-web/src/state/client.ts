@@ -21,7 +21,8 @@ import { create } from "zustand";
 import { MAX_EVENTS } from "../defaults";
 import { NClient } from "./client-types";
 import {
-  NClientKeystore,
+  NClientLocalStore,
+  NClientNos2xStore,
   loadKeyStoreConfig,
   saveKeyStoreConfig,
 } from "./keystore";
@@ -284,34 +285,43 @@ export const useNClient = create<NClient>((set, get) => ({
     });
     get().store.setUserPubkey("");
   },
-  setKeyStore: (config: NClientKeystore) => {
+  setKeyStore: (config: NClientLocalStore | NClientNos2xStore) => {
     if (config.keystore === "localstore") {
-      if (config.publicKey) {
-        set({
-          keystore: config.keystore,
-          keypair: {
-            publicKey: config.publicKey,
-            privateKey: config.privateKey || "",
-          },
-          keypairIsLoaded: true,
-        });
-        get().saveKeyStore();
+      set({
+        keystore: config.keystore,
+        keypair: {
+          publicKey: config.publicKey,
+          privateKey: config.privateKey,
+        },
+        keypairIsLoaded: true,
+        activeUser: {
+          pubkey: config.publicKey,
+        },
+      });
+      get().saveKeyStore();
 
-        get().store.setUserPubkey(config.publicKey);
-      }
+      get().store.setUserPubkey(config.publicKey);
     } else if (config.keystore === "nos2x") {
       set({
         keystore: config.keystore,
         keypair: {
-          publicKey: config.publicKey || "",
+          publicKey: config.publicKey,
         },
         keypairIsLoaded: true,
+        activeUser: {
+          pubkey: config.publicKey,
+        },
       });
 
-      get().store.setUserPubkey(config.publicKey || "");
+      get().store.setUserPubkey(config.publicKey);
     } else {
-      console.error(`Unknown keystore ${config.keystore}`);
+      console.error(`Unsupported keystore options`);
+      return;
     }
+
+    get().getAndSetActiveUser({
+      retry: true,
+    });
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
@@ -651,6 +661,86 @@ export const useNClient = create<NClient>((set, get) => ({
   countUsers: async () => {
     return get().store.countUsers();
   },
+  getAndSetActiveUser: async ({
+    retry,
+    retryCount,
+    updateFromRelays,
+  }: {
+    retry?: boolean;
+    retryCount?: number;
+    updateFromRelays?: boolean;
+  }) => {
+    // Get public key
+    const key = get().keypair.publicKey;
+    if (!key) {
+      console.warn(`No keypair found; User not logged-in.`);
+      return;
+    }
+
+    // Abort if tried < 10 times
+    if (retryCount && retryCount > 10) {
+      console.warn(`Exceeded 10 retries to fetch user info from relays.`);
+      return;
+    }
+
+    // Get user from DB
+    const userData = await get().getUser(key);
+    if (userData) {
+      set({
+        activeUser: userData.user,
+      });
+    } else {
+      console.log(`Keypair found, but user record not available offline.`);
+    }
+
+    // Check if update has been requested
+    if (updateFromRelays) {
+      await get().requestInformation(
+        {
+          idsOrKeys: [key],
+          source: "users",
+        },
+        {
+          timeoutIn: 10000,
+        }
+      );
+
+      setTimeout(async () => {
+        await get().getAndSetActiveUser({
+          retry,
+          retryCount,
+        });
+      }, 5000);
+      return;
+    } else if (!updateFromRelays && userData) {
+      // If not update has been requested, and we got the user data
+      return;
+    }
+
+    // Retry, if enabled
+    if (retry) {
+      console.log(`Retrying ... ${retryCount} / 10`);
+      // If 2nd try, fetch user info from relays
+      if (retryCount && retryCount === 2) {
+        await get().requestInformation(
+          {
+            idsOrKeys: [key],
+            source: "users",
+          },
+          {
+            timeoutIn: 10000,
+          }
+        );
+      }
+      setTimeout(async () => {
+        await get().getAndSetActiveUser({
+          retry,
+          retryCount: retryCount ? retryCount + 1 : undefined,
+        });
+      }, 1000);
+    }
+  },
+  activeUser: undefined,
   eventProofOfWork: async (event: NEvent, bits: number) => {
     return new Promise((resolve) => {
       const worker = new Worker(new URL("./pow-worker.ts", import.meta.url), {

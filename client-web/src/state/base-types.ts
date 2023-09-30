@@ -17,6 +17,7 @@ import {
   UserRecord,
   UserPublicKeyAndRelays,
   LightProcessedEvent,
+  UserBase,
 } from "@nostr-ts/common";
 
 export interface NClientBase {
@@ -43,10 +44,23 @@ export interface NClientBase {
   ) => Promise<Subscription[] | undefined>;
 
   maxEvents: number;
-  getUser: (pubkey: string) => Promise<UserRecord | undefined>;
+  getUser: (
+    pubkey: string,
+    options?: {
+      view?: string;
+      retryCount?: number;
+      relayUrls?: string[];
+    }
+  ) => Promise<UserRecord | undefined>;
   addUser: (payload: ProcessedUserBase) => Promise<void>;
   updateUser: (pubkey: string, payload: ProcessedUserBase) => Promise<void>;
   countUsers: () => Promise<number>;
+  getAndSetActiveUser: (options: {
+    retry?: boolean;
+    retryCount?: number;
+    updateFromRelays?: boolean;
+  }) => Promise<void>;
+  activeUser: UserBase | undefined;
   /**
    * Process websocket events
    */

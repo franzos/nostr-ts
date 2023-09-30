@@ -19,17 +19,18 @@ import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
-import AccountEditIcon from "mdi-react/AccountEditIcon";
 import { ConnectModal } from "../components/connect-modal";
 import Logo from "../assets/logo.svg";
 import { DEFAULT_RELAYS } from "../defaults";
 import { objectOfRelaysToArray } from "../lib/object-of-relays-to-array";
+import { UserIcon } from "../components/user-icon";
 
 export function PrimaryLayout() {
-  const [connected, keystore, publicKey] = useNClient((state) => [
+  const [connected, keystore, publicKey, activeUser] = useNClient((state) => [
     state.connected,
     state.keystore,
     state.keypair?.publicKey || "",
+    state.activeUser,
   ]);
   const [followingUsersCount, setFollowingUsersCount] = useState<number>(0);
 
@@ -64,6 +65,12 @@ export function PrimaryLayout() {
 
       {connected && (
         <>
+          {/* <MenuItem
+            label="Notifications"
+            to="/notifications"
+            leftIcon={<Icon as={AccountMultipleIcon} marginRight={1} />}
+          /> */}
+
           <MenuItem
             label="Following"
             value={followingUsersCount}
@@ -81,7 +88,17 @@ export function PrimaryLayout() {
             <MenuItem
               label="Profile"
               to="/profile"
-              leftIcon={<Icon as={AccountEditIcon} marginRight={1} />}
+              leftIcon={
+                <Icon
+                  as={UserIcon}
+                  user={activeUser}
+                  opts={{
+                    avatarSize: "xs",
+                    relayUrls: [],
+                  }}
+                  marginRight={1}
+                />
+              }
             />
           )}
         </>

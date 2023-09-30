@@ -1,7 +1,17 @@
-export interface NClientKeystore {
+interface NClientKeystore {
   keystore: "none" | "localstore" | "nos2x" | "download";
   publicKey?: string;
   privateKey?: string;
+}
+
+export interface NClientLocalStore extends NClientKeystore {
+  keystore: "localstore";
+  publicKey: string;
+}
+
+export interface NClientNos2xStore extends NClientKeystore {
+  keystore: "nos2x";
+  publicKey: string;
 }
 
 export function loadKeyStoreConfig(): NClientKeystore {

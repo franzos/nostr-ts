@@ -1,6 +1,6 @@
 {
   "name": "@nostr-ts/node",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "nostr on the backend: node.js implementation of the nostr protocol",
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",

@@ -109,7 +109,7 @@ const videoProvidersPattern = StreamingProvider.map((provider) => {
 
 const videoFormatsPattern = VideoFormats.join("|");
 
-const videoRegexPattern = `https?:\\/\\/(${videoProvidersPattern})\\/\\w+\\/([a-zA-Z0-9_-]+)(?:\\?[a-zA-Z0-9_=&-]+)?|https?:\\/\\/\\S+\\.(${videoFormatsPattern})`;
+const videoRegexPattern = `https?:\\/\\/(${videoProvidersPattern})\\/?\\w*\\/([a-zA-Z0-9_-]+)(?:\\?[a-zA-Z0-9_=&-]+)?|https?:\\/\\/\\S+\\.(${videoFormatsPattern})`;
 export const videoRegex = new RegExp(videoRegexPattern, "gi");
 
 //
@@ -144,11 +144,17 @@ export function extractEventContent(content?: string): NEventContent {
   const tagsRegex = /#[a-zA-Z0-9_-]+/gi;
   const tags = content?.match(tagsRegex);
 
+  /**
+   * Remove from content
+   */
   if (images && content)
     images.forEach((img) => (content = content.replace(img, "")));
   if (videos && content)
     videos.forEach((vid) => (content = content.replace(vid, "")));
 
+  /**
+   * Rewrite URLs
+   */
   if (videos) {
     videos.forEach((vid, i) => {
       const rewriteProvider = StreamingProvider.find((provider) =>

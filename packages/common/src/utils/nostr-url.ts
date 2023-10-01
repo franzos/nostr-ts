@@ -61,7 +61,7 @@ export function decodeNostrUrl(url: string) {
  * @param tlvItems
  * @returns
  */
-export function encodeNostrUrl(
+export function encodeNostrString(
   prefix: BECH32_PREFIX,
   tlvItems: {
     type: number;
@@ -71,16 +71,123 @@ export function encodeNostrUrl(
   return `nostr:${encodeBech32(prefix, tlvItems)}`;
 }
 
+function makeNostrString(value: string) {
+  return `nostr:${value}`;
+}
+
 /**
  * Encode a private key as nostr url
  * @param publicKey
  * @returns
  */
 export function encodePublicKeyToNostrUrl(publicKey: string) {
-  return encodeNostrUrl(BECH32_PREFIX.PublicKeys, [
+  return encodeNostrString(BECH32_PREFIX.PublicKeys, [
     {
       type: 0,
       value: publicKey,
     },
   ]);
+}
+
+export function bechEncodeEventId(eventId: string) {
+  return encodeBech32(BECH32_PREFIX.Event, [{ type: 0, value: eventId }]);
+}
+
+/**
+ * nostr:nevent
+ * @param eventId
+ * @returns
+ */
+export function makeNostrEventString(eventId: string) {
+  return makeNostrString(bechEncodeEventId(eventId));
+}
+
+export function bechEncodeProfile(pubkey: string, relayUrls?: string[]) {
+  const tlvItems = [
+    {
+      type: 0,
+      value: pubkey,
+    },
+  ];
+
+  if (relayUrls && relayUrls.length > 0) {
+    for (const relayUrl of relayUrls) {
+      tlvItems.push({
+        type: 1,
+        value: relayUrl,
+      });
+    }
+  }
+
+  return encodeBech32(BECH32_PREFIX.Profile, tlvItems);
+}
+
+/**
+ * nostr:profile
+ * @param pubkey
+ * @param relayUrls
+ * @returns
+ */
+export function makeNostrProfileString(pubkey: string, relayUrls?: string[]) {
+  return makeNostrString(bechEncodeProfile(pubkey, relayUrls));
+}
+
+/**
+ * npub
+ * @param pubkey
+ * @returns
+ */
+export function bechEncodePublicKey(pubkey: string) {
+  return encodeBech32(BECH32_PREFIX.PublicKeys, [
+    {
+      type: 0,
+      value: pubkey,
+    },
+  ]);
+}
+
+/**
+ * nostr:npub
+ * @param pubkey
+ * @returns
+ */
+export function makeNostrPublicKeyString(pubkey) {
+  return makeNostrString(bechEncodePublicKey(pubkey));
+}
+
+export function bechEncodePrivateKey(privkey: string) {
+  return encodeBech32(BECH32_PREFIX.PrivateKeys, [
+    {
+      type: 0,
+      value: privkey,
+    },
+  ]);
+}
+
+export function makeNostrPrivateKeyString(privkey: string) {
+  return makeNostrString(bechEncodePrivateKey(privkey));
+}
+
+export function decodeNostrPublicKeyString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+  return decoded.tlvItems[0].value;
+}
+
+export function decodeNostrPrivateKeyString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+  return decoded.tlvItems[0].value;
+}
+
+export function decodeNostrProfileString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+  return decoded.tlvItems;
 }

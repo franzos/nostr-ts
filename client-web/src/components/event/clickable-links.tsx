@@ -24,7 +24,7 @@ export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
     <>
       {tokens.map((token, index) => {
         if (urlRegex.test(token)) {
-          return <LinkPreview url={token} />;
+          return <LinkPreview url={token} key={index} />;
         }
         if (noteRegex.test(token)) {
           const noteId = token.split(":").pop();

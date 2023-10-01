@@ -56,7 +56,6 @@ export function proofOfWork(
     const leadingZeroes = countLeadingZeroes(event.id);
 
     if (leadingZeroes >= bits) {
-      console.log("Proof of work complete");
       event.tags = event.tags.filter((t) => t[0] !== "nonce");
       event.tags.push(["nonce", adjustmentValue.toString(), bitsString]);
       return event;

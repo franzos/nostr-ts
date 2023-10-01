@@ -17,8 +17,7 @@ import {
   UserBase,
   extractEventContent,
   NOSTR_URL_PREFIX,
-  encodeBech32,
-  BECH32_PREFIX,
+  bechEncodeEventId,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
 import { excerpt } from "../lib/excerpt";
@@ -53,12 +52,7 @@ export function Event({ data, level }: EventProps) {
   const content = extractEventContent(data.event.content);
   const contentWarning = eventHasContentWarning(data.event);
 
-  const nevent = encodeBech32(BECH32_PREFIX.Event, [
-    {
-      type: 0,
-      value: data.event.id,
-    },
-  ]);
+  const nevent = bechEncodeEventId(data.event.id);
 
   let visible;
   if (content?.text && !contentWarning) {

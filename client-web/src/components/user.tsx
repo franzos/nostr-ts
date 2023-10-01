@@ -24,7 +24,7 @@ import {
 import { Link } from "react-router-dom";
 import { useNClient } from "../state/client";
 import { UserInfoProps } from "../lib/user-properties";
-import { BECH32_PREFIX, encodeBech32 } from "@nostr-ts/common";
+import { BECH32_PREFIX, bechEncodePublicKey } from "@nostr-ts/common";
 import CancelIcon from "mdi-react/CancelIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
@@ -66,12 +66,7 @@ export function User({
   const [following, setFollowing] = useState<boolean>(false);
 
   useEffect(() => {
-    const npub = encodeBech32(BECH32_PREFIX.PublicKeys, [
-      {
-        type: 0,
-        value: pubkey,
-      },
-    ]);
+    const npub = bechEncodePublicKey(pubkey);
     setProfileLink(`/p/${npub}`);
   }, [pubkey]);
 

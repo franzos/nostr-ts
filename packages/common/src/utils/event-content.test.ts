@@ -82,16 +82,24 @@ test("extractEventContent: relay", () => {
   const content = "wss://relay.example.com";
   const res = extractEventContent(content);
   expect(res).toEqual({
-    message: undefined,
-    nurls: [],
-    relayUrl: "wss://relay.example.com",
+    images: undefined,
+    nurls: undefined,
+    tags: undefined,
+    text: "wss://relay.example.com",
+    videos: undefined,
   });
 });
 
 test("Test extract without result", () => {
   const content = "Here's whats on nostr: cool stuff";
   const res = extractEventContent(content);
-  expect(res).toEqual(undefined);
+  expect(res).toEqual({
+    images: undefined,
+    nurls: undefined,
+    tags: undefined,
+    text: "Here's whats on nostr: cool stuff",
+    videos: undefined,
+  });
 });
 
 test("extractEventContent: nostr", () => {
@@ -99,18 +107,16 @@ test("extractEventContent: nostr", () => {
     "Profile is impersonating nostr:npub14vgamf2zucjlrxrp9tuudutklyt9ny8at3g5t6d4z7zs22g7gjqsujasrr";
   const res = extractEventContent(content);
   expect(res).toEqual({
-    message:
-      "Profile is impersonating ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481",
-
+    images: undefined,
     nurls: [
       {
         type: "npub",
-        publicKeys: [
-          "ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481",
-        ],
-        relayUrls: [],
+        data: "14vgamf2zucjlrxrp9tuudutklyt9ny8at3g5t6d4z7zs22g7gjqsujasrr",
       },
     ],
+    tags: undefined,
+    text: "Profile is impersonating nostr:npub14vgamf2zucjlrxrp9tuudutklyt9ny8at3g5t6d4z7zs22g7gjqsujasrr",
+    videos: undefined,
   });
 });
 
@@ -120,19 +126,20 @@ test("extractEventContent: nostr x2", () => {
   const res = extractEventContent(content);
 
   expect(res).toEqual({
-    message:
-      "Checkout these guys ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481 82f3b82c7f855340fc1905b20ac50b95d64c700d2b9546507415088e81535425 later",
+    images: undefined,
     nurls: [
       {
         type: "npub",
-        publicKeys: [
-          "ab11dda542e625f198612af9c6f176f9165990fd5c5145e9b5178505291e4481",
-          "82f3b82c7f855340fc1905b20ac50b95d64c700d2b9546507415088e81535425",
-        ],
-        relayUrls: [],
+        data: "14vgamf2zucjlrxrp9tuudutklyt9ny8at3g5t6d4z7zs22g7gjqsujasrr",
+      },
+      {
+        type: "npub",
+        data: "1stemstrls4f5plqeqkeq43gtjhtycuqd9w25v5r5z5ygaq2n2sjsd6mul5",
       },
     ],
-    relayUrl: undefined,
+    tags: undefined,
+    text: "Checkout these guys nostr:npub14vgamf2zucjlrxrp9tuudutklyt9ny8at3g5t6d4z7zs22g7gjqsujasrr nostr:npub1stemstrls4f5plqeqkeq43gtjhtycuqd9w25v5r5z5ygaq2n2sjsd6mul5 later",
+    videos: undefined,
   });
 });
 
@@ -142,18 +149,16 @@ test("extractEventContent: nprofile", () => {
   const res = extractEventContent(content);
 
   expect(res).toEqual({
-    message:
-      "Checkout 3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d later",
+    images: undefined,
     nurls: [
       {
-        type: "npub",
-        publicKeys: [
-          "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d",
-        ],
-        relayUrls: ["wss://r.x.com", "wss://djbas.sadkb.com"],
+        type: "nprofile",
+        data: "1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p",
       },
     ],
-    relayUrl: undefined,
+    tags: undefined,
+    text: "Checkout nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p later",
+    videos: undefined,
   });
 });
 
@@ -187,6 +192,7 @@ describe("extractEventContent media", () => {
       images: undefined,
       videos: ["https://www.youtube.com/watch?v=4A85xqurZP8?feature=shared"],
       notes: undefined,
+      nurls: undefined,
       tags: [
         "#Bitcoin",
         "#Plebchain",
@@ -232,6 +238,25 @@ describe("extractEventContent media", () => {
       ],
       tags: undefined,
       text: "Not very reliable. Is this a regular thing with nostr:npub1mutnyacc9uc4t5mmxvpprwsauj5p2qxq95v4a9j0jxl8wnkfvuyque23vg?",
+    });
+  });
+
+  test("Content note", () => {
+    const source =
+      "Not very reliable. Is this a regular thing with nostr:note1amgqna49dd46yu9ssqsl8c3ru08u682mrtnelhazkzxfzy4uh4aq449m37";
+    const res = extractEventContent(source);
+    expect(res).toEqual({
+      images: undefined,
+      videos: undefined,
+      notes: undefined,
+      nurls: [
+        {
+          type: "note",
+          data: "1amgqna49dd46yu9ssqsl8c3ru08u682mrtnelhazkzxfzy4uh4aq449m37",
+        },
+      ],
+      tags: undefined,
+      text: "Not very reliable. Is this a regular thing with nostr:note1amgqna49dd46yu9ssqsl8c3ru08u682mrtnelhazkzxfzy4uh4aq449m37",
     });
   });
 });

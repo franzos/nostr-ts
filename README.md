@@ -3,7 +3,7 @@
 I wanted to learn more about Nostr, so I decided to implement libraries and clients.
 
 - `./client`: node client example
-- `./client-web`: react client example (`NUserStoreMemory`, React, Chakra, Zustand)
+- `./client-web`: react client example (`NWorker`, `RelayClient`, `NUser` React, Chakra, Zustand)
 - `./relay-docker`: high-performance gnost-relay docker image for local testing
 - `@nostr-ts/common`: `./packages/common`: common types and functions
 - `@nostr-ts/node`: `./packages/node`: client for usage with node `ws` library
@@ -33,7 +33,7 @@ A new, live version builds from master on every commit: [https://franzos.github.
 - `NEvent` to assemble events (universal)
 - `NFilters` to filter events (universal)
 - `NUser` to handle user metadata (node, web - WIP)
-- `NUserStoreMemory` (universal, testing), `NUserStoreSQLite` (node - WIP), `NUserStoreIndexdDB` (web - WIP) ... to store user metadata (node, web)
+- `NWorker` to handle client-side processing and database (web)
 - `loadOrCreateKeypair` basic key handling (node, web)
 
 The goal here is to make it as easy as possible to get started, so there's usually a convenience function for everything (NewShortTextNote, NewRecommendRelay, ...).
@@ -413,10 +413,45 @@ You can also utilize `NewGenericRepost` to repost any kind of event.
 
 - [x] NIP-19 [bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)
 
-There are some utilities to get you started (WIP):
+There are some helpers to get you started:
 
 - `encodeBech32(...)`
 - `decodeBech32(...)`
+
+Shortcuts to the above, for specific use cases:
+
+- `bechEncodeProfile(pubkey, relayUrls)` (returns ex. `nprofile...`)
+- `bechEncodePublicKey(pubkey)`
+- `bechEncodePrivateKey(privkey)`
+- `decodeNostrPublicKeyString(nostr:npub...)` (returns public key)
+- `decodeNostrPrivateKeyString(nostr:nsec...)`
+- `decodeNostrProfileString(nostr:nprofile...)`
+- `encodeNostrString(prefix, tlvItems)` (returns ex. `nostr:npub...`)
+
+Examples public keys:
+
+```js
+const src =
+  "nostr:npub1kade5vf37snr4hv5hgstav6j5ygry6z09kkq0flp47p8cmeuz5zs7zz2an";
+const resO1 = decodeNostrPublicKeyString(src);
+// res = b75b9a3131f4263add94ba20beb352a11032684f2dac07a7e1af827c6f3c1505
+
+const resO2 = decodeNostrUrl(src);
+// res = [{ prefix: 'npub', tlvItems: [{ type: 0, value: "b75b9a3131f4263add94ba20beb352a11032684f2dac07a7e1af827c6f3c1505" }] }]
+```
+
+Example profile:
+
+```js
+const pubkey =
+  "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+const relays = ["wss://r.x.com", "wss://djbas.sadkb.com"];
+const res01 = bechEncodeProfile(pubkey, relays);
+// res01 = nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p
+
+const res02 = makeNostrProfileString(pubkey, relays);
+// res02 = nostr:nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p
+```
 
 - [x] NIP-23 [Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)
 
@@ -533,7 +568,7 @@ I will follow-up with a more realistig implementation.
 Supports:
 
 - Zap to a user: YES
-- Zap to from / to event: NO (WIP)
+- Zap to from / to event: (just make sure you include the event ID in the event)
 
 ```js
 const recipient = new NUser({

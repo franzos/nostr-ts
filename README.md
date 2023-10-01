@@ -38,6 +38,10 @@ A new, live version builds from master on every commit: [https://franzos.github.
 
 The goal here is to make it as easy as possible to get started, so there's usually a convenience function for everything (NewShortTextNote, NewRecommendRelay, ...).
 
+### Storage
+
+- Sattelite CDN (web)
+
 ## Usage notes
 
 On Node.js use:
@@ -827,10 +831,29 @@ const relays = relayDiscovery.get().slice(0, 10);
 await client.loadFromDiscovered(relays);
 ```
 
-## Tests
+### Sattelite CDN
 
-```
-pnpm run tests
+The `@nostr-ts/web` package includes a [Sattelite CDN](https://github.com/lovvtide/satellite-web/blob/master/docs/cdn.md) implementation.
+
+```js
+const keypair = generateClientKeys();
+
+// Request credit (1 GB)
+const request = sCDNCreditRequest(1);
+request.signAndGenerateId(keypair);
+
+// Get terms
+const terms = await sCDNGetTerms(request);
+
+// Accept terms (sign)
+// as of writing, the amount would be 184000 msats
+const payment = new NEvent(terms.payment);
+payment.signAndGenerateId(keypair);
+
+// Get invoice
+const invoice = await sCDNGetInvoice(terms, payment);
+
+// invoice.pr contains the lightning invoice
 ```
 
 ## Notes

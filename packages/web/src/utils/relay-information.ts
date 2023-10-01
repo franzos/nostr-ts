@@ -28,5 +28,7 @@ export async function getRelayInformationDocument(
     Accept: "application/nostr+json",
   };
 
-  return makeRequest(httpsUrl, headers);
+  return makeRequest(httpsUrl, {
+    headers,
+  });
 }

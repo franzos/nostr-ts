@@ -110,6 +110,12 @@ export interface StorageQueryParams {
 
   // No subscription
   isOffline?: boolean;
+
+  /**
+   * Attach related events from DB (replies, reposts, reactions, etc)
+   * WARNING: SLOW
+   */
+  attachRelations?: boolean;
 }
 
 export function isUserEvent(event: EventBaseSigned, pubkey: string): boolean {

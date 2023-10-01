@@ -81,7 +81,8 @@ export class NWorker {
   } = {};
 
   options: {
-    isInWebWorker?: boolean;
+    isInWebWorker: boolean;
+    saveAllEvents: boolean;
   };
 
   lastQuery: StorageEventsQuery | undefined;
@@ -89,7 +90,7 @@ export class NWorker {
   // Triggered if subscription yields new event
   lastQueryHasNewerEvents: number | undefined;
 
-  constructor(options?: { isInWebWorker?: boolean }) {
+  constructor(options?: { isInWebWorker?: boolean; saveAllEvents: boolean }) {
     this.status = "loading";
     this.connecting = false;
     this.componentStatus = {
@@ -97,7 +98,10 @@ export class NWorker {
       database: false,
     };
 
-    this.options = options || {};
+    this.options = {
+      isInWebWorker: options?.isInWebWorker || false,
+      saveAllEvents: options?.saveAllEvents || false,
+    };
     this.db = new Database();
     this.eventsInMemory = [];
     this.eventsPublishingQueue = [];
@@ -887,8 +891,11 @@ export class NWorker {
 
     const events = [];
     for (const event of result.events) {
-      const formatted = await this.attachUser(NewProcessedEventFromDB(event));
+      let formatted = await this.attachUser(NewProcessedEventFromDB(event));
       this.eventsInMemory.push(formatted);
+      if (params.query.attachRelations) {
+        formatted = await this.attachRelatedEvents(formatted);
+      }
       events.push(ProcessedToLightProcessedEvent(formatted));
     }
 
@@ -1420,7 +1427,11 @@ export class NWorker {
               isLive
             );
           }
-          if (isActiveUserEvent || (userData && userData.following)) {
+          if (
+            isActiveUserEvent ||
+            (userData && userData.following) ||
+            this.options.saveAllEvents
+          ) {
             this.db.saveEvent(ev);
           }
         });
@@ -1441,6 +1452,10 @@ export class NWorker {
             );
           }
         });
+
+        if (this.options.saveAllEvents) {
+          this.db.saveEvent(ev);
+        }
       } else if (kind === NEVENT_KIND.CONTACTS) {
         const ev = payload.data[2] as EventBaseSigned;
         const userRecord = await this.db.getUser(ev.pubkey);

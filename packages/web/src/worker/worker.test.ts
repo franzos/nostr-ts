@@ -30,7 +30,9 @@ for (let i = 1; i <= 5; i++) {
 }
 
 describe("Paginate by day, over days - sticky interval", () => {
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   let firstRes;
   let secondRes;
@@ -51,7 +53,9 @@ describe("Paginate by day, over days - sticky interval", () => {
         },
       });
     }
-  });
+    // sleep 2s
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }, 10000);
 
   test("Expect first page with 6 results", async () => {
     const reqFilter = new NFilters({
@@ -103,7 +107,9 @@ describe("Paginate by day, over days - sticky interval", () => {
 });
 
 describe("Paginate by hour, over days - sticky interval", () => {
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   const eventIds = [];
 
@@ -126,6 +132,8 @@ describe("Paginate by hour, over days - sticky interval", () => {
         },
       });
     }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   });
 
   test("First hour", async () => {
@@ -173,7 +181,9 @@ describe("Paginate by hour, over days - sticky interval", () => {
 });
 
 describe("Paginate by day, over limit", () => {
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   let firstRes;
   let secondRes;
@@ -198,7 +208,6 @@ describe("Paginate by day, over limit", () => {
         },
       });
     }
-
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const reqFilter = new NFilters({
@@ -275,7 +284,9 @@ describe("Paginate by day, over limit", () => {
 });
 
 describe("Retry the first request, if no results", () => {
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   let firstRes;
   let secondRes;
@@ -318,6 +329,8 @@ describe("Retry the first request, if no results", () => {
       });
     }
 
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     secondRes = await worker._getEventsQueryProcessor({
       token: "test",
       query: firstRes.next,
@@ -331,7 +344,9 @@ describe("Retry the first request, if no results", () => {
 });
 
 describe("Inverse request; expect older results next", () => {
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   let firstRes;
   let secondRes;
@@ -351,6 +366,7 @@ describe("Inverse request; expect older results next", () => {
         },
       });
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   });
 
   test("First page", async () => {
@@ -430,7 +446,9 @@ describe("Event updates", () => {
 
   secondReactionEvent.signAndGenerateId(thirdKeypair);
 
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   beforeAll(async () => {
     await worker.init();
@@ -446,6 +464,7 @@ describe("Event updates", () => {
         },
       });
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   });
 
   test("Expect note event with reaction", async () => {
@@ -462,6 +481,7 @@ describe("Event updates", () => {
         filters: reqFilter,
         stickyInterval: true,
         isOffline: true,
+        attachRelations: true,
       },
     });
 
@@ -510,7 +530,9 @@ describe("Get popular related", () => {
 
   reactionEvent.signAndGenerateId(secondKeypair);
 
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   beforeAll(async () => {
     await worker.init();
@@ -559,7 +581,9 @@ describe("Get tagged", () => {
 
   noteEventTwo.signAndGenerateId(keypair);
 
-  const worker = new NWorker();
+  const worker = new NWorker({
+    saveAllEvents: true,
+  });
 
   beforeAll(async () => {
     await worker.init();
@@ -576,6 +600,7 @@ describe("Get tagged", () => {
         },
       });
     }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   });
 
   test("Expect one tagged event", async () => {

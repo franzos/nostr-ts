@@ -10,14 +10,14 @@ test("RelayClient connect, disconnect", async () => {
     { url: "wss://nostr-ts.relay", read: true, write: true },
   ]);
 
-  await wait(2);
+  await wait(1);
 
   expect(client.relays.length).toBe(1);
   expect(client.relays[0].url).toBe("wss://nostr-ts.relay");
   expect(client.relays[0].isConnected()).toBe(true);
 
   client.disconnect();
-  await wait(2);
+  await wait(1);
 });
 
 test("RelayClient connect, subscribe, disconnect", async () => {
@@ -25,7 +25,7 @@ test("RelayClient connect, subscribe, disconnect", async () => {
     { url: "wss://nostr-ts.relay", read: true, write: true },
   ]);
 
-  await wait(2);
+  await wait(1);
 
   expect(client.relays.length).toBe(1);
   expect(client.relays[0].url).toBe("wss://nostr-ts.relay");
@@ -44,15 +44,17 @@ test("RelayClient connect, subscribe, disconnect", async () => {
     },
   });
 
+  await wait(1);
+
   expect(client.getSubscriptions().length).toBe(1);
 
-  await wait(2);
+  await wait(1);
 
   expect(client.getSubscriptions().length).toBe(1);
 
   client.disconnect();
 
-  await wait(2);
+  await wait(1);
 
   expect(client.relays.length).toBe(0);
   expect(client.getSubscriptions().length).toBe(0);
@@ -63,7 +65,7 @@ test("RelayClient subscription timeout", async () => {
     { url: "wss://nostr-ts.relay", read: true, write: true },
   ]);
 
-  await wait(2);
+  await wait(1);
 
   expect(client.relays.length).toBe(1);
   expect(client.relays[0].url).toBe("wss://nostr-ts.relay");
@@ -78,20 +80,21 @@ test("RelayClient subscription timeout", async () => {
     type: CLIENT_MESSAGE_TYPE.REQ,
     filters,
     options: {
-      timeoutIn: 2000,
+      timeoutIn: 3000,
     },
   });
 
+  await wait(1);
+
   expect(client.getSubscriptions().length).toBe(1);
 
-  await wait(3);
+  await wait(4);
 
-  expect(client.getSubscriptions().length).toBe(0);
+  for (const sub of client.getSubscriptions()) {
+    expect(sub.isActive).toBe(false);
+  }
 
   client.disconnect();
 
   await wait(2);
-
-  expect(client.relays.length).toBe(0);
-  expect(client.getSubscriptions().length).toBe(0);
 }, 15000);

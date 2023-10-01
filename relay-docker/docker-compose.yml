@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -13,10 +13,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.gnost-relay
-      # My nftables are buggy
-      network: host
-    ports:
-      - "8080:8080"
+      # Uncomment if you're using nftables
+      # network: host
     environment:
       DATABASE_URL: postgres://barkyq:super_secret_password@postgres:5432/nostrdb
     depends_on:
@@ -30,7 +28,6 @@ services:
       context: .
       dockerfile: Dockerfile.nginx
     ports:
-      - "80:80"
       - "443:443"
     depends_on:
       - gnost_relay

@@ -10,6 +10,7 @@ import {
   ModalHeader,
   ModalOverlay,
   useDisclosure,
+  Box,
 } from "@chakra-ui/react";
 import { QRCodeSVG } from "qrcode.react";
 import QrcodeIcon from "mdi-react/QrcodeIcon";
@@ -66,7 +67,9 @@ export function QRCodeModal({ kind, value, size }: QRCodeProps) {
           <ModalHeader>{label}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <QRCodeSVG value={encoded} size={330} />
+            <Box p={4} background="#fff">
+              <QRCodeSVG value={encoded} size={300} />
+            </Box>
             <Input value={encoded} mt={2} isReadOnly />
           </ModalBody>
         </ModalContent>

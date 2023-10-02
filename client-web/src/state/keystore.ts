@@ -4,6 +4,10 @@ interface NClientKeystore {
   privateKey?: string;
 }
 
+export interface NClientNoStore extends NClientKeystore {
+  keystore: "none";
+}
+
 export interface NClientLocalStore extends NClientKeystore {
   keystore: "localstore";
   publicKey: string;
@@ -14,7 +18,10 @@ export interface NClientNos2xStore extends NClientKeystore {
   publicKey: string;
 }
 
-export function loadKeyStoreConfig(): NClientKeystore {
+export function loadKeyStoreConfig():
+  | NClientLocalStore
+  | NClientNos2xStore
+  | NClientNoStore {
   const keystore = localStorage.getItem("nostr-client:keystore:keystore");
   if (keystore) {
     if (keystore === "localstore") {
@@ -32,17 +39,16 @@ export function loadKeyStoreConfig(): NClientKeystore {
         };
       }
     } else if (keystore === "nos2x") {
-      return {
-        keystore: "nos2x",
-        publicKey: undefined,
-        privateKey: undefined,
-      };
-    } else if (keystore === "download") {
-      return {
-        keystore: "download",
-        publicKey: undefined,
-        privateKey: undefined,
-      };
+      const publicKey = localStorage.getItem(
+        "nostr-client:keystore:public-key"
+      );
+      if (publicKey) {
+        return {
+          keystore: "nos2x",
+          publicKey: publicKey,
+          privateKey: undefined,
+        };
+      }
     }
   }
   return {

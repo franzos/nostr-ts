@@ -29,6 +29,7 @@ import { EventFormModal } from "./create-event-form-modal";
 import { SubscriptionsTable } from "./subscriptions-table";
 import { RelaysTable } from "./relays-table";
 import { PublishingQueueTable } from "./queue-table";
+import { Integration } from "./integration";
 
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -39,6 +40,7 @@ export function BottomBar() {
   const [subscriptionsCount, setSubscriptionsCount] = useState<number>(0);
   const [relaysCount, setRelaysCount] = useState<number>(0);
   const [queueItemsCount, setQueueItemsCount] = useState<number>(0);
+  const [integrations] = useNClient((state) => [state.integrations]);
 
   const toast = useToast();
 
@@ -326,6 +328,22 @@ export function BottomBar() {
                 <Text fontSize="sm">{subscriptionsCount}</Text>
               </HStack>
             </Link>
+            <Menu>
+              <MenuButton
+                as={Button}
+                size="sm"
+                isDisabled={integrations.length === 0}
+              >
+                Integrations
+              </MenuButton>
+              <MenuList>
+                {integrations.map((i) => (
+                  <MenuItem isDisabled={true}>
+                    <Integration integration={i} />
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </Menu>
             <Link href="https://github.com/franzos/nostr-ts">
               <Text fontSize="xs">NostrOP v{APP_VERSION}</Text>
             </Link>

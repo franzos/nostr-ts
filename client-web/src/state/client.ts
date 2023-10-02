@@ -22,6 +22,7 @@ import { MAX_EVENTS } from "../defaults";
 import { NClient } from "./client-types";
 import {
   NClientLocalStore,
+  NClientNoStore,
   NClientNos2xStore,
   loadKeyStoreConfig,
   saveKeyStoreConfig,
@@ -33,7 +34,13 @@ import {
   StorageEventsQuery,
   SystemStatus,
   WorkerEvent,
+  sCDNAccountInfoRequest,
+  sCDNGetAccountInfo,
 } from "@nostr-ts/web";
+import {
+  INTEGRATION_PROVIDER,
+  SatteliteCDNIntegration,
+} from "../lib/integrations";
 
 const throttleDelayInMs = 500;
 
@@ -238,24 +245,28 @@ export const useNClient = create<NClient>((set, get) => ({
   keystore: "none",
   loadKeyStore: () => {
     const store = loadKeyStoreConfig();
-    set({
-      keystore: store.keystore,
-    });
-    if (
-      store.keystore === "localstore" &&
-      store.publicKey &&
-      store.privateKey
-    ) {
-      set({
-        keypair: {
-          publicKey: store.publicKey,
-          privateKey: store.privateKey,
-        },
-        keypairIsLoaded: true,
-      });
-
-      get().store.setUserPubkey(store.publicKey);
+    if (store.keystore === "localstore") {
+      get().setKeyStore(store);
     }
+
+    // set({
+    //   keystore: store.keystore,
+    // });
+    // if (
+    //   store.keystore === "localstore" &&
+    //   store.publicKey &&
+    //   store.privateKey
+    // ) {
+    //   set({
+    //     keypair: {
+    //       publicKey: store.publicKey,
+    //       privateKey: store.privateKey,
+    //     },
+    //     keypairIsLoaded: true,
+    //   });
+
+    //   get().store.setUserPubkey(store.publicKey);
+    // }
   },
   saveKeyStore: () => {
     const keystore = get().keystore;
@@ -285,7 +296,9 @@ export const useNClient = create<NClient>((set, get) => ({
     });
     get().store.setUserPubkey("");
   },
-  setKeyStore: (config: NClientLocalStore | NClientNos2xStore) => {
+  setKeyStore: (
+    config: NClientLocalStore | NClientNos2xStore | NClientNoStore
+  ) => {
     if (config.keystore === "localstore") {
       set({
         keystore: config.keystore,
@@ -301,6 +314,7 @@ export const useNClient = create<NClient>((set, get) => ({
       get().saveKeyStore();
 
       get().store.setUserPubkey(config.publicKey);
+      get().initIntegrations();
     } else if (config.keystore === "nos2x") {
       set({
         keystore: config.keystore,
@@ -314,6 +328,7 @@ export const useNClient = create<NClient>((set, get) => ({
       });
 
       get().store.setUserPubkey(config.publicKey);
+      get().initIntegrations();
     } else {
       console.error(`Unsupported keystore options`);
       return;
@@ -325,6 +340,40 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   keypair: { publicKey: "", privateKey: "" },
   keypairIsLoaded: false,
+  integrations: [],
+  initIntegrations: async () => {
+    // Check Sattelite CDN
+    const req = sCDNAccountInfoRequest();
+    const signedReq = await get().signEvent(req);
+    const account = await sCDNGetAccountInfo(signedReq);
+    if (account && account.creditTotal > 0) {
+      get().updateIntegration({
+        kind: INTEGRATION_PROVIDER.SATTELITE_CDN,
+        expiresOn: account.paidThrough,
+        credit: account.creditTotal,
+        storageTotal: account.storageTotal,
+        storageRemaining: account.storageTotal - account.usageTotal,
+      });
+    }
+  },
+  updateIntegration: (data: SatteliteCDNIntegration) => {
+    set((state) => {
+      const prev = state.integrations;
+      const index = prev.findIndex((i) => i.kind === data.kind);
+      if (index > -1) {
+        prev[index] = data;
+        return {
+          integrations: prev,
+        };
+      } else {
+        prev.push(data);
+        return {
+          integrations: prev,
+        };
+      }
+    });
+    return;
+  },
   getPopularEvents: async () => {
     return get().store.getPopularEvents();
   },
@@ -735,7 +784,7 @@ export const useNClient = create<NClient>((set, get) => ({
       setTimeout(async () => {
         await get().getAndSetActiveUser({
           retry,
-          retryCount: retryCount ? retryCount + 1 : undefined,
+          retryCount: retryCount ? retryCount + 1 : 1,
         });
       }, 1000);
     }

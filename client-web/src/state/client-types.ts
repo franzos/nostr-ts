@@ -18,6 +18,10 @@ import {
   StorageQueryResult,
   WorkerEvent,
 } from "@nostr-ts/web";
+import {
+  SatteliteCDNIntegration,
+  StorageIntegrationProvider,
+} from "../lib/integrations";
 
 export interface NClient extends NClientBase {
   status: "online" | "offline" | "loading" | "error";
@@ -53,6 +57,19 @@ export interface NClient extends NClientBase {
   setKeyStore: (config: NClientLocalStore | NClientNos2xStore) => void;
   keypair: { publicKey: string; privateKey?: string };
   keypairIsLoaded: boolean;
+
+  /**
+   * Integrations like storage provider
+   */
+  integrations: StorageIntegrationProvider[];
+  /**
+   * Setup integrations once the user has provided a key
+   */
+  initIntegrations: () => void;
+  /**
+   * Add or update an integration
+   */
+  updateIntegration: (data: SatteliteCDNIntegration) => void;
 
   eventProofOfWork: (event: NEvent, bits: number) => Promise<NEvent>;
   count: (pubkey: string) => Promise<Subscription[] | undefined>;

@@ -26,6 +26,7 @@ import QrcodeScanIcon from "mdi-react/QrcodeScanIcon";
 import KeyChainVariantIcon from "mdi-react/KeyChainVariantIcon";
 import ToyBrickOutlineIcon from "mdi-react/ToyBrickOutlineIcon";
 import { QRCodeModal } from "../components/qrcode";
+import { AccountsList } from "../components/accounts/list";
 
 export function AccountRoute() {
   const [keystore, keypairIsLoaded, keypair, publicKey, privateKey] =
@@ -379,6 +380,17 @@ export function AccountRoute() {
             <Button onClick={() => saveKeyPair()}>Save</Button>
           )}
         </Box>
+      )}
+
+      {keystore !== "none" && (
+        <>
+          <Heading size="md">Integrations</Heading>
+          <Text>
+            Improve your Nostr experience without giving up control over your
+            data.
+          </Text>
+          <AccountsList />
+        </>
       )}
     </Box>
   );

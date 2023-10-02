@@ -155,20 +155,26 @@ export const sCDNAccountUploadRequest = (filename: string): NEvent => {
  */
 export const sCDNUploadFile = async (
   signedAccountUploadRequest: NEvent,
-  file: any
+  file: File
 ): Promise<SCDNUploadResult> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("auth", JSON.stringify(signedAccountUploadRequest));
-  return makeRequest(
+  const response = await fetch(
     `https://api.satellite.earth/v1/media/item?auth=${encodeURIComponent(
       JSON.stringify(signedAccountUploadRequest)
     )}`,
     {
       method: "PUT",
-      body: formData,
+      body: file,
     }
   );
+
+  // Depending on the expected response, you can parse it as JSON or text.
+  const data: SCDNUploadResult = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload ${file.name}: ${response.statusText}`); // or any other error handling logic
+  }
+
+  return data;
 };
 
 /**

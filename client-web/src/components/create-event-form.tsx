@@ -26,11 +26,15 @@ import TextShortIcon from "mdi-react/TextShortIcon";
 import TextLongIcon from "mdi-react/TextLongIcon";
 import ReplyIcon from "mdi-react/ReplyIcon";
 import WifiStarIcon from "mdi-react/WifiStarIcon";
+import CogIcon from "mdi-react/CogIcon";
 import RepeatIcon from "mdi-react/RepeatIcon";
 import { excerpt } from "../lib/excerpt";
 import { createNewEventForSubmission } from "../lib/new-event-for-submission";
 import { NKIND } from "../lib/nkind";
 import { RelaySelection } from "./relay-selection";
+import { FileInput } from "./file-input";
+import { FileUpload } from "./file-upload";
+import { INTEGRATION_PROVIDER } from "../lib/integrations";
 
 interface CreateEventFormProps {
   isResponse?: boolean;
@@ -41,12 +45,19 @@ interface CreateEventFormProps {
 }
 
 export const CreateEventForm = (props: CreateEventFormProps) => {
-  const [isReady, keypairIsLoaded] = useNClient((state) => [
-    state.connected && state.keystore !== "none",
-    state.keypairIsLoaded,
-  ]);
+  const [isReady, keypairIsLoaded, hasStorageIntegration] = useNClient(
+    (state) => [
+      state.connected && state.keystore !== "none",
+      state.keypairIsLoaded,
+      state.integrations.filter(
+        (i) => i.kind === INTEGRATION_PROVIDER.SATTELITE_CDN
+      ).length > 0,
+    ]
+  );
   const [isBusy, setIsBusy] = useState<boolean>(false);
   const [errors, setErrors] = useState<string[]>([]);
+
+  const [isOptionsOpen, setOptionsOpen] = useState(false);
 
   const [keystore, keypair] = useNClient((state) => [
     state.keystore,
@@ -110,6 +121,8 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
   >([]);
 
   const availableRelaysCount = relays.filter((item) => item.isAssigned).length;
+
+  const [files, setFiles] = useState<File[]>([]);
 
   const onRelaySelection = (url: string, action: "add" | "remove") => {
     setRelays(
@@ -267,6 +280,28 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
     }
   };
 
+  const onFileSelection = (incomingFiles: FileList) => {
+    console.log(incomingFiles);
+    // Convert FileList to an array
+    const newFilesArray: File[] = Array.from(incomingFiles);
+
+    // Merge with existing files and remove duplicates
+    const mergedFiles: File[] = Array.from(
+      new Set([...files, ...newFilesArray])
+    );
+    console.log(mergedFiles);
+
+    setFiles(mergedFiles);
+  };
+
+  const onFileRemoval = (file: File) => {
+    setFiles(files.filter((f) => f.name !== file.name && f.size !== file.size));
+  };
+
+  const onFileUploadDone = (result: { url: string; nip94?: string[][] }) => {
+    setEventContent(`${eventContent} ${result.url}`);
+  };
+
   /**
    * Render
    */
@@ -283,19 +318,21 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         />
       </FormControl>
 
-      <HStack marginBottom={4}>
-        {options.map((option) => (
-          <IconButton
-            variant={"outline"}
-            key={option.label}
-            aria-label={option.label}
-            icon={option.icon}
-            onClick={() => setEventKind(option.label)}
-            isActive={eventKind === option.label}
-            isDisabled={option.disabled}
-          ></IconButton>
-        ))}
-      </HStack>
+      {isOptionsOpen && (
+        <HStack marginBottom={4}>
+          {options.map((option) => (
+            <IconButton
+              variant={"outline"}
+              key={option.label}
+              aria-label={option.label}
+              icon={option.icon}
+              onClick={() => setEventKind(option.label)}
+              isActive={eventKind === option.label}
+              isDisabled={option.disabled}
+            ></IconButton>
+          ))}
+        </HStack>
+      )}
       {errors.map((error, index) => (
         <Box key={index} color="red.500">
           {error}
@@ -307,6 +344,14 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
         </Box>
       )}
       {isOpen && <RelaySelection relays={relays} onChange={onRelaySelection} />}
+      {files &&
+        files.map((f) => (
+          <FileUpload
+            file={f}
+            onUploadDone={onFileUploadDone}
+            onRemove={onFileRemoval}
+          />
+        ))}
       <ButtonGroup>
         <Button
           type="submit"
@@ -319,8 +364,18 @@ export const CreateEventForm = (props: CreateEventFormProps) => {
           Send
         </Button>
         <Button variant={"outline"} onClick={isOpen ? onClose : onOpen}>
-          Select relays ({availableRelaysCount})
+          Relays ({availableRelaysCount})
         </Button>
+        <IconButton
+          icon={<Icon as={CogIcon} />}
+          variant="outline"
+          onClick={() => setOptionsOpen((o) => !o)}
+          aria-label="Options"
+        />
+        <FileInput
+          onSelection={onFileSelection}
+          isDisabled={!hasStorageIntegration}
+        />
       </ButtonGroup>
     </Box>
   );

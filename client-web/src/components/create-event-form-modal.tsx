@@ -8,8 +8,10 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Icon,
 } from "@chakra-ui/react";
 import { CreateEventForm } from "./create-event-form";
+import SendIcon from "mdi-react/SendIcon";
 
 interface EventFormModalProps {
   buttonSize: string;
@@ -18,26 +20,26 @@ interface EventFormModalProps {
 export function EventFormModal(props?: EventFormModalProps) {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const sendCallback = () => {
-    onClose();
-  };
-
   return (
     <>
-      <Button size={props?.buttonSize || "md"} onClick={onOpen}>
+      <Button
+        leftIcon={<Icon size={props?.buttonSize || "xs"} as={SendIcon} />}
+        size={props?.buttonSize || "md"}
+        onClick={onOpen}
+      >
         Post message
       </Button>
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} closeOnOverlayClick={false}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Broadcast to the Network</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <CreateEventForm sendCallback={sendCallback} />
+            <CreateEventForm sendCallback={onClose} />
           </ModalBody>
 
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={onClose}>
+            <Button variant="outline" onClick={onClose}>
               Close
             </Button>
           </ModalFooter>

@@ -36,6 +36,7 @@ import Avatar from "boring-avatars";
 import { ZapModal } from "./event/zap-modal";
 import { QRCodeModal } from "./qrcode";
 import { excerpt } from "../lib/excerpt";
+import { toastSuccessContent } from "../lib/toast";
 
 export function User({
   user: { pubkey, data },
@@ -73,12 +74,19 @@ export function User({
   const copyUserLinkToClipboard = () => {
     const url = `${window.location.origin}/#${profileLink}`;
     navigator.clipboard.writeText(url);
-    toast({
-      description: `Copied ${excerpt(url, 40)} to clipboard`,
-      status: "success",
-      duration: 5000,
-      isClosable: true,
-    });
+    toast(toastSuccessContent(`Copied ${excerpt(url, 29)} to clipboard`));
+  };
+
+  const copyLud06 = () => {
+    if (!lud06) return;
+    navigator.clipboard.writeText(lud06);
+    toast(toastSuccessContent(`Copied ${excerpt(lud06, 29)} to clipboard`));
+  };
+
+  const copyLud16 = () => {
+    if (!lud16) return;
+    navigator.clipboard.writeText(lud16);
+    toast(toastSuccessContent(`Copied ${excerpt(lud16, 29)} to clipboard`));
   };
 
   const loadFollowingStatus = async () => {
@@ -135,11 +143,15 @@ export function User({
         </Box>
         <Box overflowWrap="anywhere" maxWidth={80}>
           <Link to={profileLink}>
-            <Text size="sm">{displayName}</Text>
+            <Text size="sm" color="gray.400">
+              {displayName}
+            </Text>
           </Link>
         </Box>
         <Box overflowWrap="anywhere" maxWidth={80}>
-          <Text fontSize={10}>{!displayNameEqName && name}</Text>
+          <Text fontSize={10} color="gray.400">
+            {!displayNameEqName && name}
+          </Text>
         </Box>
 
         {showLud && (
@@ -163,24 +175,6 @@ export function User({
             Actions
           </MenuButton>
           <MenuList>
-            {showBlock && (
-              <MenuItem
-                icon={<Icon as={CancelIcon} />}
-                onClick={() =>
-                  isBlocked
-                    ? useNClient.getState().unblockUser(pubkey)
-                    : useNClient.getState().blockUser({
-                        pubkey: pubkey,
-                        relayUrls,
-                      })
-                }
-              >
-                {isBlocked ? "Unblock" : "Block"}
-              </MenuItem>
-            )}
-            <MenuItem icon={<Icon as={PlaylistEditIcon} />} onClick={onOpen}>
-              Lists
-            </MenuItem>
             {showFollowing && (
               <MenuItem
                 icon={<Icon as={AccountMultipleIcon} />}
@@ -196,13 +190,46 @@ export function User({
                 {following ? "Unfollow" : "Follow"}
               </MenuItem>
             )}
-
+            <MenuItem icon={<Icon as={PlaylistEditIcon} />} onClick={onOpen}>
+              Lists
+            </MenuItem>
             <MenuItem
               icon={<Icon as={ContentCopyIcon} />}
               onClick={copyUserLinkToClipboard}
             >
               Copy direct profile link
             </MenuItem>
+            {lud06 && (
+              <MenuItem
+                icon={<Icon as={ContentCopyIcon} />}
+                onClick={copyLud06}
+              >
+                Copy LUD06
+              </MenuItem>
+            )}
+            {lud16 && (
+              <MenuItem
+                icon={<Icon as={ContentCopyIcon} />}
+                onClick={copyLud16}
+              >
+                Copy LUD16
+              </MenuItem>
+            )}
+            {showBlock && (
+              <MenuItem
+                icon={<Icon as={CancelIcon} />}
+                onClick={() =>
+                  isBlocked
+                    ? useNClient.getState().unblockUser(pubkey)
+                    : useNClient.getState().blockUser({
+                        pubkey: pubkey,
+                        relayUrls,
+                      })
+                }
+              >
+                {isBlocked ? "Unblock" : "Block"}
+              </MenuItem>
+            )}
           </MenuList>
         </Menu>
       </HStack>

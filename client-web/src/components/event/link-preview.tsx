@@ -5,6 +5,7 @@ import {
   Box,
   LinkBox,
   LinkOverlay,
+  Flex,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { excerpt } from "../../lib/excerpt";
@@ -71,19 +72,25 @@ export function LinkPreview({ url }: LinkPreviewProps) {
   return (
     <>
       {!isLoading && !hasError && data ? (
-        <Box p={4} border="1px solid" color="gray.300">
-          <LinkBox>
-            {data.image && <Image src={data.image} mb={2} />}
-            <LinkOverlay href={url}>
-              <Heading size="sm">{data.title}</Heading>
-            </LinkOverlay>
-            {data.description && (
-              <Text size="xs">{excerpt(data.description, 160)}</Text>
+        <Box p={4} border="1px solid" borderColor="gray.300">
+          <LinkBox as={Flex}>
+            {data.image && (
+              <Box flex="1">
+                <Image src={data.image} mb={2} />
+              </Box>
             )}
-            <Text>
-              {data.siteName && `${data.siteName}, `}
-              {data.hostname}
-            </Text>
+            <Box flex="5" ml={data.image ? 4 : 0}>
+              <LinkOverlay href={url}>
+                <Heading size="sm">{data.title}</Heading>
+              </LinkOverlay>
+              {data.description && (
+                <Text fontSize="xs">{excerpt(data.description, 160)}</Text>
+              )}
+              <Text>
+                {data.siteName && `${data.siteName}, `}
+                {data.hostname}
+              </Text>
+            </Box>
           </LinkBox>
         </Box>
       ) : (

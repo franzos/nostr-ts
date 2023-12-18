@@ -11,8 +11,7 @@
   "keywords": [],
   "author": "Franz Geffke <m@f-a.nz>",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.2"
   }
 }

@@ -1,4 +1,4 @@
-export const MAX_EVENTS = 100;
+export const MAX_EVENTS = 200;
 export const EVENTS_PER_PAGE = 25;
 export const DEFAULT_RELAYS = {
   "wss://relay.shitforce.one": {
@@ -37,19 +37,23 @@ export const DEFAULT_RELAYS = {
     read: true,
     write: false,
   },
-  "wss://relay.cryptocculture.com": {
-    read: true,
-    write: false,
-  },
   "wss://relay.nostr.bg": {
     read: true,
     write: false,
   },
-  "wss://relay.nostrich.de": {
+  "wss://relay.nostr.ro": {
     read: true,
     write: false,
   },
-  "wss://relay.nostr.ro": {
+  "wss://nostr.oxtr.dev": {
+    read: true,
+    write: false,
+  },
+  "wss://nostr.noones.com": {
+    read: true,
+    write: false,
+  },
+  "wss://nostr.vulpem.com": {
     read: true,
     write: false,
   },

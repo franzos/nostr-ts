@@ -253,6 +253,14 @@ export function AccountRoute() {
     setLoadKeyFromQr(!loadKeyFromQr);
   };
 
+  const [linkPreviewProxyUrl, setLinkPreviewProxyUrl] = useState<string>(
+    localStorage.getItem("linkPreviewProxyUrl") || ""
+  );
+
+  const saveLinkPreviewProxyUrl = () => {
+    localStorage.setItem("linkPreviewProxyUrl", linkPreviewProxyUrl);
+  };
+
   return (
     <Box>
       <Heading size="lg">Account</Heading>
@@ -392,6 +400,22 @@ export function AccountRoute() {
           <AccountsList />
         </>
       )}
+
+      <Heading size="md" mt={6}>
+        Link Previews
+      </Heading>
+      <FormControl marginBottom={4}>
+        <FormLabel>To see link previews, you can use a proxy:</FormLabel>
+        <Input
+          type="text"
+          value={linkPreviewProxyUrl}
+          onChange={(e) => setLinkPreviewProxyUrl(e.target.value)}
+          placeholder="https://proxy.com/?url="
+        />
+        <Button onClick={saveLinkPreviewProxyUrl} mt={2}>
+          Save
+        </Button>
+      </FormControl>
     </Box>
   );
 }

@@ -6,19 +6,17 @@ import {
   LinkBox,
   LinkOverlay,
   Flex,
+  Link,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { excerpt } from "../../lib/excerpt";
 
-const fetchProxyData = async (url: string) => {
-  const response = await fetch(
-    `https://p1.nostrop.com/fea11fdd-6073-4a6f-b45a-31559c41f9f1?url=${url}`,
-    {
-      headers: {
-        client: "nostrop",
-      },
-    }
-  );
+const fetchProxyData = async (url: string, proxyUrl?: string) => {
+  if (proxyUrl === undefined) {
+    throw new Error("Proxy URL is not defined");
+  }
+
+  const response = await fetch(`${proxyUrl}${url}`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch data");
@@ -41,9 +39,10 @@ const fetchProxyData = async (url: string) => {
 
 interface LinkPreviewProps {
   url: string;
+  proxyUrl?: string;
 }
 
-export function LinkPreview({ url }: LinkPreviewProps) {
+export function LinkPreview({ url, proxyUrl }: LinkPreviewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [data, setData] = useState<{
@@ -55,9 +54,12 @@ export function LinkPreview({ url }: LinkPreviewProps) {
   } | null>(null);
 
   const fetchData = async () => {
+    if (proxyUrl === undefined) {
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await fetchProxyData(url);
+      const result = await fetchProxyData(url, proxyUrl);
       setData(result);
     } catch (err) {
       setHasError(true);
@@ -94,7 +96,7 @@ export function LinkPreview({ url }: LinkPreviewProps) {
           </LinkBox>
         </Box>
       ) : (
-        <Text>{url}</Text>
+        <Link target={url}>{url}</Link>
       )}
     </>
   );

@@ -3,9 +3,13 @@ import { EventContentWithLinks } from "./clickable-links";
 
 interface EventContentProps {
   content: string | undefined;
+  linkPreviewProxyUrl?: string;
 }
 
-export function EventContent({ content }: EventContentProps) {
+export function EventContent({
+  content,
+  linkPreviewProxyUrl,
+}: EventContentProps) {
   return (
     <>
       {content && content !== "" && (
@@ -20,7 +24,10 @@ export function EventContent({ content }: EventContentProps) {
           borderRadius={4}
           style={{ overflowWrap: "anywhere" }}
         >
-          <EventContentWithLinks text={content} />
+          <EventContentWithLinks
+            text={content}
+            linkPreviewProxyUrl={linkPreviewProxyUrl}
+          />
         </Box>
       )}
     </>

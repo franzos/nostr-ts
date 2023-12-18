@@ -6,9 +6,13 @@ import { LinkPreview } from "./link-preview";
 
 interface EventContentWithLinksProps {
   text: string;
+  linkPreviewProxyUrl?: string;
 }
 
-export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
+export function EventContentWithLinks({
+  text,
+  linkPreviewProxyUrl,
+}: EventContentWithLinksProps) {
   if (!text) return null;
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -24,7 +28,13 @@ export function EventContentWithLinks({ text }: EventContentWithLinksProps) {
     <>
       {tokens.map((token, index) => {
         if (urlRegex.test(token)) {
-          return <LinkPreview url={token} key={index} />;
+          return (
+            <LinkPreview
+              url={token}
+              proxyUrl={linkPreviewProxyUrl}
+              key={index}
+            />
+          );
         }
         if (noteRegex.test(token)) {
           const noteId = token.split(":").pop();

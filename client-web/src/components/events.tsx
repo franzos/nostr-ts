@@ -15,6 +15,8 @@ export function Events({ view, changingView }: EventsProps) {
     state.eventsNewer[view]?.length || 0,
   ]);
   const throttleTimestamp = useRef(Date.now());
+  const linkPreviewProxyUrl =
+    localStorage.getItem("linkPreviewProxyUrl") || undefined;
 
   const loadEvents = async () => {
     if (
@@ -59,34 +61,6 @@ export function Events({ view, changingView }: EventsProps) {
     }
   }, []);
 
-  // useEffect(() => {
-  //   if (hasNewerEvents && hasNewerEvents.count > 0 && !isLoading) {
-  //     loadEvents();
-  //   }
-  // }, [hasNewerEvents, isLoading]);
-
-  // const loadNewerEvents = async () => {
-  //   setIsLoading(true);
-  //   throttleTimestamp.current = Date.now();
-  //   const nextQuery = useNClient.getState().nextQuery;
-  //   if (!nextQuery) return;
-  //   await useNClient.getState().getEvents(
-  //     {
-  //       token: nextQuery.token,
-  //       query: {
-  //         ...nextQuery.next,
-  //         filters: {
-  //           ...nextQuery.next.filters,
-  //           until: Math.round(Date.now() / 1000),
-  //           since: Math.round((Date.now() - 2 * 24 * 60 * 60 * 1000) / 1000),
-  //         },
-  //       },
-  //     },
-  //     "replace"
-  //   );
-  //   setIsLoading(false);
-  // };
-
   const mergeNewerEvents = () => {
     useNClient.getState().mergeNewerEvents(view);
   };
@@ -110,7 +84,12 @@ export function Events({ view, changingView }: EventsProps) {
         data={events}
         itemContent={(index, data) => (
           <Box mb={2}>
-            <Event key={index} data={data} level={0} />
+            <Event
+              key={index}
+              data={data}
+              level={0}
+              linkPreviewProxyUrl={linkPreviewProxyUrl}
+            />
           </Box>
         )}
         endReached={() => {

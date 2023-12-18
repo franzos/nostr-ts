@@ -33,9 +33,10 @@ import { ZapModal } from "./event/zap-modal";
 export interface EventProps {
   data: LightProcessedEvent;
   level: number;
+  linkPreviewProxyUrl?: string;
 }
 
-export function Event({ data, level }: EventProps) {
+export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
   const [isReady] = useNClient((state) => [
     (state.status === "offline" || state.status === "online") &&
       state.keystore !== "none",
@@ -264,6 +265,7 @@ export function Event({ data, level }: EventProps) {
                 content={
                   properties.isLoaded ? properties.text : data.event.content
                 }
+                linkPreviewProxyUrl={linkPreviewProxyUrl}
               />
             </Skeleton>
           </CardBody>

@@ -12,13 +12,13 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@noble/secp256k1": "^2.0.0",
+    "@noble/secp256k1": "^2.1.0",
     "@nostr-ts/common": "workspace:*",
     "@nostr-ts/node": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.10.5",
-    "@types/ws": "^8.5.10",
+    "@types/node": "^20.16.13",
+    "@types/ws": "^8.5.12",
     "rimraf": "^3.0.2",
     "tslib": "2.5.0",
     "typescript": "5.1.6"

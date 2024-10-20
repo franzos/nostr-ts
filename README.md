@@ -20,7 +20,7 @@ Nostr web client built with React.
 
 Initial support for `nos2x` and any other extention following NIP-07 is available.
 
-A new, live version builds from master on every commit: [https://franzos.github.io/nostr-ts/](https://franzos.github.io/nostr-ts/).
+A new, live version builds from master on every commit: [https://d2okqj4v2u9fts.cloudfront.net](https://d2okqj4v2u9fts.cloudfront.net).
 
 ![Preview](./client-web/preview.png)
 

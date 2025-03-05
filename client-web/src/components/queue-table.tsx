@@ -133,7 +133,7 @@ export function PublishingQueueTable() {
             <Th>Accepted</Th>
           </Tr>
         </Thead>
-        <Tbody>{queue.map((item) => ({ item } && QueueItemRow(item)))}</Tbody>
+        <Tbody>{queue.map((item) => (QueueItemRow(item)))}</Tbody>
       </Table>
       {QueueModal}
     </Box>

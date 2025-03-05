@@ -27,6 +27,7 @@ import {
   eventHasEventTags,
   eventHasPositionalEventTag,
   eventHasPositionalEventTags,
+  findLightningPayRequestSectionWithAmount,
   verifyEvent,
 } from "@nostr-ts/common";
 import { Database } from "./database";
@@ -621,13 +622,14 @@ export class NWorker {
                 const extractedInvoice = decodeLightnightPayRequest(
                   invoiceTag[1]
                 );
-                const amount = extractedInvoice.sections.find(
-                  (s) => s.name === "amount"
-                )?.value as number;
+                const sectionWithAmount = findLightningPayRequestSectionWithAmount(extractedInvoice);
+                if (!sectionWithAmount) {
+                  throw new Error("No amount section found in invoice");
+                }
                 zapReceipts.push({
                   id: rel.id,
                   pubkey: rel.pubkey,
-                  amount,
+                  amount: Number(sectionWithAmount.value)
                 });
               }
             } catch (e) {
@@ -1020,14 +1022,14 @@ export class NWorker {
 
           try {
             const extractedInvoice = decodeLightnightPayRequest(invoice[1]);
-            const amount = extractedInvoice.sections.find(
-              (s) => s.name === "amount"
-            )?.value as number;
-
+            const sectionWithAmount = findLightningPayRequestSectionWithAmount(extractedInvoice);
+            if (!sectionWithAmount) {
+              throw new Error("No amount section found in invoice");
+            }
             const data = {
               id: event.id,
               pubkey: event.pubkey,
-              amount,
+              amount: Number(sectionWithAmount.value)
             };
 
             if (ev.zapReceipts) {

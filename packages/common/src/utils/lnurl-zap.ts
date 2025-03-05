@@ -12,7 +12,7 @@ import {
   NEVENT_KIND,
   iNewZAPRequest,
 } from "../types";
-import { decodeLightnightPayRequest } from "./bolt11";
+import { decodeLightnightPayRequest, findLightningPayRequestSectionWithAmount } from "./bolt11";
 
 export function makeLnurlZapRequestUrl({
   callback,
@@ -48,11 +48,11 @@ export function isValidLnurlInvoiceResponse(
   }
 
   const invoice = decodeLightnightPayRequest(response.pr);
+  const sectionWithAmount = findLightningPayRequestSectionWithAmount(invoice);
 
   let amount = undefined;
-  const sMatch = invoice.sections.find((s) => s.name === "amount");
-  if (sMatch) {
-    amount = sMatch.value;
+  if (sectionWithAmount) {
+    amount = sectionWithAmount.value;
   } else {
     return false;
   }

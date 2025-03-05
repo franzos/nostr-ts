@@ -645,16 +645,13 @@ client.listen(async (payload) => {
 4. Save to json file
 
 ```js
-import { NFilters, logRelayMessage } from "@nostr-ts/common";
+import { CLIENT_MESSAGE_TYPE, EventsRequest, NEVENT_KIND, NFilters } from "@nostr-ts/common";
 import {
-  loadOrCreateKeypair,
   RelayClient,
   RelayDiscovery,
 } from "@nostr-ts/node";
 
 const main = async () => {
-  const keypair = await loadOrCreateKeypair();
-
   let client = new RelayClient([
     {
       url: "wss://nostr.rocks",
@@ -672,9 +669,15 @@ const main = async () => {
   const filters = new NFilters();
   filters.addKind(NEVENT_KIND.RECOMMEND_RELAY);
 
-  client.subscribe({
+  const request: EventsRequest = {
+    type: CLIENT_MESSAGE_TYPE.REQ,
     filters,
-  });
+    options: {
+      timeoutIn: 10000,
+    }
+  }
+
+  client.subscribe(request);
 
   client.listen(async (payload) => {
     await relayDiscovery.add(payload.data);
@@ -683,7 +686,7 @@ const main = async () => {
   await client.getRelayInformation();
   await new Promise((resolve) => setTimeout(resolve, 1 * 30 * 1000)).then(
     async () => {
-      client.closeConnection();
+      client.disconnect();
       await relayDiscovery.saveToFile();
     }
   );

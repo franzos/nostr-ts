@@ -23,6 +23,22 @@ import {
   StorageIntegrationProvider,
 } from "../lib/integrations";
 
+export interface UserRetryOptions {
+  retry?: boolean;
+  retryCount?: number;
+  updateFromRelays?: boolean;
+}
+
+export interface BlockUserPayload {
+  pubkey: string;
+  relayUrls: string[];
+}
+
+export interface FollowUserPayload {
+  pubkey: string;
+  relayUrls: string[];
+}
+
 export interface NClient extends NClientBase {
   status: "online" | "offline" | "loading" | "error";
   store: Remote<NWorker>;

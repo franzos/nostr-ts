@@ -1,25 +1,42 @@
-import { nanoid } from "nanoid";
 import {
-  WebSocketEvent,
-  Relay,
-  NEvent,
-  PublishingQueueItem,
-  CountRequest,
-  PublishingRequest,
-  WebSocketClientInfo,
   AuthRequest,
-  CloseRequest,
-  EventsRequest,
-  ProcessedUserBase,
-  UserRecord,
-  LightProcessedEvent,
-  NewAuthEvent,
   CLIENT_MESSAGE_TYPE,
+  CloseRequest,
+  CountRequest,
+  EventsRequest,
+  LightProcessedEvent,
+  NEvent,
+  NewAuthEvent,
+  ProcessedUserBase,
+  PublishingQueueItem,
+  PublishingRequest,
+  Relay,
+  SubscriptionOptions,
+  UserRecord,
+  WebSocketClientInfo,
+  WebSocketEvent,
 } from "@nostr-ts/common";
+import {
+  NWorker,
+  RelayUpdateOptions,
+  RequestInformationPayload,
+  StorageEventsQuery,
+  SystemStatus,
+  WorkerEvent,
+  sCDNAccountInfoRequest,
+  sCDNGetAccountInfo,
+} from "@nostr-ts/web";
 import { wrap } from "comlink";
+import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { MAX_EVENTS } from "../defaults";
-import { NClient } from "./client-types";
+import {
+  INTEGRATION_PROVIDER,
+  SatteliteCDNIntegration,
+} from "../lib/integrations";
+import { CreateListRecord } from "./base-types";
+import { calculatePOWRequirement, fetchUserFromRelays, filterEventsByBlockedUser, findEventById, prepareEventForSigning, processQueueItemsWithPOW, requestRelatedData, scheduleUserRetry, throttle } from "./client-helper";
+import { BlockUserPayload, FollowUserPayload, NClient, UserRetryOptions } from "./client-types";
 import {
   NClientLocalStore,
   NClientNoStore,
@@ -27,63 +44,12 @@ import {
   loadKeyStoreConfig,
   saveKeyStoreConfig,
 } from "./keystore";
-import { SubscriptionOptions } from "@nostr-ts/common";
-import { CreateListRecord } from "./base-types";
-import {
-  NWorker,
-  StorageEventsQuery,
-  SystemStatus,
-  WorkerEvent,
-  sCDNAccountInfoRequest,
-  sCDNGetAccountInfo,
-} from "@nostr-ts/web";
-import {
-  INTEGRATION_PROVIDER,
-  SatteliteCDNIntegration,
-} from "../lib/integrations";
 
 const throttleDelayInMs = 500;
 
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
-
-function throttle(fn: (events: WorkerEvent[]) => void, delay: number) {
-  let timeout: number | null = null;
-  let eventsBatch: WorkerEvent[] = [];
-
-  return function (incomingEvent: WorkerEvent) {
-    if (incomingEvent.data.type === "event:update") {
-      const incomingEventId = (incomingEvent.data.data as LightProcessedEvent)
-        .event.id;
-
-      const existingEventIndex = eventsBatch.findIndex((batchEvent) => {
-        if (batchEvent.data.type === "event:update") {
-          const batchEventId = (batchEvent.data.data as LightProcessedEvent)
-            .event.id;
-          return batchEventId === incomingEventId;
-        }
-        return false;
-      });
-
-      if (existingEventIndex !== -1) {
-        eventsBatch[existingEventIndex] = incomingEvent;
-      } else {
-        eventsBatch.push(incomingEvent);
-      }
-    } else {
-      eventsBatch.push(incomingEvent);
-    }
-
-    if (!timeout) {
-      timeout = setTimeout(() => {
-        fn(eventsBatch);
-        eventsBatch = [];
-        timeout = null;
-      }, delay);
-    }
-  };
-}
 
 export const useNClient = create<NClient>((set, get) => ({
   status: "loading",
@@ -148,14 +114,7 @@ export const useNClient = create<NClient>((set, get) => ({
   getRelays: async () => {
     return get().store.getRelays();
   },
-  updateRelay: async (
-    url: string,
-    options: {
-      isEnabled?: boolean;
-      read?: boolean;
-      write?: boolean;
-    }
-  ) => {
+  updateRelay: async (url: string, options: RelayUpdateOptions) => {
     return get().store.updateRelay(url, options);
   },
   relayAuth: async (relayUrl: string, challenge: string) => {
@@ -526,29 +485,7 @@ export const useNClient = create<NClient>((set, get) => ({
         return a.event.created_at > b.event.created_at ? -1 : 1;
       });
 
-      get().requestInformation(
-        {
-          source: "events:related",
-          idsOrKeys: [...newerEvents.map((e) => e.event.id)],
-        },
-        {
-          view: token,
-          timeoutIn: 10000,
-          // TODO: isLive
-          isLive: true,
-        }
-      );
-      get().requestInformation(
-        {
-          source: "users",
-          idsOrKeys: [...new Set([...newerEvents.map((e) => e.event.pubkey)])],
-        },
-        {
-          view: token,
-          timeoutIn: 10000,
-          isLive: true,
-        }
-      );
+      requestRelatedData(newerEvents, token, get().requestInformation);
       const merged = [...newerEvents, ...events];
       return {
         events: {
@@ -587,36 +524,7 @@ export const useNClient = create<NClient>((set, get) => ({
       const events = state.events[token] || [];
       
       // Request related data for all events shown during initial load
-      if (events.length > 0) {
-        const eventIds = events.map((e) => e.event.id);
-        const userPubkeys = [...new Set(events.map((e) => e.event.pubkey))];
-        
-        // Request related events (replies, reactions, etc.)
-        state.requestInformation(
-          {
-            source: "events:related",
-            idsOrKeys: eventIds,
-          },
-          {
-            view: token,
-            timeoutIn: 10000,
-            isLive: true,
-          }
-        );
-        
-        // Request user information
-        state.requestInformation(
-          {
-            source: "users",
-            idsOrKeys: userPubkeys,
-          },
-          {
-            view: token,
-            timeoutIn: 10000,
-            isLive: true,
-          }
-        );
-      }
+      requestRelatedData(events, token, state.requestInformation);
       
       // Clean up timer
       set((state) => {
@@ -636,8 +544,8 @@ export const useNClient = create<NClient>((set, get) => ({
       const target = isInInitialLoad ? "events" : (isNewer ? "eventsNewer" : "events");
 
       const events = state[target][token] || [];
-      const exists = events.find((e) => e.event.id === payload.event.id);
-      if (!exists) {
+      const existsIndex = findEventById(events, payload.event.id);
+      if (existsIndex === -1) {
         return {
           [target]: {
             ...state[target],
@@ -659,9 +567,7 @@ export const useNClient = create<NClient>((set, get) => ({
           for (const key in events) {
             if (Object.prototype.hasOwnProperty.call(events, key)) {
               const element = events[key];
-              const index = element.findIndex(
-                (e) => e.event.id === payload.event.id
-              );
+              const index = findEventById(element, payload.event.id);
               if (index !== -1) {
                 done = true;
                 set((state) => {
@@ -682,7 +588,7 @@ export const useNClient = create<NClient>((set, get) => ({
       );
     } else {
       const events = get().events[token] || [];
-      const index = events.findIndex((e) => e.event.id === payload.event.id);
+      const index = findEventById(events, payload.event.id);
       if (index !== -1) {
         set((state) => {
           const events = state.events[token] || [];
@@ -782,83 +688,54 @@ export const useNClient = create<NClient>((set, get) => ({
   countUsers: async () => {
     return get().store.countUsers();
   },
-  getAndSetActiveUser: async ({
-    retry,
-    retryCount,
-    updateFromRelays,
-  }: {
-    retry?: boolean;
-    retryCount?: number;
-    updateFromRelays?: boolean;
-  }) => {
-    // Get public key
+  getAndSetActiveUser: async (options: UserRetryOptions) => {
+    const { retry, retryCount, updateFromRelays } = options;
     const key = get().keypair.publicKey;
     if (!key) {
       console.warn(`No keypair found; User not logged-in.`);
       return;
     }
 
-    // Abort if tried < 10 times
     if (retryCount && retryCount > 10) {
       console.warn(`Exceeded 10 retries to fetch user info from relays.`);
       return;
     }
 
-    // Get user from DB
+    // Get user from DB and set active user
     const userData = await get().getUser(key);
     if (userData) {
-      set({
-        activeUser: userData.user,
-      });
+      set({ activeUser: userData.user });
     } else {
       console.log(`Keypair found, but user record not available offline.`);
     }
 
-    // Check if update has been requested
+    // Handle update from relays
     if (updateFromRelays) {
-      await get().requestInformation(
-        {
-          idsOrKeys: [key],
-          source: "users",
-        },
-        {
-          timeoutIn: 10000,
-        }
+      await fetchUserFromRelays(key, get().requestInformation);
+      scheduleUserRetry(
+        async () => await get().getAndSetActiveUser({ retry, retryCount }),
+        5000
       );
-
-      setTimeout(async () => {
-        await get().getAndSetActiveUser({
-          retry,
-          retryCount,
-        });
-      }, 5000);
-      return;
-    } else if (!updateFromRelays && userData) {
-      // If not update has been requested, and we got the user data
       return;
     }
 
-    // Retry, if enabled
+    if (!updateFromRelays && userData) {
+      return;
+    }
+
+    // Handle retry logic
     if (retry) {
       console.log(`Retrying ... ${retryCount} / 10`);
-      // If 2nd try, fetch user info from relays
-      if (retryCount && retryCount === 2) {
-        await get().requestInformation(
-          {
-            idsOrKeys: [key],
-            source: "users",
-          },
-          {
-            timeoutIn: 10000,
-          }
-        );
+      if (retryCount === 2) {
+        await fetchUserFromRelays(key, get().requestInformation);
       }
-      setTimeout(async () => {
-        await get().getAndSetActiveUser({
+      scheduleUserRetry(
+        async () => await get().getAndSetActiveUser({
           retry,
           retryCount: retryCount ? retryCount + 1 : 1,
-        });
-      }, 1000);
+        }),
+        retryCount || 0
+      );
     }
   },
   activeUser: undefined,
@@ -926,11 +803,8 @@ export const useNClient = create<NClient>((set, get) => ({
     if (!keypair) {
       throw new Error("Keypair not initialized");
     }
-    let ev = payload.event;
-    ev.pubkey = keypair.publicKey;
-    ev.generateId();
 
-    let relayUrls = payload.relayUrls;
+    let ev = prepareEventForSigning(payload.event, keypair.publicKey);
 
     // Check if POW is needed and which relays are available
     const availRelays = await get().determineApplicableRelays(payload);
@@ -938,26 +812,12 @@ export const useNClient = create<NClient>((set, get) => ({
       throw new Error("No relays available");
     }
 
-    relayUrls = availRelays.relays.map((r) => r.url);
-
-    let requestedPOW = payload.pow;
-    const neededPow = availRelays.pow;
-    if (requestedPOW && requestedPOW !== 0) {
-      if (requestedPOW < neededPow) {
-        // Smaller than needed, throw error
-        throw new Error(
-          `Requested POW ${requestedPOW} is lower than needed ${neededPow}`
-        );
-      } else if (requestedPOW > neededPow) {
-        // Equal or higher than needed, use requested
-      }
-    } else {
-      // No requested POW, use needed
-      requestedPOW = neededPow;
-    }
+    const relayUrls = availRelays.relays.map((r) => r.url);
+    const requestedPOW = calculatePOWRequirement(payload.pow, availRelays.pow);
 
     let queueItems: PublishingQueueItem[] = [];
 
+    // Handle POW if needed
     if (requestedPOW > 0) {
       const items = await get().generateQueueItems({
         ...payload,
@@ -970,19 +830,14 @@ export const useNClient = create<NClient>((set, get) => ({
       await get().store.addQueueItems(queueItems);
       const result = await get().eventProofOfWork(payload.event, requestedPOW);
       ev = new NEvent(result);
-
-      for (const item of queueItems) {
-        item.event = ev;
-        item.powDone = Date.now();
-      }
+      await processQueueItemsWithPOW(queueItems, ev, get().store);
     }
 
     ev = await get().signEvent(ev);
-
     ev.isReadyToPublishOrThrow();
 
+    // Generate queue items if not already done
     if (queueItems.length === 0) {
-      // If this is 0, we didn't need POW
       const items = await get().generateQueueItems({
         ...payload,
         relayUrls,
@@ -993,18 +848,12 @@ export const useNClient = create<NClient>((set, get) => ({
         queueItems = items;
       }
       await get().store.addQueueItems(queueItems);
-      // get().addQueueItems?.(queueItems);
-    } else {
-      for (const item of queueItems) {
-        item.event = ev;
-        await get().store.updateQueueItem(item);
-      }
     }
 
     await get().store.sendQueueItems(queueItems);
     return ev.id;
   },
-  followUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
+  followUser: async (payload: FollowUserPayload) => {
     await get().store.followUser(payload.pubkey);
   },
   unfollowUser: async (pubkey: string) => {
@@ -1017,26 +866,13 @@ export const useNClient = create<NClient>((set, get) => ({
   getAllUsersFollowing: async () => {
     return get().store.getAllUsersFollowing();
   },
-  blockUser: async (payload: { pubkey: string; relayUrls: string[] }) => {
+  blockUser: async (payload: BlockUserPayload) => {
     await get().store.blockUser(payload.pubkey);
-    const events = get().events;
 
-    set((state) => {
-      // Create a new object to hold the updated events
-      const updatedEvents: typeof state.events = {};
-
-      // Iterate through each token in the events
-      for (const [key, eventArray] of Object.entries(events)) {
-        // Filter out events from the blocked user
-        updatedEvents[key] = eventArray.filter(
-          (e) => e.event.pubkey !== payload.pubkey
-        );
-      }
-
-      return {
-        events: updatedEvents,
-      };
-    });
+    set((state) => ({
+      events: filterEventsByBlockedUser(state.events, payload.pubkey),
+      eventsNewer: filterEventsByBlockedUser(state.eventsNewer, payload.pubkey),
+    }));
   },
 
   unblockUser: async (pubkey: string) => {
@@ -1073,10 +909,7 @@ export const useNClient = create<NClient>((set, get) => ({
     return get().store.removeUserFromList(id, pubkey);
   },
   requestInformation: (
-    payload: {
-      source: "users" | "events" | "events:related";
-      idsOrKeys: string[];
-    },
+    payload: RequestInformationPayload,
     options: SubscriptionOptions
   ) => {
     return get().store.requestInformation(payload, options);

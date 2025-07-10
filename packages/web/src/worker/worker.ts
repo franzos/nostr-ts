@@ -50,6 +50,7 @@ import {
   mergePopular,
   sortAndTrimPopular,
 } from "./database-helper";
+import { RelayUpdateOptions, RequestInformationPayload } from "src/worker/types";
 
 export class NWorker {
   status: "online" | "offline" | "loading";
@@ -181,11 +182,7 @@ export class NWorker {
 
   updateRelay(
     url: string,
-    options: {
-      isEnabled?: boolean;
-      read?: boolean;
-      write?: boolean;
-    }
+    options: RelayUpdateOptions
   ) {
     this.relayClient?.relays.map((relay) => {
       if (relay.url === url) {
@@ -1535,10 +1532,7 @@ export class NWorker {
   }
 
   async requestInformation(
-    payload: {
-      source: "users" | "events" | "events:related";
-      idsOrKeys: string[];
-    },
+    payload: RequestInformationPayload,
     options: SubscriptionOptions,
     kinds?: NEVENT_KIND[]
   ) {

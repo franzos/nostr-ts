@@ -1,9 +1,12 @@
 {
   "name": "client-web",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "Nostr react client",
-  "author": "Franz Geffke <m@f-a.nz>",
+  "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

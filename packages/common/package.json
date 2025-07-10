@@ -1,12 +1,12 @@
 {
   "name": "@nostr-ts/common",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Commonly used nostr types and utils",
-  "author": "Franz Geffke <m@f-a.nz>",
+  "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/franzos/nostr"
+    "url": "https://github.com/franzos/nostr-ts"
   },
   "keywords": [
     "nostr",

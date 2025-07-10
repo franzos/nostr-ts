@@ -1,9 +1,12 @@
 {
   "name": "@nostr-ts/web",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "nostr in the browser",
-  "author": "Franz Geffke <m@f-a.nz>",
+  "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/franzos/nostr-ts"

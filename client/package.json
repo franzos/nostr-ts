@@ -1,8 +1,8 @@
 {
   "name": "client",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "Nostr node playground",
-  "author": "Franz Geffke <m@f-a.nz>",
+  "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
   "main": "dist/index.js",
   "scripts": {

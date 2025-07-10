@@ -3,6 +3,7 @@ import {
   Button,
   HStack,
   Heading,
+  Image,
   Link,
   Menu,
   MenuButton,
@@ -277,9 +278,21 @@ export function BottomBar() {
                 </Link>
               </MenuItem>
               <MenuItem>
-                <Link href="https://github.com/franzos/nostr-ts">
-                  <Text>NostrOP source (v{APP_VERSION})</Text>
-                </Link>
+                <HStack spacing={2}>
+                  <Link href="https://github.com/franzos/nostr-ts">
+                    <Text>NostrOP source (v{APP_VERSION})</Text>
+                  </Link>
+                  <Link href="https://gofranz.com" isExternal>
+                    <Image 
+                      src={colorMode === "dark" 
+                        ? "https://gofranz.com/assets/images/gofranz_embed_light.png"
+                        : "https://gofranz.com/assets/images/gofranz_embed.png"
+                      }
+                      alt="gofranz.com"
+                      height="20px"
+                    />
+                  </Link>
+                </HStack>
               </MenuItem>
             </MenuList>
           </Menu>
@@ -344,9 +357,21 @@ export function BottomBar() {
                 ))}
               </MenuList>
             </Menu>
-            <Link href="https://github.com/franzos/nostr-ts">
-              <Text fontSize="xs">NostrOP v{APP_VERSION}</Text>
-            </Link>
+            <HStack spacing={4}>
+              <Link href="https://github.com/franzos/nostr-ts">
+                <Text fontSize="xs">NostrOP v{APP_VERSION}</Text>
+              </Link>
+              <Link href="https://gofranz.com" isExternal>
+                <Image 
+                  src={colorMode === "dark" 
+                    ? "https://gofranz.com/assets/images/gofranz_embed_light.png"
+                    : "https://gofranz.com/assets/images/gofranz_embed.png"
+                  }
+                  alt="gofranz.com"
+                  height="16px"
+                />
+              </Link>
+            </HStack>
           </>
         </HStack>
       )}

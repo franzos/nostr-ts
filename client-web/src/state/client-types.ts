@@ -117,6 +117,21 @@ export interface NClient extends NClientBase {
     [token: string]: LightProcessedEvent[];
   };
   /**
+   * Initial load timers for each view
+   * This is to show the initial batch of events
+   */
+  initialLoadTimers: {
+    [token: string]: number;
+  };
+  /**
+   * Check if a view is in its initial load window
+   */
+  isInInitialLoadWindow: (token: string) => boolean;
+  /**
+   * Start initial load timer for a view
+   */
+  startInitialLoadTimer: (token: string, durationMs?: number) => void;
+  /**
    * Add event to array or map
    * - In worker, must post message to main thread
    */

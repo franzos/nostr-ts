@@ -237,6 +237,11 @@ export const useNClient = create<NClient>((set, get) => ({
           ...state.eventsNewer,
           [token]: [],
         },
+        initialLoadTimers: (() => {
+          const timers = { ...state.initialLoadTimers };
+          delete timers[token];
+          return timers;
+        })(),
       };
     });
 
@@ -510,6 +515,7 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   events: {},
   eventsNewest: {},
+  initialLoadTimers: {},
   mergeNewerEvents: (token: string) => {
     set((state) => {
       const events = state.events[token] || [];
@@ -557,11 +563,77 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   eventsNewer: {},
+  isInInitialLoadWindow: (token: string) => {
+    const timer = get().initialLoadTimers[token];
+    return timer ? Date.now() < timer : false;
+  },
+  startInitialLoadTimer: (token: string, durationMs: number = 5000) => {
+    const endTime = Date.now() + durationMs;
+    set((state) => ({
+      initialLoadTimers: {
+        ...state.initialLoadTimers,
+        [token]: endTime,
+      },
+      // Reset eventsNewest to ensure initial load works correctly
+      eventsNewest: {
+        ...state.eventsNewest,
+        [token]: 0,
+      },
+    }));
+    
+    // Auto-cleanup timer and trigger data requests
+    setTimeout(() => {
+      const state = get();
+      const events = state.events[token] || [];
+      
+      // Request related data for all events shown during initial load
+      if (events.length > 0) {
+        const eventIds = events.map((e) => e.event.id);
+        const userPubkeys = [...new Set(events.map((e) => e.event.pubkey))];
+        
+        // Request related events (replies, reactions, etc.)
+        state.requestInformation(
+          {
+            source: "events:related",
+            idsOrKeys: eventIds,
+          },
+          {
+            view: token,
+            timeoutIn: 10000,
+            isLive: true,
+          }
+        );
+        
+        // Request user information
+        state.requestInformation(
+          {
+            source: "users",
+            idsOrKeys: userPubkeys,
+          },
+          {
+            view: token,
+            timeoutIn: 10000,
+            isLive: true,
+          }
+        );
+      }
+      
+      // Clean up timer
+      set((state) => {
+        const timers = { ...state.initialLoadTimers };
+        delete timers[token];
+        return { initialLoadTimers: timers };
+      });
+    }, durationMs);
+  },
   addEvent: (payload: LightProcessedEvent, token: string) => {
     set((state) => {
       const newest = state.eventsNewest[token] || 0;
+      const isInInitialLoad = get().isInInitialLoadWindow(token);
       const isNewer = newest === 0 ? true : payload.event.created_at > newest;
-      const target = isNewer ? "eventsNewer" : "events";
+      
+      // During initial load, show events immediately
+      const target = isInInitialLoad ? "events" : (isNewer ? "eventsNewer" : "events");
 
       const events = state[target][token] || [];
       const exists = events.find((e) => e.event.id === payload.event.id);

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Box, Button } from "@chakra-ui/react";
+import { useEffect, useRef, useState } from "react";
+import { Box, Button, Progress, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { Virtuoso } from "react-virtuoso";
@@ -10,10 +10,13 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, eventsNewerCount] = useNClient((state) => [
+  const [events, eventsNewerCount, isInInitialLoad] = useNClient((state) => [
     state.events[view] || [],
     state.eventsNewer[view]?.length || 0,
+    state.isInInitialLoadWindow(view),
   ]);
+  const [countdown, setCountdown] = useState<number>(0);
+  const [progress, setProgress] = useState<number>(0);
   const throttleTimestamp = useRef(Date.now());
   const linkPreviewProxyUrl =
     localStorage.getItem("linkPreviewProxyUrl") || undefined;
@@ -65,9 +68,54 @@ export function Events({ view, changingView }: EventsProps) {
     useNClient.getState().mergeNewerEvents(view);
   };
 
+  // Update countdown timer and progress
+  useEffect(() => {
+    if (isInInitialLoad) {
+      const timer = useNClient.getState().initialLoadTimers[view];
+      if (timer) {
+        const duration = 5000; // 5 seconds
+        const startTime = timer - duration;
+
+        const updateProgress = () => {
+          const now = Date.now();
+          const elapsed = now - startTime;
+          const remaining = Math.max(0, Math.ceil((timer - now) / 1000));
+          const progressPercent = Math.min(100, (elapsed / duration) * 100);
+
+          setCountdown(remaining);
+          setProgress(progressPercent);
+
+          if (remaining > 0) {
+            requestAnimationFrame(updateProgress);
+          }
+        };
+        updateProgress();
+      }
+    } else {
+      setProgress(0);
+    }
+  }, [isInInitialLoad, view]);
+
   return (
     <>
-      {eventsNewerCount > 0 && (
+      {isInInitialLoad && (
+        <Box mb={4}>
+          <Progress
+            value={progress}
+            size="sm"
+            colorScheme="blue"
+            hasStripe
+            isAnimated
+            borderRadius="md"
+          />
+          <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+            <Text fontSize="sm" color="gray.500">
+              Loading events... ({countdown}s)
+            </Text>
+          </Box>
+        </Box>
+      )}
+      {!isInInitialLoad && eventsNewerCount > 0 && (
         <Button
           onClick={mergeNewerEvents}
           variant="outline"

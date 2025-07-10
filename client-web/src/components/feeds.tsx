@@ -17,24 +17,20 @@ export function EventsFeeds() {
     state.keypair,
   ]);
 
-  const isInitDone = useRef<boolean>(false);
-
   const activeFilters = useRef<NFilters>(filterDefault());
   const [view, setView] = useState<string>("global"); // ["global", "following", "mentions", "list"
   const changingView = useRef<boolean>(false);
 
   const onMount = async () => {
-    if (isInitDone.current) {
-      return;
-    }
     // Set the default, "initial" view
-    isInitDone.current = true;
-
     activeFilters.current = filterDefault();
     setView("global");
 
+    // Start initial load timer
+    useNClient.getState().startInitialLoadTimer("global", 5000);
+    
     await useNClient.getState().getEvents({
-      token: view,
+      token: "global",
       query: {
         direction: "OLDER",
         filters: activeFilters.current,
@@ -42,8 +38,6 @@ export function EventsFeeds() {
         isLive: true,
       },
     });
-
-    isInitDone.current = true;
   };
 
   useEffect(() => {
@@ -92,6 +86,9 @@ export function EventsFeeds() {
       }
     }
 
+    // Start initial load timer for new feed
+    useNClient.getState().startInitialLoadTimer(feedName, 5000);
+    
     await useNClient.getState().getEvents({
       token: feedName,
       query: {
@@ -112,7 +109,7 @@ export function EventsFeeds() {
           changeFeed={changeFeed}
         />
       </Box>
-      <Events changingView={changingView.current} view={view} />
+      <Events key={view} changingView={changingView.current} view={view} />
     </Box>
   );
 }

@@ -98,6 +98,10 @@ export function ProfileRoute() {
 
   const loadEvents = async (pk: string) => {
     loadedEventsForRef.current = npub;
+    
+    // Start initial load timer for profile
+    useNClient.getState().startInitialLoadTimer(view, 5000);
+    
     await useNClient.getState().getEvents({
       token: view,
       query: {
@@ -115,6 +119,8 @@ export function ProfileRoute() {
         clearTimeout(userLoadTimeout.current);
       }
       useNClient.getState().unsubscribeByToken(view);
+      // Reset the ref when unmounting so next mount will reload
+      loadedEventsForRef.current = undefined;
     };
   }, []);
 

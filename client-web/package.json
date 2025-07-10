@@ -12,9 +12,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@chakra-ui/react": "^2.10.6",
+    "@chakra-ui/react": "^2.10.9",
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@nostr-ts/common": "workspace:*",
     "@nostr-ts/web": "workspace:*",
     "boring-avatars": "^1.11.2",
@@ -22,31 +22,31 @@
     "framer-motion": "^10.18.0",
     "idb": "^7.1.1",
     "mdi-react": "^9.4.0",
-    "nanoid": "^3.3.8",
+    "nanoid": "^3.3.11",
     "qrcode.react": "^3.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-inlinesvg": "^4.2.0",
     "react-player": "^2.16.0",
     "react-qr-reader": "3.0.0-beta-1",
-    "react-router-dom": "^6.30.0",
+    "react-router-dom": "^6.30.1",
     "react-slick": "^0.29.0",
-    "react-virtuoso": "^4.12.5",
+    "react-virtuoso": "^4.13.0",
     "slick-carousel": "^1.8.1",
-    "zustand": "^4.5.6"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
     "@types/react-slick": "^0.23.13",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vitejs/plugin-react-swc": "^3.8.0",
+    "@vitejs/plugin-react-swc": "^3.10.2",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "eslint-plugin-react-refresh": "^0.4.19",
-    "typescript": "^5.8.2",
-    "vite": "^4.5.9",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "typescript": "^5.8.3",
+    "vite": "^4.5.14",
     "vite-plugin-pwa": "^0.16.7"
   }
 }

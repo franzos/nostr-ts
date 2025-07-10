@@ -22,11 +22,11 @@
     "tests": "jest"
   },
   "dependencies": {
-    "@noble/curves": "^1.8.1",
-    "@noble/hashes": "^1.7.1",
+    "@noble/curves": "^1.9.2",
+    "@noble/hashes": "^1.8.0",
     "@nostr-ts/common": "workspace:*",
     "idb": "^7.1.1",
-    "nanoid": "^3.3.8"
+    "nanoid": "^3.3.11"
   },
   "devDependencies": {
     "@anatine/esbuild-decorators": "^0.2.19",

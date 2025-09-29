@@ -27,8 +27,8 @@ export function EventsFeeds() {
     setView("global");
 
     // Start initial load timer
-    useNClient.getState().startInitialLoadTimer("global", 5000);
-    
+    await useNClient.getState().startInitialLoadTimer("global", 5000);
+
     await useNClient.getState().getEvents({
       token: "global",
       query: {
@@ -87,8 +87,8 @@ export function EventsFeeds() {
     }
 
     // Start initial load timer for new feed
-    useNClient.getState().startInitialLoadTimer(feedName, 5000);
-    
+    await useNClient.getState().startInitialLoadTimer(feedName, 5000);
+
     await useNClient.getState().getEvents({
       token: feedName,
       query: {

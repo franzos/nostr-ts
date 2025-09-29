@@ -10,10 +10,11 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, eventsNewerCount, isInInitialLoad] = useNClient((state) => [
+  const [events, eventsNewerCount, isInInitialLoad, bufferCount] = useNClient((state) => [
     state.events[view] || [],
     state.eventsNewer[view]?.length || 0,
     state.isInInitialLoadWindow(view),
+    state.initialLoadBuffers[view]?.length || 0,
   ]);
   const [countdown, setCountdown] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
@@ -136,7 +137,7 @@ export function Events({ view, changingView }: EventsProps) {
           />
           <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
             <Text fontSize="sm" color="gray.500">
-              Loading events... ({countdown}s)
+              Loading events... {bufferCount} received ({countdown}s)
             </Text>
           </Box>
         </Box>

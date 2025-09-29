@@ -475,6 +475,7 @@ export const useNClient = create<NClient>((set, get) => ({
   events: {},
   eventsNewest: {},
   initialLoadTimers: {},
+  initialLoadBuffers: {},
   mergeNewerEvents: (token: string) => {
     set((state) => {
       const events = state.events[token] || [];
@@ -504,12 +505,18 @@ export const useNClient = create<NClient>((set, get) => ({
     const timer = get().initialLoadTimers[token];
     return timer ? Date.now() < timer : false;
   },
-  startInitialLoadTimer: (token: string, durationMs: number = 5000) => {
+  startInitialLoadTimer: async (token: string, durationMs: number = 5000) => {
     const endTime = Date.now() + durationMs;
+    const minEvents = 20;
+
     set((state) => ({
       initialLoadTimers: {
         ...state.initialLoadTimers,
         [token]: endTime,
+      },
+      initialLoadBuffers: {
+        ...state.initialLoadBuffers,
+        [token]: [],
       },
       // Reset eventsNewest to ensure initial load works correctly
       eventsNewest: {
@@ -517,44 +524,150 @@ export const useNClient = create<NClient>((set, get) => ({
         [token]: 0,
       },
     }));
-    
-    // Auto-cleanup timer and trigger data requests
-    setTimeout(() => {
+
+    // Check if we already have events in DB - if so, exit early
+    const checkAndExitEarly = async () => {
+      // Check current events count
+      const currentEvents = get().events[token] || [];
+      if (currentEvents.length >= minEvents) {
+        finishInitialLoad();
+        return true;
+      }
+      return false;
+    };
+
+    const finishInitialLoad = () => {
       const state = get();
-      const events = state.events[token] || [];
-      
+
+      // Get buffered events and sort them
+      const buffer = state.initialLoadBuffers[token] || [];
+      const sortedBuffer = [...buffer].sort((a, b) =>
+        b.event.created_at - a.event.created_at
+      );
+
+      // Merge with any existing events
+      const existingEvents = state.events[token] || [];
+      const allEvents = [...sortedBuffer, ...existingEvents];
+
+      // Remove duplicates
+      const uniqueEvents = allEvents.filter((event, index, self) =>
+        index === self.findIndex((e) => e.event.id === event.event.id)
+      );
+
+      // Set final sorted list
+      set((state) => ({
+        events: {
+          ...state.events,
+          [token]: uniqueEvents,
+        },
+      }));
+
+      // Auto-merge any newer events that arrived
+      if (state.eventsNewer[token] && state.eventsNewer[token].length > 0) {
+        get().mergeNewerEvents(token);
+      }
+
       // Request related data for all events shown during initial load
-      requestRelatedData(events, token, state.requestInformation);
-      
-      // Clean up timer
+      requestRelatedData(uniqueEvents, token, state.requestInformation);
+
+      // Clean up timer and buffer
       set((state) => {
         const timers = { ...state.initialLoadTimers };
+        const buffers = { ...state.initialLoadBuffers };
         delete timers[token];
-        return { initialLoadTimers: timers };
+        delete buffers[token];
+        return {
+          initialLoadTimers: timers,
+          initialLoadBuffers: buffers,
+        };
       });
+    };
+
+    // Check immediately if DB has events
+    const hasEnoughEvents = await checkAndExitEarly();
+    if (hasEnoughEvents) return;
+
+    // Poll every 500ms to check if we've reached minEvents
+    const pollInterval = setInterval(async () => {
+      const shouldExit = await checkAndExitEarly();
+      if (shouldExit) {
+        clearInterval(pollInterval);
+      }
+    }, 500);
+
+    // Auto-cleanup timer after max duration
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (get().isInInitialLoadWindow(token)) {
+        finishInitialLoad();
+      }
     }, durationMs);
   },
   addEvent: (payload: LightProcessedEvent, token: string) => {
     set((state) => {
-      const newest = state.eventsNewest[token] || 0;
       const isInInitialLoad = get().isInInitialLoadWindow(token);
-      const isNewer = newest === 0 ? true : payload.event.created_at > newest;
-      
-      // During initial load, show events immediately
-      const target = isInInitialLoad ? "events" : (isNewer ? "eventsNewer" : "events");
+      const currentEvents = state.events[token] || [];
 
-      const events = state[target][token] || [];
-      const existsIndex = findEventById(events, payload.event.id);
-      if (existsIndex === -1) {
-        return {
-          [target]: {
-            ...state[target],
-            [token]: [...events, payload],
-          },
-        };
-      } else {
+      // During initial load, accumulate in buffer (no UI updates)
+      if (isInInitialLoad) {
+        const buffer = state.initialLoadBuffers[token] || [];
+        const existsInBuffer = findEventById(buffer, payload.event.id);
+        const existsInEvents = findEventById(currentEvents, payload.event.id);
+
+        if (existsInBuffer === -1 && existsInEvents === -1) {
+          return {
+            initialLoadBuffers: {
+              ...state.initialLoadBuffers,
+              [token]: [...buffer, payload],
+            },
+          };
+        }
         return state;
       }
+
+      // After initial load: determine where to place the event
+      if (currentEvents.length === 0) {
+        // No events yet, add directly
+        return {
+          events: {
+            ...state.events,
+            [token]: [payload],
+          },
+        };
+      }
+
+      // Find newest and oldest timestamps in current view
+      const timestamps = currentEvents.map(e => e.event.created_at);
+      const newestInView = Math.max(...timestamps);
+      const oldestInView = Math.min(...timestamps);
+
+      // Check if event already exists in either list
+      const existsInEvents = findEventById(currentEvents, payload.event.id);
+      const newerEvents = state.eventsNewer[token] || [];
+      const existsInNewer = findEventById(newerEvents, payload.event.id);
+
+      if (existsInEvents !== -1 || existsInNewer !== -1) {
+        return state;
+      }
+
+      // Newer than newest OR in range: queue for button click
+      // Only auto-insert if older than oldest (append to end, no scroll jump)
+      if (payload.event.created_at >= oldestInView) {
+        return {
+          eventsNewer: {
+            ...state.eventsNewer,
+            [token]: [...newerEvents, payload],
+          },
+        };
+      }
+
+      // Older than oldest: safe to append to end
+      return {
+        events: {
+          ...state.events,
+          [token]: [...currentEvents, payload],
+        },
+      };
     });
   },
   updateEvent: (payload: LightProcessedEvent, token?: string) => {

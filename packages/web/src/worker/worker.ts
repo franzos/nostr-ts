@@ -142,6 +142,34 @@ export class NWorker {
   async init() {
     await this.db.init();
     this.updateWorkerStatus("database", true);
+
+    // Start cleanup job - runs every 6 hours
+    this.startCleanupJob();
+  }
+
+  private cleanupIntervalId?: number;
+
+  startCleanupJob() {
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+    // Run immediately on init
+    this.db.cleanupExpiredEvents().catch(err => {
+      console.error("=> WORKER: Error during cleanup:", err);
+    });
+
+    // Then run every 6 hours
+    this.cleanupIntervalId = setInterval(() => {
+      this.db.cleanupExpiredEvents().catch(err => {
+        console.error("=> WORKER: Error during cleanup:", err);
+      });
+    }, SIX_HOURS_MS) as unknown as number;
+  }
+
+  stopCleanupJob() {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = undefined;
+    }
   }
 
   setUserPubkey(pubkey: string) {
@@ -294,6 +322,9 @@ export class NWorker {
         ...record,
         following: true,
       });
+
+      // Promote all existing events from this user to permanent
+      await this.db.promoteEventsToPermament(pubkey);
     }
   }
 
@@ -775,11 +806,19 @@ export class NWorker {
             filters: {
               ...query.filters,
               since: query.stickyInterval
-                ? query.filters.since + interval
-                : oldest,
+                ? (direction === "OLDER"
+                    ? query.filters.since - interval
+                    : query.filters.since + interval)
+                : (direction === "OLDER"
+                    ? oldest - interval
+                    : oldest),
               until: query.stickyInterval
-                ? query.filters.until + interval
-                : oldest + interval,
+                ? (direction === "OLDER"
+                    ? query.filters.until - interval
+                    : query.filters.until + interval)
+                : (direction === "OLDER"
+                    ? oldest
+                    : oldest + interval),
             },
             reqCount: reqCount + 1,
             prevInterval: interval,
@@ -798,10 +837,14 @@ export class NWorker {
 
     const since = isFirstQuery
       ? query.filters.since
-      : query.filters.since + interval;
+      : (direction === "OLDER"
+          ? query.filters.since - interval
+          : query.filters.since + interval);
     const until = isFirstQuery
       ? query.filters.until
-      : query.filters.until + interval;
+      : (direction === "OLDER"
+          ? query.filters.until - interval
+          : query.filters.until + interval);
 
     return {
       events: [],
@@ -1426,13 +1469,10 @@ export class NWorker {
               isLive
             );
           }
-          if (
-            isActiveUserEvent ||
-            (userData && userData.following) ||
-            this.options.saveAllEvents
-          ) {
-            this.db.saveEvent(ev);
-          }
+
+          // Determine if event should be permanent or temporary
+          const isPermanent = isActiveUserEvent || (userData && userData.following) || this.options.saveAllEvents;
+          this.db.saveEvent(ev, { isPermanent });
         });
       } else if (
         kind === NEVENT_KIND.ZAP_RECEIPT ||
@@ -1450,11 +1490,11 @@ export class NWorker {
               isLive
             );
           }
-        });
 
-        if (this.options.saveAllEvents) {
-          this.db.saveEvent(ev);
-        }
+          // Save reactions/zaps/reposts as temporary by default
+          const isPermanent = this.options.saveAllEvents;
+          this.db.saveEvent(ev, { isPermanent });
+        });
       } else if (kind === NEVENT_KIND.CONTACTS) {
         const ev = payload.data[2] as EventBaseSigned;
         const userRecord = await this.db.getUser(ev.pubkey);

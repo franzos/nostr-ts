@@ -25,7 +25,7 @@ export class Database {
 
   async init() {
     console.log(`=> DATABASE: Initializing database...`);
-    this.db = await openDB<NClientDB>("nostrop", 4, {
+    this.db = await openDB<NClientDB>("nostrop", 5, {
       upgrade(database, oldVersion, newVersion, transaction) {
         dbMigration(database, oldVersion, newVersion, transaction);
       },
@@ -349,11 +349,20 @@ export class Database {
     return allEvents;
   }
 
-  async saveEvent(event: EventBaseSigned) {
+  async saveEvent(event: EventBaseSigned, options?: { isPermanent?: boolean }) {
     if (!this.db) throw new Error("=> DATABASE: not ready");
 
+    const isPermanent = options?.isPermanent ?? false;
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
+
+    const eventWithMetadata = {
+      ...event,
+      isPermanent,
+      expiresAt: isPermanent ? undefined : Date.now() + TWO_DAYS_MS,
+    };
+
     try {
-      await this.db.add("events", event);
+      await this.db.add("events", eventWithMetadata);
     } catch (err) {
       const error = err as DOMException;
       if (error.name !== "ConstraintError") {
@@ -659,5 +668,67 @@ export class Database {
     console.log(`=> WORKER: Took ${took}ms to calculate popular`);
 
     return { users, events };
+  }
+
+  async cleanupExpiredEvents() {
+    if (!this.db) throw new Error("=> DATABASE: not ready");
+
+    const now = Date.now();
+    const tx = this.db.transaction(["events", "tags"], "readwrite");
+    const eventStore = tx.objectStore("events");
+    const tagStore = tx.objectStore("tags");
+    const expiresAtIndex = eventStore.index("expiresAt");
+
+    let cursor = await expiresAtIndex.openCursor(IDBKeyRange.upperBound(now));
+    const deletedEventIds: string[] = [];
+
+    while (cursor) {
+      const event = cursor.value;
+      if (event.expiresAt && event.expiresAt < now && !event.isPermanent) {
+        deletedEventIds.push(event.id);
+        await eventStore.delete(event.id);
+      }
+      cursor = await cursor.continue();
+    }
+
+    // Cleanup orphaned tags
+    for (const eventId of deletedEventIds) {
+      const tagIndex = tagStore.index("eventId");
+      let tagCursor = await tagIndex.openCursor(eventId);
+      while (tagCursor) {
+        await tagStore.delete(tagCursor.value.id);
+        tagCursor = await tagCursor.continue();
+      }
+    }
+
+    console.log(`=> DATABASE: Cleaned up ${deletedEventIds.length} expired events`);
+    return deletedEventIds.length;
+  }
+
+  async promoteEventsToPermament(pubkey: string) {
+    if (!this.db) throw new Error("=> DATABASE: not ready");
+
+    const tx = this.db.transaction("events", "readwrite");
+    const store = tx.objectStore("events");
+    const index = store.index("pubkey");
+
+    let cursor = await index.openCursor(pubkey);
+    let promotedCount = 0;
+
+    while (cursor) {
+      const event = cursor.value;
+      if (event.pubkey === pubkey && !event.isPermanent) {
+        await store.put({
+          ...event,
+          isPermanent: true,
+          expiresAt: undefined,
+        });
+        promotedCount++;
+      }
+      cursor = await cursor.continue();
+    }
+
+    console.log(`=> DATABASE: Promoted ${promotedCount} events to permanent for ${pubkey}`);
+    return promotedCount;
   }
 }

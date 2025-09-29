@@ -47,6 +47,12 @@ export function dbMigration(db, oldVersion, _newVersion, transaction) {
       unique: false,
     });
   }
+
+  if (oldVersion < 5) {
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 5`);
+    const eventStore = transaction.objectStore("events");
+    eventStore.createIndex("expiresAt", "expiresAt", { unique: false });
+  }
 }
 
 export interface NClientDB {
@@ -73,12 +79,16 @@ export interface NClientDB {
   };
   events: {
     key: string;
-    value: EventBase;
+    value: EventBase & {
+      isPermanent?: boolean;
+      expiresAt?: number;
+    };
     indexes: {
       pubkey: string;
       kind: NEVENT_KIND;
       created_at: number;
       kindAndPubkey: [NEVENT_KIND, string];
+      expiresAt: number;
     };
   };
   tags: {

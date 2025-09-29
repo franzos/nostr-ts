@@ -20,6 +20,7 @@
     "@emotion/styled": "^11.14.1",
     "@nostr-ts/common": "workspace:*",
     "@nostr-ts/web": "workspace:*",
+    "@tanstack/react-virtual": "^3.13.12",
     "boring-avatars": "^1.11.2",
     "comlink": "^4.4.2",
     "framer-motion": "^10.18.0",
@@ -34,7 +35,6 @@
     "react-qr-reader": "3.0.0-beta-1",
     "react-router-dom": "^6.30.1",
     "react-slick": "^0.29.0",
-    "react-virtuoso": "^4.13.0",
     "slick-carousel": "^1.8.1",
     "zustand": "^4.5.7"
   },

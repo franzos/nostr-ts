@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Box, Button, Progress, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
-import { Virtuoso } from "react-virtuoso";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 
 interface EventsProps {
   view: string;
@@ -96,6 +96,32 @@ export function Events({ view, changingView }: EventsProps) {
     }
   }, [isInInitialLoad, view]);
 
+  // Set up virtualizer with window scrolling
+  const virtualizer = useWindowVirtualizer({
+    count: events.length,
+    estimateSize: () => 200, // Estimated height for each event card
+    overscan: 5,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // Detect infinite scroll - when last item is visible and we have events
+  useEffect(() => {
+    const [lastItem] = [...virtualItems].reverse();
+
+    if (!lastItem) {
+      return;
+    }
+
+    if (
+      lastItem.index >= events.length - 1 &&
+      events.length > 0 &&
+      !changingView
+    ) {
+      loadEvents();
+    }
+  }, [virtualItems, events.length, changingView]);
+
   return (
     <>
       {isInInitialLoad && (
@@ -127,23 +153,45 @@ export function Events({ view, changingView }: EventsProps) {
           {eventsNewerCount} new events
         </Button>
       )}
-      <Virtuoso
-        useWindowScroll={true}
-        data={events}
-        itemContent={(index, data) => (
-          <Box mb={2}>
-            <Event
-              key={index}
-              data={data}
-              level={0}
-              linkPreviewProxyUrl={linkPreviewProxyUrl}
-            />
-          </Box>
-        )}
-        endReached={() => {
-          loadEvents();
+      <div
+        style={{
+          height: virtualizer.getTotalSize(),
+          width: "100%",
+          position: "relative",
         }}
-      />
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
+          }}
+        >
+          {virtualItems.map((virtualItem) => {
+            const eventData = events[virtualItem.index];
+            return (
+              <div
+                key={eventData?.event.id || virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  width: "100%",
+                }}
+              >
+                <Box mb={2}>
+                  <Event
+                    data={eventData}
+                    level={0}
+                    linkPreviewProxyUrl={linkPreviewProxyUrl}
+                  />
+                </Box>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useMemo, useCallback } from "react";
 import {
   Card,
   CardBody,
@@ -16,7 +16,6 @@ import {
   LightProcessedEvent,
   UserBase,
   extractEventContent,
-  NOSTR_URL_PREFIX,
   bechEncodeEventId,
 } from "@nostr-ts/common";
 import { useNClient } from "../state/client";
@@ -36,11 +35,11 @@ export interface EventProps {
   linkPreviewProxyUrl?: string;
 }
 
-export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
-  const [isReady] = useNClient((state) => [
-    (state.status === "offline" || state.status === "online") &&
-      state.keystore !== "none",
-  ]);
+function EventComponent({ data, level, linkPreviewProxyUrl }: EventProps) {
+  // Optimize zustand subscription to only subscribe to specific state changes
+  const isReady = useNClient(
+    (state) => (state.status === "offline" || state.status === "online") && state.keystore !== "none"
+  );
 
   const [user, setUser] = useState<UserBase>(
     data.user
@@ -50,10 +49,10 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
         }
   );
 
-  const content = extractEventContent(data.event.content);
-  const contentWarning = eventHasContentWarning(data.event);
-
-  const nevent = bechEncodeEventId(data.event.id);
+  // Cache expensive operations with useMemo
+  const content = useMemo(() => extractEventContent(data.event.content), [data.event.content]);
+  const contentWarning = useMemo(() => eventHasContentWarning(data.event), [data.event]);
+  const nevent = useMemo(() => bechEncodeEventId(data.event.id), [data.event.id]);
 
   let visible;
   if (content?.text && !contentWarning) {
@@ -62,35 +61,7 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
     visible = false;
   }
 
-  const properties: {
-    isLoaded: boolean;
-    contentWarning: string | undefined;
-    images: string[] | undefined;
-    videos: string[] | undefined;
-    nurls:
-      | {
-          type: NOSTR_URL_PREFIX;
-          data: string;
-        }[]
-      | undefined;
-    text: string | undefined;
-  } = {
-    isLoaded: true,
-    contentWarning,
-    images: content.images,
-    videos: content.videos,
-    nurls: content.nurls,
-    text: content.text,
-  };
-
   const [contentIsVisible, makeContentVisible] = useState(visible);
-
-  const userOptions = {
-    showFollowing: true,
-    showBlock: true,
-    showLud: true,
-    relayUrls: data.eventRelayUrls,
-  };
 
   const {
     isOpen: isInfoModalOpen,
@@ -113,17 +84,6 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
   const toast = useToast();
 
   useEffect(() => {
-    if (level === 0) {
-      const user = data.user
-        ? data.user
-        : {
-            pubkey: data.event.pubkey,
-          };
-      setUser(user);
-    }
-  }, [data.user]);
-
-  useEffect(() => {
     const loadUser = async () => {
       const user = await useNClient.getState().getUser(data.event.pubkey);
       if (user) {
@@ -135,21 +95,18 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
     }
   }, [data.event.pubkey]);
 
-  const relatedRelay = async () => {
+  // Cache callback functions to prevent recreation
+  const relatedRelay = useCallback(async () => {
     if (!data.eventRelayUrls) return;
     const relays = (await useNClient.getState().getRelays()) || [];
     const relay = relays.find((r) => data.eventRelayUrls.includes(r.url));
     if (relay && relay.write) return relay;
-  };
-
-  const replyCallback = async (eventId: string) => {
-    console.log("replyCallback", eventId);
-  };
+  }, [data.eventRelayUrls]);
 
   /**
-   * Handle errors
+   * Handle errors - cached to prevent recreation
    */
-  const handleError = (e: Error | unknown) => {
+  const handleError = useCallback((e: Error | unknown) => {
     let error = "";
     if (e instanceof Error) {
       error = e.message;
@@ -163,9 +120,9 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
       duration: 5000,
       isClosable: true,
     });
-  };
+  }, [toast]);
 
-  const handleSuccess = (evId: string) => {
+  const handleSuccess = useCallback((evId: string) => {
     toast({
       title: "Success",
       description: `Event ${excerpt(evId, 5)} submitted`,
@@ -173,12 +130,12 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
       duration: 5000,
       isClosable: true,
     });
-  };
+  }, [toast]);
 
   /**
-   * Quote or react to an event
+   * Quote or react to an event - cached to prevent recreation
    */
-  const newAction = async (
+  const newAction = useCallback(async (
     type: "quote" | "reaction" | "zap",
     reaction?: string
   ) => {
@@ -234,7 +191,7 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
       handleError(e);
       return;
     }
-  };
+  }, [data.event, relatedRelay, onZapModalOpen, handleSuccess, handleError]);
 
   return (
     <>
@@ -243,28 +200,34 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
         <CardHeader p={0}>
           {contentIsVisible ? (
             <EventBanner
-              images={properties.images}
-              videos={properties.videos}
+              images={content.images}
+              videos={content.videos}
             />
           ) : (
             <NSFWContentToggle
-              contentWarning={properties.contentWarning}
+              contentWarning={contentWarning}
               setShowNSFWContent={makeContentVisible}
             />
           )}
           <Box p={1} pl={2}>
-            <User user={user} opts={userOptions} />
+            <User
+              user={user}
+              opts={{
+                showFollowing: true,
+                showBlock: true,
+                showLud: true,
+                relayUrls: data.eventRelayUrls,
+              }}
+            />
           </Box>
         </CardHeader>
         {/* BODY */}
 
         {contentIsVisible && (
           <CardBody p={0}>
-            <Skeleton isLoaded={properties.isLoaded}>
+            <Skeleton isLoaded={true}>
               <EventContent
-                content={
-                  properties.isLoaded ? properties.text : data.event.content
-                }
+                content={content.text}
                 linkPreviewProxyUrl={linkPreviewProxyUrl}
               />
             </Skeleton>
@@ -295,7 +258,9 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
         <EventReplies
           data={data}
           isOpen={isRepliesOpen}
-          sendCallback={replyCallback}
+          sendCallback={async (eventId: string) => {
+            console.log("replyCallback", eventId);
+          }}
           level={level}
         />
       )}
@@ -314,3 +279,15 @@ export function Event({ data, level, linkPreviewProxyUrl }: EventProps) {
     </>
   );
 }
+
+// Memoized version to prevent unnecessary re-renders
+export const Event = memo(EventComponent, (prevProps, nextProps) => {
+  // Only re-render if the event data or essential props have changed
+  return (
+    prevProps.data.event.id === nextProps.data.event.id &&
+    prevProps.data.event.created_at === nextProps.data.event.created_at &&
+    prevProps.data.event.content === nextProps.data.event.content &&
+    prevProps.level === nextProps.level &&
+    prevProps.linkPreviewProxyUrl === nextProps.linkPreviewProxyUrl
+  );
+});

@@ -1,8 +1,10 @@
 import { Link } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
+import { useMemo } from "react";
 import { OnDemandEvent } from "../on-demand-event";
 import { OnDemandUsername } from "../on-demand-username";
 import { LinkPreview } from "./link-preview";
+import { CONTENT_REGEX_PATTERNS, CONTENT_SPLIT_PATTERN } from "../../lib/regex-patterns";
 
 interface EventContentWithLinksProps {
   text: string;
@@ -13,21 +15,20 @@ export function EventContentWithLinks({
   text,
   linkPreviewProxyUrl,
 }: EventContentWithLinksProps) {
+  // Cache the token splitting operation - only recompute when text changes
+  const tokens = useMemo(() => {
+    if (!text) return [];
+    return text.split(CONTENT_SPLIT_PATTERN);
+  }, [text]);
+
   if (!text) return null;
-
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const noteRegex = /(?:nostr:)?(note[0-9a-zA-Z]+|nevent[0-9a-zA-Z]+)/g;
-  const profileRegex = /(?:nostr:)?(npub[0-9a-zA-Z]+|nprofile[0-9a-zA-Z]+)/g;
-  const tagsRegex = /#[a-zA-Z0-9]+/g;
-
-  const tokens = text.split(
-    /(https?:\/\/[^\s]+|(?:nostr:)?note[0-9a-zA-Z]+|(?:nostr:)?npub[0-9a-zA-Z]+|(?:nostr:)?nprofile[0-9a-zA-Z]+|(?:nostr:)?nevent[0-9a-zA-Z]+|#[a-zA-Z0-9]+)/g
-  );
 
   return (
     <>
       {tokens.map((token, index) => {
-        if (urlRegex.test(token)) {
+        if (CONTENT_REGEX_PATTERNS.url.test(token)) {
+          // Reset regex lastIndex to avoid issues with global flag
+          CONTENT_REGEX_PATTERNS.url.lastIndex = 0;
           return (
             <LinkPreview
               url={token}
@@ -36,17 +37,20 @@ export function EventContentWithLinks({
             />
           );
         }
-        if (noteRegex.test(token)) {
+        if (CONTENT_REGEX_PATTERNS.note.test(token)) {
+          CONTENT_REGEX_PATTERNS.note.lastIndex = 0;
           const noteId = token.split(":").pop();
           return (
             noteId && <OnDemandEvent key={index} note={noteId} index={index} />
           );
         }
-        if (profileRegex.test(token)) {
+        if (CONTENT_REGEX_PATTERNS.profile.test(token)) {
+          CONTENT_REGEX_PATTERNS.profile.lastIndex = 0;
           const profileId = token.split(":").pop();
           return <OnDemandUsername npub={profileId} key={index} />;
         }
-        if (tagsRegex.test(token)) {
+        if (CONTENT_REGEX_PATTERNS.tags.test(token)) {
+          CONTENT_REGEX_PATTERNS.tags.lastIndex = 0;
           return (
             <Link
               as={RouterLink}

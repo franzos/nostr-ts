@@ -154,7 +154,7 @@ export function relayEventsRequestFromQuery(
       until: filters.until,
     },
     options: {
-      timeoutIn: ONE_MINUTE * 1000,
+      timeoutIn: query.isLive ? 0 : ONE_MINUTE * 1000,
       view: req.token,
       isLive: query.isLive,
     },

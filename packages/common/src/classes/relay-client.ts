@@ -163,7 +163,7 @@ export class RelayClientBase {
            */
           if (request.type === CLIENT_MESSAGE_TYPE.REQ && request.options) {
             const timeoutIn = request.options.timeoutIn;
-            if (timeoutIn) {
+            if (timeoutIn && timeoutIn > 0) {
               subscription.options = {
                 ...request.options,
                 view:

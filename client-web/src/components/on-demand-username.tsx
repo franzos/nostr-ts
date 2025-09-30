@@ -23,7 +23,7 @@ export function OnDemandUsername({ npub }: OnDemandUsernameProps) {
   };
 
   const fetchUser = async (pk: string, retryCount: number = 0) => {
-    if (retryCount > 20) {
+    if (retryCount > 5) {
       setIsLoadingUser(false);
       return;
     }
@@ -34,7 +34,7 @@ export function OnDemandUsername({ npub }: OnDemandUsernameProps) {
       setUsername(usernameFromUser(user));
       setIsLoadingUser(false);
     } else {
-      if (retryCount === 2) {
+      if (retryCount === 1) {
         await useNClient.getState().requestInformation(
           {
             idsOrKeys: [pk],
@@ -44,7 +44,8 @@ export function OnDemandUsername({ npub }: OnDemandUsernameProps) {
         );
       }
 
-      setTimeout(() => fetchUser(pk, retryCount + 1), 1000);
+      const delay = Math.min(500 * Math.pow(2, retryCount), 8000);
+      setTimeout(() => fetchUser(pk, retryCount + 1), delay);
     }
   };
 

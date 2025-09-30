@@ -11,12 +11,11 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, eventsNewerCount, showLoading, loadingEndTime] = useNClient((state) => [
-    state.events[view] || [],
-    state.eventsNewer[view]?.length || 0,
-    state.showLoadingBar[view] || false,
-    state.loadingBarEndTime[view] || 0,
-  ]);
+  // Optimize zustand subscription with shallow equality to prevent unnecessary re-renders
+  const events = useNClient((state) => state.events[view] || []);
+  const eventsNewerCount = useNClient((state) => state.eventsNewer[view]?.length || 0);
+  const showLoading = useNClient((state) => state.showLoadingBar[view] || false);
+  const loadingEndTime = useNClient((state) => state.loadingBarEndTime[view] || 0);
   const newEventsBehavior = useSettings((state) => state.newEventsBehavior);
   const [countdown, setCountdown] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
@@ -121,10 +120,21 @@ export function Events({ view, changingView }: EventsProps) {
   }, [showLoading, loadingEndTime, view]);
 
   // Set up virtualizer with window scrolling
+  // Dynamic size estimation based on typical event content
   const virtualizer = useWindowVirtualizer({
     count: events.length,
-    estimateSize: () => 200, // Estimated height for each event card
-    overscan: 5,
+    estimateSize: (index: number) => {
+      const event = events[index];
+      if (!event) return 200;
+
+      const contentLength = event.event.content?.length || 0;
+      let estimatedHeight = 150; // Base height for card chrome
+
+      estimatedHeight += Math.min(Math.ceil(contentLength / 80) * 20, 400);
+
+      return estimatedHeight;
+    },
+    overscan: 10,
   });
 
   const virtualItems = virtualizer.getVirtualItems();

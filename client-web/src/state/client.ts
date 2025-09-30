@@ -449,13 +449,6 @@ export const useNClient = create<NClient>((set, get) => ({
             ...data.events,
           ];
         }
-
-        // Sort the entire array by timestamp (newest first)
-        if (updatedEvents[token]) {
-          updatedEvents[token].sort((a, b) =>
-            a.event.created_at > b.event.created_at ? -1 : 1
-          );
-        }
       }
 
       return {
@@ -492,18 +485,16 @@ export const useNClient = create<NClient>((set, get) => ({
       const events = state.events[token] || [];
       const newerEvents = state.eventsNewer[token] || [];
 
-      // Sort newer events
-      newerEvents.sort((a, b) => {
+      // Sort newer events once
+      const sortedNewerEvents = [...newerEvents].sort((a, b) => {
         return a.event.created_at > b.event.created_at ? -1 : 1;
       });
 
-      requestRelatedData(newerEvents, token, get().requestInformation);
-      const merged = [...newerEvents, ...events];
+      requestRelatedData(sortedNewerEvents, token, get().requestInformation);
 
-      // Sort the entire merged list by timestamp (newest first)
-      merged.sort((a, b) => {
-        return a.event.created_at > b.event.created_at ? -1 : 1;
-      });
+      // Since both arrays are sorted and newerEvents are newer,
+      // we can simply prepend (events are already sorted desc by created_at)
+      const merged = [...sortedNewerEvents, ...events];
 
       return {
         events: {
@@ -587,10 +578,26 @@ export const useNClient = create<NClient>((set, get) => ({
       if (showLoading) {
         const existsInEvents = findEventById(currentEvents, payload.event.id);
         if (existsInEvents === -1) {
-          // Add to events array, sorted by created_at
-          const updatedEvents = [...currentEvents, payload].sort((a, b) =>
-            a.event.created_at > b.event.created_at ? -1 : 1
-          );
+          // Find insertion point using binary search (sorted desc by created_at)
+          let left = 0;
+          let right = currentEvents.length;
+          const timestamp = payload.event.created_at;
+
+          while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            if (currentEvents[mid].event.created_at > timestamp) {
+              left = mid + 1;
+            } else {
+              right = mid;
+            }
+          }
+
+          const updatedEvents = [
+            ...currentEvents.slice(0, left),
+            payload,
+            ...currentEvents.slice(left)
+          ];
+
           return {
             events: {
               ...state.events,
@@ -612,9 +619,8 @@ export const useNClient = create<NClient>((set, get) => ({
         };
       }
 
-      // Find oldest timestamp in current view
-      const timestamps = currentEvents.map(e => e.event.created_at);
-      const oldestInView = Math.min(...timestamps);
+      // Find oldest timestamp in current view (array is sorted desc, so last item is oldest)
+      const oldestInView = currentEvents[currentEvents.length - 1].event.created_at;
 
       // Check if event already exists in either list
       const existsInEvents = findEventById(currentEvents, payload.event.id);
@@ -636,9 +642,26 @@ export const useNClient = create<NClient>((set, get) => ({
         };
       }
 
-      // Older than oldest: append and sort to maintain order
-      const updated = [...currentEvents, payload];
-      updated.sort((a, b) => a.event.created_at > b.event.created_at ? -1 : 1);
+      // Older than oldest
+      let left = 0;
+      let right = currentEvents.length;
+      const timestamp = payload.event.created_at;
+
+      while (left < right) {
+        const mid = Math.floor((left + right) / 2);
+        if (currentEvents[mid].event.created_at > timestamp) {
+          left = mid + 1;
+        } else {
+          right = mid;
+        }
+      }
+
+      const updated = [
+        ...currentEvents.slice(0, left),
+        payload,
+        ...currentEvents.slice(left)
+      ];
+
       return {
         events: {
           ...state.events,

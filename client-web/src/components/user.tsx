@@ -31,14 +31,14 @@ import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
 import DotsVerticalCircleOutlineIcon from "mdi-react/DotsVerticalCircleOutlineIcon";
 import ContentCopyIcon from "mdi-react/ContentCopyIcon";
 import { ListAssignmentModal } from "./list-assignment-modal";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useMemo, useCallback } from "react";
 import Avatar from "boring-avatars";
 import { ZapModal } from "./event/zap-modal";
 import { QRCodeModal } from "./qrcode";
 import { excerpt } from "../lib/excerpt";
 import { toastSuccessContent } from "../lib/toast";
 
-export function User({
+function UserComponent({
   user: { pubkey, data },
   opts: {
     showAbout,
@@ -52,16 +52,16 @@ export function User({
 }: UserInfoProps) {
   const toast = useToast();
 
-  const name = data && data.name ? data.name : "Anonymous";
-  const displayName = data && data.display_name ? data.display_name : name;
-  const picture = data && data.picture ? data.picture : "";
-  const banner = data && data.banner ? data.banner : undefined;
-  const about = data && data.about ? data.about : undefined;
-  const lud06 = data && data.lud06 ? data.lud06 : undefined;
-  const lud16 = data && data.lud16 ? data.lud16 : undefined;
-  // const nip05 = data && data.nip05 ? data.nip05 : undefined;
+  // Memoize derived values to prevent recalculation on every render
+  const name = useMemo(() => data && data.name ? data.name : "Anonymous", [data]);
+  const displayName = useMemo(() => data && data.display_name ? data.display_name : name, [data, name]);
+  const picture = useMemo(() => data && data.picture ? data.picture : "", [data]);
+  const banner = useMemo(() => data && data.banner ? data.banner : undefined, [data]);
+  const about = useMemo(() => data && data.about ? data.about : undefined, [data]);
+  const lud06 = useMemo(() => data && data.lud06 ? data.lud06 : undefined, [data]);
+  const lud16 = useMemo(() => data && data.lud16 ? data.lud16 : undefined, [data]);
 
-  const displayNameEqName = displayName === name;
+  const displayNameEqName = useMemo(() => displayName === name, [displayName, name]);
 
   const [profileLink, setProfileLink] = useState<string>("");
   const [following, setFollowing] = useState<boolean>(false);
@@ -71,28 +71,28 @@ export function User({
     setProfileLink(`/p/${npub}`);
   }, [pubkey]);
 
-  const copyUserLinkToClipboard = () => {
+  const copyUserLinkToClipboard = useCallback(() => {
     const url = `${window.location.origin}/#${profileLink}`;
     navigator.clipboard.writeText(url);
     toast(toastSuccessContent(`Copied ${excerpt(url, 29)} to clipboard`));
-  };
+  }, [profileLink, toast]);
 
-  const copyLud06 = () => {
+  const copyLud06 = useCallback(() => {
     if (!lud06) return;
     navigator.clipboard.writeText(lud06);
     toast(toastSuccessContent(`Copied ${excerpt(lud06, 29)} to clipboard`));
-  };
+  }, [lud06, toast]);
 
-  const copyLud16 = () => {
+  const copyLud16 = useCallback(() => {
     if (!lud16) return;
     navigator.clipboard.writeText(lud16);
     toast(toastSuccessContent(`Copied ${excerpt(lud16, 29)} to clipboard`));
-  };
+  }, [lud16, toast]);
 
-  const loadFollowingStatus = async () => {
+  const loadFollowingStatus = useCallback(async () => {
     const following = await useNClient.getState().followingUser(pubkey);
     setFollowing(following);
-  };
+  }, [pubkey]);
 
   // const mentionsLink = `/mentions/${user.pubkey}?relays=${relayUrls.join(",")}`;
 
@@ -245,3 +245,17 @@ export function User({
     </>
   );
 }
+
+// Memoized version to prevent unnecessary re-renders
+export const User = memo(UserComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.user.pubkey === nextProps.user.pubkey &&
+    prevProps.user.data === nextProps.user.data &&
+    prevProps.opts.showAbout === nextProps.opts.showAbout &&
+    prevProps.opts.showBanner === nextProps.opts.showBanner &&
+    prevProps.opts.showFollowing === nextProps.opts.showFollowing &&
+    prevProps.opts.showBlock === nextProps.opts.showBlock &&
+    prevProps.opts.showLud === nextProps.opts.showLud &&
+    prevProps.opts.isBlocked === nextProps.opts.isBlocked
+  );
+});

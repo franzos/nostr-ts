@@ -41,7 +41,7 @@ function EventComponent({ data, level, linkPreviewProxyUrl }: EventProps) {
     (state) => (state.status === "offline" || state.status === "online") && state.keystore !== "none"
   );
 
-  const [user, setUser] = useState<UserBase>(
+  const [user, setUser] = useState<UserBase>(() =>
     data.user
       ? data.user
       : {
@@ -84,16 +84,18 @@ function EventComponent({ data, level, linkPreviewProxyUrl }: EventProps) {
   const toast = useToast();
 
   useEffect(() => {
+    if (level === 0 || data.user) {
+      return;
+    }
+
     const loadUser = async () => {
       const user = await useNClient.getState().getUser(data.event.pubkey);
       if (user) {
         setUser(user.user);
       }
     };
-    if (level > 0) {
-      loadUser();
-    }
-  }, [data.event.pubkey]);
+    loadUser();
+  }, [data.event.pubkey, level, data.user]);
 
   // Cache callback functions to prevent recreation
   const relatedRelay = useCallback(async () => {
@@ -283,11 +285,15 @@ function EventComponent({ data, level, linkPreviewProxyUrl }: EventProps) {
 // Memoized version to prevent unnecessary re-renders
 export const Event = memo(EventComponent, (prevProps, nextProps) => {
   // Only re-render if the event data or essential props have changed
-  return (
-    prevProps.data.event.id === nextProps.data.event.id &&
-    prevProps.data.event.created_at === nextProps.data.event.created_at &&
-    prevProps.data.event.content === nextProps.data.event.content &&
-    prevProps.level === nextProps.level &&
-    prevProps.linkPreviewProxyUrl === nextProps.linkPreviewProxyUrl
-  );
+  const sameId = prevProps.data.event.id === nextProps.data.event.id;
+  const sameContent = prevProps.data.event.content === nextProps.data.event.content;
+  const sameLevel = prevProps.level === nextProps.level;
+  const sameProxy = prevProps.linkPreviewProxyUrl === nextProps.linkPreviewProxyUrl;
+  const sameCounts =
+    prevProps.data.repliesCount === nextProps.data.repliesCount &&
+    prevProps.data.reactionsCount === nextProps.data.reactionsCount &&
+    prevProps.data.repostsCount === nextProps.data.repostsCount &&
+    prevProps.data.zapReceiptCount === nextProps.data.zapReceiptCount;
+
+  return sameId && sameContent && sameLevel && sameProxy && sameCounts;
 });

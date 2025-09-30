@@ -11,58 +11,85 @@ interface EventContentWithLinksProps {
   linkPreviewProxyUrl?: string;
 }
 
+enum TokenType {
+  URL = 0,
+  NOTE = 1,
+  PROFILE = 2,
+  TAG = 3,
+  TEXT = 4,
+}
+
+interface ProcessedToken {
+  type: TokenType;
+  value: string;
+  extra?: string; // For extracted IDs
+}
+
 export function EventContentWithLinks({
   text,
   linkPreviewProxyUrl,
 }: EventContentWithLinksProps) {
-  // Cache the token splitting operation - only recompute when text changes
-  const tokens = useMemo(() => {
+  // Cache token splitting and type detection - only recompute when text changes
+  const processedTokens = useMemo<ProcessedToken[]>(() => {
     if (!text) return [];
-    return text.split(CONTENT_SPLIT_PATTERN);
+
+    const rawTokens = text.split(CONTENT_SPLIT_PATTERN);
+    return rawTokens.map((token): ProcessedToken => {
+      // Check patterns once and cache the result
+      if (CONTENT_REGEX_PATTERNS.url.test(token)) {
+        CONTENT_REGEX_PATTERNS.url.lastIndex = 0;
+        return { type: TokenType.URL, value: token };
+      }
+      if (CONTENT_REGEX_PATTERNS.note.test(token)) {
+        CONTENT_REGEX_PATTERNS.note.lastIndex = 0;
+        return { type: TokenType.NOTE, value: token, extra: token.split(":").pop() };
+      }
+      if (CONTENT_REGEX_PATTERNS.profile.test(token)) {
+        CONTENT_REGEX_PATTERNS.profile.lastIndex = 0;
+        return { type: TokenType.PROFILE, value: token, extra: token.split(":").pop() };
+      }
+      if (CONTENT_REGEX_PATTERNS.tags.test(token)) {
+        CONTENT_REGEX_PATTERNS.tags.lastIndex = 0;
+        return { type: TokenType.TAG, value: token };
+      }
+      return { type: TokenType.TEXT, value: token };
+    });
   }, [text]);
 
   if (!text) return null;
 
   return (
     <>
-      {tokens.map((token, index) => {
-        if (CONTENT_REGEX_PATTERNS.url.test(token)) {
-          // Reset regex lastIndex to avoid issues with global flag
-          CONTENT_REGEX_PATTERNS.url.lastIndex = 0;
-          return (
-            <LinkPreview
-              url={token}
-              proxyUrl={linkPreviewProxyUrl}
-              key={index}
-            />
-          );
+      {processedTokens.map((token, index) => {
+        switch (token.type) {
+          case TokenType.URL:
+            return (
+              <LinkPreview
+                url={token.value}
+                proxyUrl={linkPreviewProxyUrl}
+                key={index}
+              />
+            );
+          case TokenType.NOTE:
+            return token.extra ? (
+              <OnDemandEvent key={index} note={token.extra} index={index} />
+            ) : null;
+          case TokenType.PROFILE:
+            return <OnDemandUsername npub={token.extra} key={index} />;
+          case TokenType.TAG:
+            return (
+              <Link
+                as={RouterLink}
+                key={index}
+                to={`/t/${encodeURIComponent(token.value.slice(1))}`}
+                color={"gray.500"}
+              >
+                {token.value}
+              </Link>
+            );
+          default:
+            return token.value;
         }
-        if (CONTENT_REGEX_PATTERNS.note.test(token)) {
-          CONTENT_REGEX_PATTERNS.note.lastIndex = 0;
-          const noteId = token.split(":").pop();
-          return (
-            noteId && <OnDemandEvent key={index} note={noteId} index={index} />
-          );
-        }
-        if (CONTENT_REGEX_PATTERNS.profile.test(token)) {
-          CONTENT_REGEX_PATTERNS.profile.lastIndex = 0;
-          const profileId = token.split(":").pop();
-          return <OnDemandUsername npub={profileId} key={index} />;
-        }
-        if (CONTENT_REGEX_PATTERNS.tags.test(token)) {
-          CONTENT_REGEX_PATTERNS.tags.lastIndex = 0;
-          return (
-            <Link
-              as={RouterLink}
-              key={index}
-              to={`/t/${encodeURIComponent(token.slice(1))}`}
-              color={"gray.500"}
-            >
-              {token}
-            </Link>
-          );
-        }
-        return token;
       })}
     </>
   );

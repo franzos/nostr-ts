@@ -2,6 +2,9 @@ import { LightProcessedEvent, NEvent, PublishingQueueItem, SubscriptionOptions }
 import { NWorker, RequestInformationPayload, WorkerEvent } from "@nostr-ts/web";
 import { Remote } from "comlink";
 
+// Request deduplication cache
+const pendingUserRequests = new Map<string, Promise<void>>();
+
 // Utility functions
 export const findEventById = (events: LightProcessedEvent[], eventId: string): number =>
   events.findIndex((e) => e.event.id === eventId);
@@ -99,15 +102,36 @@ export const fetchUserFromRelays = async (
   publicKey: string,
   requestInfo: (payload: RequestInformationPayload, options: SubscriptionOptions) => void
 ): Promise<void> => {
-  await requestInfo(
-    {
-      idsOrKeys: [publicKey],
-      source: "users",
-    },
-    {
-      timeoutIn: 10000,
+  // Check if request is already pending
+  const existing = pendingUserRequests.get(publicKey);
+  if (existing) {
+    return existing;
+  }
+
+  // Create new request
+  const request = (async () => {
+    try {
+      await requestInfo(
+        {
+          idsOrKeys: [publicKey],
+          source: "users",
+        },
+        {
+          timeoutIn: 10000,
+        }
+      );
+    } finally {
+      // Clean up after completion
+      pendingUserRequests.delete(publicKey);
     }
-  );
+  })();
+
+  pendingUserRequests.set(publicKey, request);
+  return request;
+};
+
+export const clearPendingUserRequest = (publicKey: string): void => {
+  pendingUserRequests.delete(publicKey);
 };
 
 export const scheduleUserRetry = (

@@ -1,6 +1,6 @@
 {
   "name": "@nostr-ts/web",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "nostr in the browser",
   "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",

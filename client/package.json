@@ -1,6 +1,6 @@
 {
   "name": "client",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Nostr node playground",
   "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",

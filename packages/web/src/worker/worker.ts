@@ -424,6 +424,9 @@ export class NWorker {
         isBlocked: true,
       });
     }
+
+    // Delete all events from blocked user
+    await this.deleteEventsByPublicKey(pubkey);
   }
 
   async unblockUser(pubkey: string) {
@@ -1471,14 +1474,17 @@ export class NWorker {
 
         const isActiveUserEvent = isUserEvent(ev, this.userPubkey);
         this.getUser(ev.pubkey).then((userData) => {
-          if (!userData || !userData.isBlocked) {
-            this.mergeEventWithActive(
-              ev,
-              payload.meta.url,
-              associatedWithView,
-              isLive
-            );
+          // Skip blocked users entirely
+          if (userData && userData.isBlocked) {
+            return;
           }
+
+          this.mergeEventWithActive(
+            ev,
+            payload.meta.url,
+            associatedWithView,
+            isLive
+          );
 
           // Determine if event should be permanent or temporary
           const isPermanent = isActiveUserEvent || (userData && userData.following) || this.options.saveAllEvents;
@@ -1492,14 +1498,17 @@ export class NWorker {
         const ev = payload.data[2] as EventBaseSigned;
 
         this.getUser(ev.pubkey).then((userData) => {
-          if (!userData || !userData.isBlocked) {
-            this.mergeEventWithActive(
-              ev,
-              payload.meta.url,
-              associatedWithView,
-              isLive
-            );
+          // Skip blocked users entirely
+          if (userData && userData.isBlocked) {
+            return;
           }
+
+          this.mergeEventWithActive(
+            ev,
+            payload.meta.url,
+            associatedWithView,
+            isLive
+          );
 
           // Save reactions/zaps/reposts as temporary by default
           const isPermanent = this.options.saveAllEvents;

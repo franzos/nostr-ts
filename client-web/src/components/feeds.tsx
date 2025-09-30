@@ -26,8 +26,8 @@ export function EventsFeeds() {
     activeFilters.current = filterDefault();
     setView("global");
 
-    // Start initial load timer
-    await useNClient.getState().startInitialLoadTimer("global", 5000);
+    // Start new loading flow
+    await useNClient.getState().startLoadingFlow("global");
 
     await useNClient.getState().getEvents({
       token: "global",
@@ -86,8 +86,8 @@ export function EventsFeeds() {
       }
     }
 
-    // Start initial load timer for new feed
-    await useNClient.getState().startInitialLoadTimer(feedName, 5000);
+    // Start new loading flow for new feed
+    await useNClient.getState().startLoadingFlow(feedName);
 
     await useNClient.getState().getEvents({
       token: feedName,

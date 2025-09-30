@@ -25,7 +25,7 @@ export class Database {
 
   async init() {
     console.log(`=> DATABASE: Initializing database...`);
-    this.db = await openDB<NClientDB>("nostrop", 5, {
+    this.db = await openDB<NClientDB>("nostrop", 6, {
       upgrade(database, oldVersion, newVersion, transaction) {
         dbMigration(database, oldVersion, newVersion, transaction);
       },
@@ -730,5 +730,21 @@ export class Database {
 
     console.log(`=> DATABASE: Promoted ${promotedCount} events to permanent for ${pubkey}`);
     return promotedCount;
+  }
+
+  /**
+   * Check when we have last requested events for a user, or 'general'
+   */
+  async getLastRequest(key: string): Promise<number | undefined> {
+    if (!this.db) throw new Error("=> DATABASE: not ready");
+
+    const record = await this.db.get("last_requests", key);
+    return record?.timestamp;
+  }
+
+  async setLastRequest(key: string, timestamp: number): Promise<void> {
+    if (!this.db) throw new Error("=> DATABASE: not ready");
+
+    await this.db.put("last_requests", { key, timestamp });
   }
 }

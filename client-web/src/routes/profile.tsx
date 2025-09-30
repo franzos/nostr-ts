@@ -99,8 +99,8 @@ export function ProfileRoute() {
   const loadEvents = async (pk: string) => {
     loadedEventsForRef.current = npub;
 
-    // Start initial load timer for profile
-    await useNClient.getState().startInitialLoadTimer(view, 5000);
+    // Start new loading flow for profile
+    await useNClient.getState().startLoadingFlow(view);
 
     await useNClient.getState().getEvents({
       token: view,

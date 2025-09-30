@@ -133,26 +133,21 @@ export interface NClient extends NClientBase {
     [token: string]: LightProcessedEvent[];
   };
   /**
-   * Initial load timers for each view
-   * This is to show the initial batch of events
+   * Loading bar state for each view
    */
-  initialLoadTimers: {
+  showLoadingBar: {
+    [token: string]: boolean;
+  };
+  /**
+   * Loading bar end time for each view
+   */
+  loadingBarEndTime: {
     [token: string]: number;
   };
   /**
-   * Buffer for accumulating events during initial load
+   * Start loading flow for a view based on last visit time
    */
-  initialLoadBuffers: {
-    [token: string]: LightProcessedEvent[];
-  };
-  /**
-   * Check if a view is in its initial load window
-   */
-  isInInitialLoadWindow: (token: string) => boolean;
-  /**
-   * Start initial load timer for a view
-   */
-  startInitialLoadTimer: (token: string, durationMs?: number) => Promise<void>;
+  startLoadingFlow: (token: string) => Promise<void>;
   /**
    * Add event to array or map
    * - In worker, must post message to main thread
@@ -175,4 +170,13 @@ export interface NClient extends NClientBase {
    * - Clears all events
    */
   disconnect: () => Promise<void>;
+
+  /**
+   * Get last request timestamp for a view
+   */
+  getLastRequest: (key: string) => Promise<number | undefined>;
+  /**
+   * Set last request timestamp for a view
+   */
+  setLastRequest: (key: string, timestamp: number) => Promise<void>;
 }

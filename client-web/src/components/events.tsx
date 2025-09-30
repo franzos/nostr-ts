@@ -3,6 +3,7 @@ import { Box, Button, Progress, Text } from "@chakra-ui/react";
 import { useNClient } from "../state/client";
 import { Event } from "../components/event";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useSettings } from "../state/settings";
 
 interface EventsProps {
   view: string;
@@ -10,12 +11,13 @@ interface EventsProps {
 }
 
 export function Events({ view, changingView }: EventsProps) {
-  const [events, eventsNewerCount, isInInitialLoad, bufferCount] = useNClient((state) => [
+  const [events, eventsNewerCount, showLoading, loadingEndTime] = useNClient((state) => [
     state.events[view] || [],
     state.eventsNewer[view]?.length || 0,
-    state.isInInitialLoadWindow(view),
-    state.initialLoadBuffers[view]?.length || 0,
+    state.showLoadingBar[view] || false,
+    state.loadingBarEndTime[view] || 0,
   ]);
+  const newEventsBehavior = useSettings((state) => state.newEventsBehavior);
   const [countdown, setCountdown] = useState<number>(0);
   const [progress, setProgress] = useState<number>(0);
   const throttleTimestamp = useRef(Date.now());
@@ -66,36 +68,57 @@ export function Events({ view, changingView }: EventsProps) {
   }, []);
 
   const mergeNewerEvents = () => {
-    useNClient.getState().mergeNewerEvents(view);
+    // Custom merge logic based on settings
+    if (newEventsBehavior === "top") {
+      // Sort only new events, then add to top
+      const newerEvents = useNClient.getState().eventsNewer[view] || [];
+      const currentEvents = useNClient.getState().events[view] || [];
+
+      // Sort the new events by timestamp (newest first)
+      const sortedNewerEvents = [...newerEvents].sort((a, b) =>
+        a.event.created_at > b.event.created_at ? -1 : 1
+      );
+
+      useNClient.setState((state) => ({
+        events: {
+          ...state.events,
+          [view]: [...sortedNewerEvents, ...currentEvents],
+        },
+        eventsNewer: {
+          ...state.eventsNewer,
+          [view]: [],
+        },
+      }));
+    } else {
+      // Default sorted behavior
+      useNClient.getState().mergeNewerEvents(view);
+    }
   };
 
   // Update countdown timer and progress
   useEffect(() => {
-    if (isInInitialLoad) {
-      const timer = useNClient.getState().initialLoadTimers[view];
-      if (timer) {
-        const duration = 5000; // 5 seconds
-        const startTime = timer - duration;
+    if (showLoading && loadingEndTime) {
+      const duration = loadingEndTime - (Date.now() - (loadingEndTime - Date.now()));
+      const startTime = loadingEndTime - duration;
 
-        const updateProgress = () => {
-          const now = Date.now();
-          const elapsed = now - startTime;
-          const remaining = Math.max(0, Math.ceil((timer - now) / 1000));
-          const progressPercent = Math.min(100, (elapsed / duration) * 100);
+      const updateProgress = () => {
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const remaining = Math.max(0, Math.ceil((loadingEndTime - now) / 1000));
+        const progressPercent = Math.min(100, (elapsed / duration) * 100);
 
-          setCountdown(remaining);
-          setProgress(progressPercent);
+        setCountdown(remaining);
+        setProgress(progressPercent);
 
-          if (remaining > 0) {
-            requestAnimationFrame(updateProgress);
-          }
-        };
-        updateProgress();
-      }
+        if (remaining > 0 && showLoading) {
+          requestAnimationFrame(updateProgress);
+        }
+      };
+      updateProgress();
     } else {
       setProgress(0);
     }
-  }, [isInInitialLoad, view]);
+  }, [showLoading, loadingEndTime, view]);
 
   // Set up virtualizer with window scrolling
   const virtualizer = useWindowVirtualizer({
@@ -125,7 +148,7 @@ export function Events({ view, changingView }: EventsProps) {
 
   return (
     <>
-      {isInInitialLoad && (
+      {showLoading && (
         <Box mb={4}>
           <Progress
             value={progress}
@@ -137,12 +160,12 @@ export function Events({ view, changingView }: EventsProps) {
           />
           <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
             <Text fontSize="sm" color="gray.500">
-              Loading events... {bufferCount} received ({countdown}s)
+              Loading events... {events.length} loaded ({countdown}s)
             </Text>
           </Box>
         </Box>
       )}
-      {!isInInitialLoad && eventsNewerCount > 0 && (
+      {!showLoading && eventsNewerCount > 0 && (
         <Button
           onClick={mergeNewerEvents}
           variant="outline"

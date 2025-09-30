@@ -1,9 +1,12 @@
 import {
   Box,
   Button,
+  FormControl,
+  FormLabel,
   HStack,
   Heading,
   Image,
+  Input,
   Link,
   Menu,
   MenuButton,
@@ -13,24 +16,34 @@ import {
   ModalBody,
   ModalCloseButton,
   ModalContent,
+  ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Radio,
+  RadioGroup,
+  Slider,
+  SliderFilledTrack,
+  SliderThumb,
+  SliderTrack,
   Spacer,
+  Stack,
   Text,
+  VStack,
   useColorMode,
   useDisclosure,
   useMediaQuery,
   useToast,
 } from "@chakra-ui/react";
-import { useNClient } from "../state/client";
-import { useEffect, useState } from "react";
 import { RELAY_MESSAGE_TYPE } from "@nostr-ts/common";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useNClient } from "../state/client";
+import { useSettings } from "../state/settings";
 import { EventFormModal } from "./create-event-form-modal";
-import { SubscriptionsTable } from "./subscriptions-table";
-import { RelaysTable } from "./relays-table";
-import { PublishingQueueTable } from "./queue-table";
 import { Integration } from "./integration";
+import { PublishingQueueTable } from "./queue-table";
+import { RelaysTable } from "./relays-table";
+import { SubscriptionsTable } from "./subscriptions-table";
 
 export function BottomBar() {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -207,6 +220,137 @@ export function BottomBar() {
     </Modal>
   );
 
+  const {
+    isOpen: isSettingsOpen,
+    onOpen: onSettingsOpen,
+    onClose: onSettingsClose,
+  } = useDisclosure();
+
+  const [
+    lastRequestDelay,
+    loadingDuration,
+    newEventsBehavior,
+    updateSettings,
+    loadSettings,
+  ] = useSettings((state) => [
+    state.lastRequestDelay,
+    state.loadingDuration,
+    state.newEventsBehavior,
+    state.updateSettings,
+    state.loadSettings,
+  ]);
+
+  const [tempLastRequestDelay, setTempLastRequestDelay] = useState(
+    lastRequestDelay / 1000
+  );
+  const [tempLoadingDuration, setTempLoadingDuration] = useState(
+    loadingDuration / 1000
+  );
+  const [tempNewEventsBehavior, setTempNewEventsBehavior] = useState(
+    newEventsBehavior
+  );
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    setTempLastRequestDelay(lastRequestDelay / 1000);
+    setTempLoadingDuration(loadingDuration / 1000);
+    setTempNewEventsBehavior(newEventsBehavior);
+  }, [lastRequestDelay, loadingDuration, newEventsBehavior]);
+
+  const handleSettingsSave = () => {
+    updateSettings({
+      lastRequestDelay: tempLastRequestDelay * 1000,
+      loadingDuration: tempLoadingDuration * 1000,
+      newEventsBehavior: tempNewEventsBehavior,
+    });
+    onSettingsClose();
+  };
+
+  const SettingsModal = (
+    <Modal isOpen={isSettingsOpen} onClose={onSettingsClose} size="md">
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>
+          <Heading size="lg">Settings</Heading>
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <VStack spacing={6} align="stretch">
+            <FormControl>
+              <FormLabel>Refresh Threshold</FormLabel>
+              <Input
+                type="number"
+                value={tempLastRequestDelay}
+                onChange={(e) =>
+                  setTempLastRequestDelay(Number(e.target.value))
+                }
+                min={0}
+                max={300}
+              />
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                When returning to a previous page, prioritze loading new events if more than {tempLastRequestDelay}s have passed.
+              </Text>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>
+                Loading Indicator Duration: {tempLoadingDuration}s
+              </FormLabel>
+              <Slider
+                value={tempLoadingDuration}
+                onChange={setTempLoadingDuration}
+                min={1}
+                max={10}
+                step={1}
+              >
+                <SliderTrack>
+                  <SliderFilledTrack />
+                </SliderTrack>
+                <SliderThumb />
+              </Slider>
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                Wait for new events for up to {tempLoadingDuration}s before finalizing the timeline, and queueing further events.
+              </Text>
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>New Events Insertion</FormLabel>
+              <RadioGroup
+                value={tempNewEventsBehavior}
+                onChange={(value) =>
+                  setTempNewEventsBehavior(value as "sorted" | "top")
+                }
+              >
+                <Stack>
+                  <Radio value="sorted">
+                    Sorted - Merge and sort all events
+                  </Radio>
+                  <Radio value="top">
+                    Top - Add new events to the top
+                  </Radio>
+                </Stack>
+              </RadioGroup>
+              <Text fontSize="sm" color="gray.500" mt={1}>
+                Merge all events into the timeline, sorted by creation time, or add new events to the top of the timeline.
+              </Text>
+            </FormControl>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" mr={3} onClick={onSettingsClose}>
+            Cancel
+          </Button>
+          <Button colorScheme="blue" onClick={handleSettingsSave}>
+            Save
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
   const [isSmallerScreen] = useMediaQuery("(max-width: 600px)");
 
   return (
@@ -277,14 +421,17 @@ export function BottomBar() {
                   </HStack>
                 </Link>
               </MenuItem>
+              <MenuItem onClick={onSettingsOpen}>
+                <Text fontSize="xs">Settings</Text>
+              </MenuItem>
               <MenuItem>
                 <HStack spacing={2}>
                   <Link href="https://github.com/franzos/nostr-ts">
                     <Text>NostrOP source (v{APP_VERSION})</Text>
                   </Link>
                   <Link href="https://gofranz.com" isExternal>
-                    <Image 
-                      src={colorMode === "dark" 
+                    <Image
+                      src={colorMode === "dark"
                         ? "https://gofranz.com/assets/images/gofranz_embed_light.png"
                         : "https://gofranz.com/assets/images/gofranz_embed.png"
                       }
@@ -304,6 +451,9 @@ export function BottomBar() {
               Toggle {colorMode === "light" ? "Dark" : "Light"}
             </Button>
             <EventFormModal buttonSize="sm" />
+            <Button variant={"outline"} size="sm" onClick={onSettingsOpen}>
+              Settings
+            </Button>
             <Spacer />
             <HStack spacing={2}>
               <Text fontSize="xs">Users:</Text>
@@ -378,6 +528,7 @@ export function BottomBar() {
       {SubscriptionsModal}
       {RelaysModal}
       {QueueModal}
+      {SettingsModal}
     </Box>
   );
 }

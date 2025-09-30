@@ -53,6 +53,13 @@ export function dbMigration(db, oldVersion, _newVersion, transaction) {
     const eventStore = transaction.objectStore("events");
     eventStore.createIndex("expiresAt", "expiresAt", { unique: false });
   }
+
+  if (oldVersion < 6) {
+    console.log(`DATABASE: Migrating database from version ${oldVersion} to 6`);
+    if (!db.objectStoreNames.contains("last_requests")) {
+      db.createObjectStore("last_requests", { keyPath: "key" });
+    }
+  }
 }
 
 export interface NClientDB {
@@ -102,6 +109,13 @@ export interface NClientDB {
     indexes: {
       eventId: string;
       typeAndValue: [string, string];
+    };
+  };
+  last_requests: {
+    key: string;
+    value: {
+      key: string;
+      timestamp: number;
     };
   };
 }

@@ -44,6 +44,7 @@ import {
   loadKeyStoreConfig,
   saveKeyStoreConfig,
 } from "./keystore";
+import { useSettings } from "./settings";
 
 const throttleDelayInMs = 500;
 
@@ -196,11 +197,14 @@ export const useNClient = create<NClient>((set, get) => ({
           ...state.eventsNewer,
           [token]: [],
         },
-        initialLoadTimers: (() => {
-          const timers = { ...state.initialLoadTimers };
-          delete timers[token];
-          return timers;
-        })(),
+        showLoadingBar: {
+          ...state.showLoadingBar,
+          [token]: false,
+        },
+        loadingBarEndTime: {
+          ...state.loadingBarEndTime,
+          [token]: 0,
+        },
       };
     });
 
@@ -445,6 +449,13 @@ export const useNClient = create<NClient>((set, get) => ({
             ...data.events,
           ];
         }
+
+        // Sort the entire array by timestamp (newest first)
+        if (updatedEvents[token]) {
+          updatedEvents[token].sort((a, b) =>
+            a.event.created_at > b.event.created_at ? -1 : 1
+          );
+        }
       }
 
       return {
@@ -474,20 +485,26 @@ export const useNClient = create<NClient>((set, get) => ({
   },
   events: {},
   eventsNewest: {},
-  initialLoadTimers: {},
-  initialLoadBuffers: {},
+  showLoadingBar: {},
+  loadingBarEndTime: {},
   mergeNewerEvents: (token: string) => {
     set((state) => {
       const events = state.events[token] || [];
       const newerEvents = state.eventsNewer[token] || [];
 
-      // Give it one last sort
+      // Sort newer events
       newerEvents.sort((a, b) => {
         return a.event.created_at > b.event.created_at ? -1 : 1;
       });
 
       requestRelatedData(newerEvents, token, get().requestInformation);
       const merged = [...newerEvents, ...events];
+
+      // Sort the entire merged list by timestamp (newest first)
+      merged.sort((a, b) => {
+        return a.event.created_at > b.event.created_at ? -1 : 1;
+      });
+
       return {
         events: {
           ...state.events,
@@ -501,131 +518,84 @@ export const useNClient = create<NClient>((set, get) => ({
     });
   },
   eventsNewer: {},
-  isInInitialLoadWindow: (token: string) => {
-    const timer = get().initialLoadTimers[token];
-    return timer ? Date.now() < timer : false;
-  },
-  startInitialLoadTimer: async (token: string, durationMs: number = 5000) => {
-    const endTime = Date.now() + durationMs;
-    const minEvents = 20;
+  startLoadingFlow: async (token: string) => {
+    const now = Date.now();
 
-    set((state) => ({
-      initialLoadTimers: {
-        ...state.initialLoadTimers,
-        [token]: endTime,
-      },
-      initialLoadBuffers: {
-        ...state.initialLoadBuffers,
-        [token]: [],
-      },
-      // Reset eventsNewest to ensure initial load works correctly
-      eventsNewest: {
-        ...state.eventsNewest,
-        [token]: 0,
-      },
-    }));
+    // Get settings from settings store
+    const settings = useSettings.getState();
+    const lastRequestDelay = settings.lastRequestDelay;
+    const loadingDuration = settings.loadingDuration;
 
-    // Check if we already have events in DB - if so, exit early
-    const checkAndExitEarly = async () => {
-      // Check current events count
-      const currentEvents = get().events[token] || [];
-      if (currentEvents.length >= minEvents) {
-        finishInitialLoad();
-        return true;
-      }
-      return false;
-    };
+    // Get last request time for this token
+    const lastRequest = await get().getLastRequest(token);
 
-    const finishInitialLoad = () => {
-      const state = get();
+    // Determine if we should show loading bar
+    const shouldShowLoading = !lastRequest || (now - lastRequest) > lastRequestDelay;
 
-      // Get buffered events and sort them
-      const buffer = state.initialLoadBuffers[token] || [];
-      const sortedBuffer = [...buffer].sort((a, b) =>
-        b.event.created_at - a.event.created_at
-      );
-
-      // Merge with any existing events
-      const existingEvents = state.events[token] || [];
-      const allEvents = [...sortedBuffer, ...existingEvents];
-
-      // Remove duplicates
-      const uniqueEvents = allEvents.filter((event, index, self) =>
-        index === self.findIndex((e) => e.event.id === event.event.id)
-      );
-
-      // Set final sorted list
+    if (shouldShowLoading) {
+      // Show loading bar
+      const endTime = now + loadingDuration;
       set((state) => ({
-        events: {
-          ...state.events,
-          [token]: uniqueEvents,
+        showLoadingBar: {
+          ...state.showLoadingBar,
+          [token]: true,
+        },
+        loadingBarEndTime: {
+          ...state.loadingBarEndTime,
+          [token]: endTime,
         },
       }));
 
-      // Auto-merge any newer events that arrived
-      if (state.eventsNewer[token] && state.eventsNewer[token].length > 0) {
-        get().mergeNewerEvents(token);
-      }
+      // After loading duration, hide loading bar and do final sort
+      setTimeout(() => {
+        set((state) => {
+          const events = state.events[token] || [];
+          // Final sort - create NEW array to avoid mutation
+          const sortedEvents = [...events].sort((a, b) =>
+            a.event.created_at > b.event.created_at ? -1 : 1
+          );
 
-      // Request related data for all events shown during initial load
-      requestRelatedData(uniqueEvents, token, state.requestInformation);
+          return {
+            showLoadingBar: {
+              ...state.showLoadingBar,
+              [token]: false,
+            },
+            events: {
+              ...state.events,
+              [token]: sortedEvents,
+            },
+          };
+        });
+      }, loadingDuration);
+    }
 
-      // Clean up timer and buffer
-      set((state) => {
-        const timers = { ...state.initialLoadTimers };
-        const buffers = { ...state.initialLoadBuffers };
-        delete timers[token];
-        delete buffers[token];
-        return {
-          initialLoadTimers: timers,
-          initialLoadBuffers: buffers,
-        };
-      });
-    };
-
-    // Check immediately if DB has events
-    const hasEnoughEvents = await checkAndExitEarly();
-    if (hasEnoughEvents) return;
-
-    // Poll every 500ms to check if we've reached minEvents
-    const pollInterval = setInterval(async () => {
-      const shouldExit = await checkAndExitEarly();
-      if (shouldExit) {
-        clearInterval(pollInterval);
-      }
-    }, 500);
-
-    // Auto-cleanup timer after max duration
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (get().isInInitialLoadWindow(token)) {
-        finishInitialLoad();
-      }
-    }, durationMs);
+    // Update last request time
+    await get().setLastRequest(token, now);
   },
   addEvent: (payload: LightProcessedEvent, token: string) => {
     set((state) => {
-      const isInInitialLoad = get().isInInitialLoadWindow(token);
+      const showLoading = state.showLoadingBar[token] || false;
       const currentEvents = state.events[token] || [];
 
-      // During initial load, accumulate in buffer (no UI updates)
-      if (isInInitialLoad) {
-        const buffer = state.initialLoadBuffers[token] || [];
-        const existsInBuffer = findEventById(buffer, payload.event.id);
+      // During loading bar, add events directly
+      if (showLoading) {
         const existsInEvents = findEventById(currentEvents, payload.event.id);
-
-        if (existsInBuffer === -1 && existsInEvents === -1) {
+        if (existsInEvents === -1) {
+          // Add to events array, sorted by created_at
+          const updatedEvents = [...currentEvents, payload].sort((a, b) =>
+            a.event.created_at > b.event.created_at ? -1 : 1
+          );
           return {
-            initialLoadBuffers: {
-              ...state.initialLoadBuffers,
-              [token]: [...buffer, payload],
+            events: {
+              ...state.events,
+              [token]: updatedEvents,
             },
           };
         }
         return state;
       }
 
-      // After initial load: determine where to place the event
+      // After loading: determine where to place the event
       if (currentEvents.length === 0) {
         // No events yet, add directly
         return {
@@ -636,9 +606,8 @@ export const useNClient = create<NClient>((set, get) => ({
         };
       }
 
-      // Find newest and oldest timestamps in current view
+      // Find oldest timestamp in current view
       const timestamps = currentEvents.map(e => e.event.created_at);
-      const newestInView = Math.max(...timestamps);
       const oldestInView = Math.min(...timestamps);
 
       // Check if event already exists in either list
@@ -650,7 +619,7 @@ export const useNClient = create<NClient>((set, get) => ({
         return state;
       }
 
-      // Newer than newest OR in range: queue for button click
+      // Newer than oldest OR in range: queue for button click
       // Only auto-insert if older than oldest (append to end, no scroll jump)
       if (payload.event.created_at >= oldestInView) {
         return {
@@ -661,11 +630,13 @@ export const useNClient = create<NClient>((set, get) => ({
         };
       }
 
-      // Older than oldest: safe to append to end
+      // Older than oldest: append and sort to maintain order
+      const updated = [...currentEvents, payload];
+      updated.sort((a, b) => a.event.created_at > b.event.created_at ? -1 : 1);
       return {
         events: {
           ...state.events,
-          [token]: [...currentEvents, payload],
+          [token]: updated,
         },
       };
     });
@@ -1026,5 +997,11 @@ export const useNClient = create<NClient>((set, get) => ({
     options: SubscriptionOptions
   ) => {
     return get().store.requestInformation(payload, options);
+  },
+  getLastRequest: async (key: string) => {
+    return get().store.getLastRequest(key);
+  },
+  setLastRequest: async (key: string, timestamp: number) => {
+    await get().store.setLastRequest(key, timestamp);
   },
 }));

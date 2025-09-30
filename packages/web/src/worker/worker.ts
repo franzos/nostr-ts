@@ -30,7 +30,14 @@ import {
   findLightningPayRequestSectionWithAmount,
   verifyEvent,
 } from "@nostr-ts/common";
+import { RelayUpdateOptions, RequestInformationPayload } from "src/worker/types";
 import { Database } from "./database";
+import {
+  NewProcessedEventFromDB,
+  mergePopular,
+  sortAndTrimPopular,
+} from "./database-helper";
+import { CreateListRecord } from "./lists";
 import {
   ONE_MINUTE,
   ProcessedToLightProcessedEvent,
@@ -44,13 +51,6 @@ import {
   isUserEvent,
   relayEventsRequestFromQuery,
 } from "./worker-extra";
-import { CreateListRecord } from "./lists";
-import {
-  NewProcessedEventFromDB,
-  mergePopular,
-  sortAndTrimPopular,
-} from "./database-helper";
-import { RelayUpdateOptions, RequestInformationPayload } from "src/worker/types";
 
 export class NWorker {
   status: "online" | "offline" | "loading";
@@ -438,6 +438,16 @@ export class NWorker {
 
   async getAllUsersBlocked() {
     return await this.db.getUsersByParam("isBlocked");
+  }
+
+  ////////////////////////////////// LAST REQUEST //////////////////////////////////
+
+  async getLastRequest(key: string): Promise<number | undefined> {
+    return await this.db.getLastRequest(key);
+  }
+
+  async setLastRequest(key: string, timestamp: number): Promise<void> {
+    await this.db.setLastRequest(key, timestamp);
   }
 
   ////////////////////////////////// POPULAR //////////////////////////////////

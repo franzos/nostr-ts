@@ -566,6 +566,12 @@ export const useNClient = create<NClient>((set, get) => ({
             },
           };
         });
+
+        // Request related data for all events shown during initial load
+        const events = get().events[token] || [];
+        if (events.length > 0) {
+          requestRelatedData(events, token, get().requestInformation);
+        }
       }, loadingDuration);
     }
 

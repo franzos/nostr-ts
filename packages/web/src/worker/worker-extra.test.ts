@@ -1,8 +1,8 @@
 import { CLIENT_MESSAGE_TYPE, NEVENT_KIND, NFilters } from "@nostr-ts/common";
 import {
   ONE_DAY,
+  ONE_MINUTE,
   StorageEventsQuery,
-  TEN_SECONDS_IN_MS,
   calculateEventsRequestRange,
   relayEventsRequestFromQuery,
 } from "./worker-extra";
@@ -10,68 +10,34 @@ import {
 const date = Math.round(Date.now() / 1000);
 
 describe("Relay events request", () => {
-  test("From query for older", () => {
+  test("From query with since and until widens to 3-day interval", () => {
     const reqFilter = new NFilters({
       kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      // 24h
       since: Math.round(date - ONE_DAY),
       until: date,
     });
 
-    const query: StorageEventsQuery = {
+    // relayEventsRequestFromQuery doesn't use direction — that's handled by
+    // _getEventsQueryProcessor. It only widens the interval for relay fetch.
+    const req = relayEventsRequestFromQuery({
       token: "test",
       query: {
         filters: reqFilter,
         stickyInterval: true,
         direction: "OLDER",
       },
-    };
-
-    const req = relayEventsRequestFromQuery(query);
+    });
 
     expect(req).toEqual({
       type: CLIENT_MESSAGE_TYPE.REQ,
       filters: {
         ...reqFilter,
-        since: Math.round(date - 7 * ONE_DAY),
+        since: Math.round(date - 3 * ONE_DAY),
         until: date,
       },
       options: {
         isLive: undefined,
-        timeoutIn: TEN_SECONDS_IN_MS * 6,
-        view: "test",
-      },
-    });
-  });
-  test("From query for newer", () => {
-    const reqFilter = new NFilters({
-      kinds: [NEVENT_KIND.SHORT_TEXT_NOTE],
-      // 24h
-      since: Math.round(date - ONE_DAY),
-      until: date,
-    });
-
-    const query: StorageEventsQuery = {
-      token: "test",
-      query: {
-        filters: reqFilter,
-        stickyInterval: true,
-        direction: "NEWER",
-      },
-    };
-
-    const req = relayEventsRequestFromQuery(query);
-
-    expect(req).toEqual({
-      type: CLIENT_MESSAGE_TYPE.REQ,
-      filters: {
-        ...reqFilter,
-        since: Math.round(date - 7 * ONE_DAY),
-        until: date,
-      },
-      options: {
-        isLive: undefined,
-        timeoutIn: TEN_SECONDS_IN_MS * 6,
+        timeoutIn: ONE_MINUTE * 1000,
         view: "test",
       },
     });
@@ -110,7 +76,7 @@ describe("Relay events request", () => {
       },
       options: {
         isLive: undefined,
-        timeoutIn: TEN_SECONDS_IN_MS * 6,
+        timeoutIn: ONE_MINUTE * 1000,
         view: "test",
       },
     });

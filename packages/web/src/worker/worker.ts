@@ -738,10 +738,7 @@ export class NWorker {
   async _getEventsQueryProcessor({ token, query }: StorageEventsQuery) {
     const reqRange = calculateEventsRequestRange(query.filters);
     const direction = query.direction || "NEWER";
-    const interval =
-      direction === "NEWER"
-        ? reqRange[1] - reqRange[0]
-        : reqRange[0] - reqRange[1];
+    const interval = Math.abs(reqRange[1] - reqRange[0]);
     const reqCount = query.reqCount ? query.reqCount : 0;
 
     const memory =

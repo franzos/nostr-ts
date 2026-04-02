@@ -4,6 +4,7 @@ node_modules
 !build.js
 key
 key.pub
+key*
 dist
 discovered-relays.json
 discovered-relays-error.json

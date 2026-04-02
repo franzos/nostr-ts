@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile.nginx
     ports:
-      - "443:443"
+      - "8443:443"
     depends_on:
       - gnost_relay
     container_name: nginx_service

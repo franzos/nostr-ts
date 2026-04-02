@@ -39,4 +39,8 @@ export interface FiltersBase {
    * maximum number of events to be returned in the initial query
    */
   limit?: number;
+  /**
+   * a search query string for NIP-50 relays
+   */
+  search?: string;
 }

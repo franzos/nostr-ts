@@ -26,7 +26,7 @@ A new, live version builds from master on every commit: [https://d2okqj4v2u9fts.
 
 ## Highlights
 
-- Supported NIP: 1, 2, 4, 10, 11, 13, 14, 18, 19, 23, 25, 32, 36, 39, 40, 42, 45, 56, 99
+- Supported NIP: 1, 2, 4, 10, 11, 13, 14, 18, 19, 23, 25, 32, 36, 39, 40, 42, 45, 50, 56, 99
 - Partial NIP: 57
 - `RelayClient` to handle websocket connection and message sending (node, web)
 - `RelayDiscovery` to make it easy to pickup new relays (node)

@@ -6,10 +6,14 @@ import {
   Grid,
   Image,
   Icon,
+  Input,
+  InputGroup,
+  InputLeftElement,
   VStack,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useNClient } from "../state/client";
 import { BottomBar } from "../components/bottom-bar";
 import { MenuItem } from "../components/menu-item";
@@ -19,6 +23,7 @@ import FormatListBulletedIcon from "mdi-react/FormatListBulletedIcon";
 import AccountKeyIcon from "mdi-react/AccountKeyIcon";
 import AccountMultipleIcon from "mdi-react/AccountMultipleIcon";
 import PlaylistEditIcon from "mdi-react/PlaylistEditIcon";
+import MagnifyIcon from "mdi-react/MagnifyIcon";
 import { ConnectModal } from "../components/connect-modal";
 import Logo from "../assets/logo.svg";
 import { DEFAULT_RELAYS } from "../defaults";
@@ -33,6 +38,8 @@ export function PrimaryLayout() {
     state.activeUser,
   ]);
   const [followingUsersCount, setFollowingUsersCount] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const navigate = useNavigate();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -62,6 +69,29 @@ export function PrimaryLayout() {
         to="/"
         leftIcon={<Icon as={FormatListBulletedIcon} marginRight={1} />}
       />
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (searchQuery.trim()) {
+            navigate(`/search/${encodeURIComponent(searchQuery.trim())}`);
+            setSearchQuery("");
+          }
+        }}
+        style={{ width: "100%" }}
+      >
+        <InputGroup>
+          <InputLeftElement pointerEvents="none">
+            <Icon as={MagnifyIcon} />
+          </InputLeftElement>
+          <Input
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            maxLength={256}
+          />
+        </InputGroup>
+      </form>
 
       {connected && (
         <>

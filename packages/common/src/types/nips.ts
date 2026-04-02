@@ -148,7 +148,7 @@ export enum NNIP {
    */
   NIP_47 = 47,
   /**
-   * Keywords filter
+   * Search Capability
    */
   NIP_50 = 50,
   /**
@@ -351,7 +351,7 @@ export const NNips = [
     nip: 47,
   },
   {
-    name: "Keywords filter",
+    name: "Search Capability",
     nip: 50,
   },
   {

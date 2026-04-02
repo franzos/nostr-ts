@@ -72,3 +72,12 @@ export function filterByRelatedEvents(id: string, limit?: number) {
   }
   return filters;
 }
+
+export function filterBySearch(query: string, limit?: number) {
+  const filters = new NFilters({
+    kinds: [NEVENT_KIND.SHORT_TEXT_NOTE, NEVENT_KIND.LONG_FORM_CONTENT],
+    search: query,
+    limit: limit ? limit : 15,
+  });
+  return filters;
+}

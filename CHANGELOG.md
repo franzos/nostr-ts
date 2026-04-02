@@ -6,6 +6,7 @@
 - Complete NIP-19 support: nevent (full TLV with author/kind), naddr (event coordinates), nrelay (deprecated)
 - Complete NIP-32 support: NewLabel() factory for kind 1985 label events with namespace/target validation
 - NIP-99 support: NewClassifiedListing() factory for kind 30402/30403 classified listings
+- NIP-50 support: search filter field on subscriptions, search route in client-web
 
 ### Fixed
 - Bech32 kind encoding (type 3) now uses big-endian byte order per spec

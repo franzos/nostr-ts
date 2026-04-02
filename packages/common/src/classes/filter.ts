@@ -10,6 +10,7 @@ export class NFilters implements FiltersBase {
   since?: number | undefined;
   until?: number | undefined;
   limit?: number | undefined;
+  search?: string | undefined;
 
   constructor(data?: FiltersBase) {
     this.ids = data?.ids;
@@ -22,6 +23,7 @@ export class NFilters implements FiltersBase {
     this.since = data?.since;
     this.until = data?.until;
     this.limit = data?.limit;
+    this.search = data?.search;
   }
 
   public addId(id: string) {
@@ -47,6 +49,10 @@ export class NFilters implements FiltersBase {
 
   public updateLimit(limit: number) {
     this.limit = limit;
+  }
+
+  public updateSearch(search: string) {
+    this.search = search;
   }
 
   public toObj(): FiltersBase {

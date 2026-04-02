@@ -21,6 +21,7 @@ import {
   iNewAuthEvent,
   iNewEncryptedPrivateMessage,
   iNewContactList,
+  iNewLabel,
 } from "../types";
 import {
   hash,
@@ -1015,6 +1016,81 @@ export function NewContactList(opts: iNewContactList) {
       contact.relayUrl ? contact.relayUrl : "",
       contact.petname ? contact.petname : "",
     ]);
+  }
+
+  return nEv;
+}
+
+/**
+ * NIP-32: Label event (kind 1985)
+ * https://github.com/nostr-protocol/nips/blob/master/32.md
+ * @param opts label options with labels, targets, and optional content
+ * @returns NEvent with kind 1985
+ */
+export function NewLabel(opts: iNewLabel) {
+  if (!opts.labels || opts.labels.length === 0) {
+    throw new Error("At least one label is required.");
+  }
+
+  const hasTarget =
+    (opts.eventTags && opts.eventTags.length > 0) ||
+    (opts.pubkeys && opts.pubkeys.length > 0) ||
+    (opts.eventCoordinates && opts.eventCoordinates.length > 0) ||
+    (opts.urls && opts.urls.length > 0) ||
+    (opts.topics && opts.topics.length > 0);
+
+  if (!hasTarget) {
+    throw new Error(
+      "At least one target is required (eventTags, pubkeys, eventCoordinates, urls, or topics)."
+    );
+  }
+
+  const nEv = new NEvent({
+    content: opts.content || "",
+    kind: NEVENT_KIND.LABEL,
+    tags: [],
+  });
+
+  // Collect unique namespaces and add "L" tags
+  const namespaces = [...new Set(opts.labels.map((l) => l.namespace))];
+  for (const ns of namespaces) {
+    nEv.addTag(["L", ns]);
+  }
+
+  // Add "l" tags with namespace mark
+  for (const label of opts.labels) {
+    nEv.addTag(["l", label.value, label.namespace]);
+  }
+
+  // Add target tags
+  if (opts.eventTags) {
+    for (const tag of opts.eventTags) {
+      nEv.addEventTag(tag);
+    }
+  }
+
+  if (opts.pubkeys) {
+    for (const pk of opts.pubkeys) {
+      nEv.addPublicKeyTag(pk.pubkey, pk.relayUrl);
+    }
+  }
+
+  if (opts.eventCoordinates) {
+    for (const coord of opts.eventCoordinates) {
+      nEv.addEventCoordinatesTag(coord);
+    }
+  }
+
+  if (opts.urls) {
+    for (const url of opts.urls) {
+      nEv.addTag(["r", url]);
+    }
+  }
+
+  if (opts.topics) {
+    for (const topic of opts.topics) {
+      nEv.addTag(["t", topic]);
+    }
   }
 
   return nEv;

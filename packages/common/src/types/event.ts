@@ -3,6 +3,8 @@ import { NEVENT_KIND } from "./event-kind";
 import { UserMetadata } from "./user-metadata";
 import { EventReport } from "./report";
 import { NEventContact } from "./event-contacts";
+import { EventEventTag } from "./event-event-tag";
+import { EventCoordinatesTag } from "./event-coordinates-tag";
 
 export interface EventBase {
   id?: string;
@@ -161,4 +163,34 @@ export interface iNewEncryptedPrivateMessage {
 
 export interface iNewContactList {
   contacts: NEventContact[];
+}
+
+/**
+ * NIP-32: Label event (kind 1985)
+ * https://github.com/nostr-protocol/nips/blob/master/32.md
+ */
+export interface iNewLabel {
+  /**
+   * Labels to apply. Each label has a value and a namespace.
+   * The namespace becomes an "L" tag, the value+namespace becomes an "l" tag.
+   */
+  labels: Array<{ value: string; namespace: string }>;
+
+  /**
+   * Content for longer label descriptions (optional)
+   */
+  content?: string;
+
+  // Target tags — at least one target is required
+
+  /** Event IDs to label */
+  eventTags?: EventEventTag[];
+  /** Pubkeys to label */
+  pubkeys?: Array<{ pubkey: string; relayUrl?: string }>;
+  /** Addressable event coordinates to label */
+  eventCoordinates?: EventCoordinatesTag[];
+  /** URLs or relay URLs to label */
+  urls?: string[];
+  /** Topics to label */
+  topics?: string[];
 }

@@ -4,6 +4,7 @@
 
 ### Added
 - Complete NIP-19 support: nevent (full TLV with author/kind), naddr (event coordinates), nrelay (deprecated)
+- Complete NIP-32 support: NewLabel() factory for kind 1985 label events with namespace/target validation
 
 ### Fixed
 - Bech32 kind encoding (type 3) now uses big-endian byte order per spec

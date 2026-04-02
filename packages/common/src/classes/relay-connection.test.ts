@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { CLIENT_MESSAGE_TYPE, RelayConnection } from "..";
 
 test("RelayConnection stores config and defaults", () => {

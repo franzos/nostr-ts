@@ -1,5 +1,5 @@
-import { sha256 } from "@noble/hashes/sha256";
-import { bytesToHex } from "@noble/curves/abstract/utils";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/curves/utils.js";
 import { serializeEvent } from "./serialize-event";
 import { EventBase } from "../types";
 import { Utf8Encoder } from "./utf8-coder";

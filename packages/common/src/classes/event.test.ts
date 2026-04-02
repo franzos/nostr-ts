@@ -1,6 +1,7 @@
 import {
   NEvent,
   NewLabel,
+  NewClassifiedListing,
   NEVENT_KIND,
   eventHasExpiration,
   eventHasLabels,
@@ -205,4 +206,122 @@ test("eventHasLabels detects NewLabel output", () => {
   expect(result).toBeDefined();
   expect(result.labelTags).toContainEqual(["l", "MIT", "license"]);
   expect(result.labelNamespace).toContainEqual(["L", "license"]);
+});
+
+/**
+ * NIP-99: NewClassifiedListing
+ */
+
+test("NewClassifiedListing creates active listing", () => {
+  const ev = NewClassifiedListing({
+    content: "Selling a used laptop in great condition.",
+    identifier: "laptop-sale",
+    title: "Used Laptop",
+    summary: "Great condition, barely used",
+    price: { amount: "500", currency: "USD" },
+    location: "NYC",
+    publishedAt: "1296962229",
+  });
+
+  expect(ev.kind).toEqual(NEVENT_KIND.CLASSIFIED_LISTING);
+  expect(ev.content).toEqual("Selling a used laptop in great condition.");
+  expect(ev.tags).toContainEqual(["d", "laptop-sale"]);
+  expect(ev.tags).toContainEqual(["title", "Used Laptop"]);
+  expect(ev.tags).toContainEqual(["summary", "Great condition, barely used"]);
+  expect(ev.tags).toContainEqual(["price", "500", "USD"]);
+  expect(ev.tags).toContainEqual(["location", "NYC"]);
+  expect(ev.tags).toContainEqual(["published_at", "1296962229"]);
+});
+
+test("NewClassifiedListing creates draft listing", () => {
+  const ev = NewClassifiedListing({
+    content: "Draft listing",
+    identifier: "draft-item",
+    title: "Draft",
+    summary: "A draft",
+    price: { amount: "10", currency: "EUR" },
+    isDraft: true,
+  });
+
+  expect(ev.kind).toEqual(NEVENT_KIND.DRAFT_CLASSIFIED_LISTING);
+});
+
+test("NewClassifiedListing with recurring price", () => {
+  const ev = NewClassifiedListing({
+    content: "Office space for rent",
+    identifier: "office-rent",
+    title: "Office Space",
+    summary: "Downtown office",
+    price: { amount: "2000", currency: "USD", frequency: "month" },
+    location: "SF",
+  });
+
+  expect(ev.tags).toContainEqual(["price", "2000", "USD", "month"]);
+});
+
+test("NewClassifiedListing with images and tags", () => {
+  const ev = NewClassifiedListing({
+    content: "Vintage guitar for sale",
+    identifier: "guitar-sale",
+    title: "Vintage Guitar",
+    summary: "1960s acoustic",
+    price: { amount: "1500", currency: "USD" },
+    images: [
+      { url: "https://img.example.com/front.jpg", dimensions: "800x600" },
+      { url: "https://img.example.com/back.jpg" },
+    ],
+    tags: ["music", "vintage"],
+    status: "active",
+    geohash: "u33dc1",
+  });
+
+  expect(ev.tags).toContainEqual([
+    "image",
+    "https://img.example.com/front.jpg",
+    "800x600",
+  ]);
+  expect(ev.tags).toContainEqual([
+    "image",
+    "https://img.example.com/back.jpg",
+  ]);
+  expect(ev.tags).toContainEqual(["t", "music"]);
+  expect(ev.tags).toContainEqual(["t", "vintage"]);
+  expect(ev.tags).toContainEqual(["status", "active"]);
+  expect(ev.tags).toContainEqual(["g", "u33dc1"]);
+});
+
+test("NewClassifiedListing throws without title", () => {
+  expect(() =>
+    NewClassifiedListing({
+      content: "test",
+      identifier: "test",
+      title: "",
+      summary: "test",
+      price: { amount: "10", currency: "USD" },
+    })
+  ).toThrow("requires a title");
+});
+
+test("NewClassifiedListing throws without identifier", () => {
+  expect(() =>
+    NewClassifiedListing({
+      content: "test",
+      identifier: "",
+      title: "Test",
+      summary: "test",
+      price: { amount: "10", currency: "USD" },
+    })
+  ).toThrow("requires an identifier");
+});
+
+test("NewClassifiedListing throws without price", () => {
+  expect(() =>
+    NewClassifiedListing({
+      content: "test",
+      identifier: "test",
+      title: "Test",
+      summary: "test",
+      price: undefined as any,
+    })
+  ).toThrow("requires a price");
 });

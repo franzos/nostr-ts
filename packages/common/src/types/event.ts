@@ -194,3 +194,38 @@ export interface iNewLabel {
   /** Topics to label */
   topics?: string[];
 }
+
+/**
+ * NIP-99: Classified Listing (kind 30402/30403)
+ * https://github.com/nostr-protocol/nips/blob/master/99.md
+ */
+export interface iNewClassifiedListing {
+  /** Markdown description of the listing */
+  content: string;
+  /** Unique identifier for the d-tag (makes it replaceable) */
+  identifier: string;
+  /** Listing title */
+  title: string;
+  /** Short tagline or summary */
+  summary?: string;
+  /** Price: amount, currency (ISO 4217), optional frequency for recurring */
+  price: {
+    amount: string;
+    currency: string;
+    frequency?: "hour" | "day" | "week" | "month" | "year";
+  };
+  /** Location (free-form string, e.g. "NYC") */
+  location?: string;
+  /** Unix timestamp of first publication (as string) */
+  publishedAt?: string;
+  /** Whether this is a draft (kind 30403) or active (kind 30402) */
+  isDraft?: boolean;
+  /** Images with optional dimensions (e.g. "256x256") */
+  images?: Array<{ url: string; dimensions?: string }>;
+  /** Hashtags/categories */
+  tags?: string[];
+  /** Listing status: "active" or "sold" */
+  status?: "active" | "sold";
+  /** Geohash for precise location */
+  geohash?: string;
+}

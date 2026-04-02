@@ -22,6 +22,7 @@ import {
   iNewEncryptedPrivateMessage,
   iNewContactList,
   iNewLabel,
+  iNewClassifiedListing,
 } from "../types";
 import {
   hash,
@@ -1091,6 +1092,80 @@ export function NewLabel(opts: iNewLabel) {
     for (const topic of opts.topics) {
       nEv.addTag(["t", topic]);
     }
+  }
+
+  return nEv;
+}
+
+/**
+ * NIP-99: Classified Listing (kind 30402/30403)
+ * https://github.com/nostr-protocol/nips/blob/master/99.md
+ * @param opts listing options
+ * @returns NEvent with kind 30402 (or 30403 for drafts)
+ */
+export function NewClassifiedListing(opts: iNewClassifiedListing) {
+  if (!opts.title) {
+    throw new Error("Classified listing requires a title.");
+  }
+  if (!opts.identifier) {
+    throw new Error("Classified listing requires an identifier (d-tag).");
+  }
+  if (!opts.price) {
+    throw new Error("Classified listing requires a price.");
+  }
+
+  const nEv = new NEvent({
+    content: opts.content,
+    kind: opts.isDraft
+      ? NEVENT_KIND.DRAFT_CLASSIFIED_LISTING
+      : NEVENT_KIND.CLASSIFIED_LISTING,
+    tags: [],
+  });
+
+  nEv.addIdentifierTag(opts.identifier);
+  nEv.addTag(["title", opts.title]);
+
+  if (opts.summary) {
+    nEv.addTag(["summary", opts.summary]);
+  }
+
+  // Price tag: ["price", amount, currency] or ["price", amount, currency, frequency]
+  const priceTag = ["price", opts.price.amount, opts.price.currency];
+  if (opts.price.frequency) {
+    priceTag.push(opts.price.frequency);
+  }
+  nEv.addTag(priceTag);
+
+  if (opts.publishedAt) {
+    nEv.addTag(["published_at", opts.publishedAt]);
+  }
+
+  if (opts.location) {
+    nEv.addTag(["location", opts.location]);
+  }
+
+  if (opts.images) {
+    for (const img of opts.images) {
+      const imageTag = ["image", img.url];
+      if (img.dimensions) {
+        imageTag.push(img.dimensions);
+      }
+      nEv.addTag(imageTag);
+    }
+  }
+
+  if (opts.tags) {
+    for (const tag of opts.tags) {
+      nEv.addTag(["t", tag]);
+    }
+  }
+
+  if (opts.status) {
+    nEv.addTag(["status", opts.status]);
+  }
+
+  if (opts.geohash) {
+    nEv.addTag(["g", opts.geohash]);
   }
 
   return nEv;

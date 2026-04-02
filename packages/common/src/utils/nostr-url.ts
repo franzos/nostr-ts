@@ -153,7 +153,7 @@ export function bechEncodePublicKey(pubkey: string) {
  * @param pubkey
  * @returns
  */
-export function makeNostrPublicKeyString(pubkey) {
+export function makeNostrPublicKeyString(pubkey: string) {
   return makeNostrString(bechEncodePublicKey(pubkey));
 }
 

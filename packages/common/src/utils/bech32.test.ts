@@ -1,3 +1,4 @@
+import { bech32 } from "bech32";
 import { encodeBech32, decodeBech32, BECH32_PREFIX } from "..";
 
 /**
@@ -203,4 +204,44 @@ test("nrelay encode/decode roundtrip", () => {
   const decoded = decodeBech32(encoded);
   expect(decoded.prefix).toEqual("nrelay");
   expect(decoded.tlvItems).toEqual([{ type: 0, value: relayUrl }]);
+});
+
+/**
+ * INPUT VALIDATION
+ */
+
+test("encodeBech32 throws on invalid hex string", () => {
+  expect(() =>
+    encodeBech32(BECH32_PREFIX.PublicKeys, [{ type: 0, value: "zzzz" }])
+  ).toThrow("Invalid hex string");
+
+  expect(() =>
+    encodeBech32(BECH32_PREFIX.PublicKeys, [{ type: 0, value: "abc" }])
+  ).toThrow("Invalid hex string");
+});
+
+test("decodeBech32 ignores truncated TLV entries", () => {
+  // Encode a valid nprofile with a pubkey + relay, then decode it
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const encoded = encodeBech32(BECH32_PREFIX.Profile, [
+    { type: 0, value: pubkey },
+    { type: 1, value: "wss://r.x.com" },
+  ]);
+  const decoded = decodeBech32(encoded);
+  // Both entries should decode correctly
+  expect(decoded.tlvItems[0].value).toEqual(pubkey);
+  expect(decoded.tlvItems[1].value).toEqual("wss://r.x.com");
+
+  // Manually construct a truncated TLV: type 0, length 32, but only 10 bytes of data
+  const truncated = new Uint8Array(12);
+  truncated[0] = 0x00; // type
+  truncated[1] = 0x20; // length = 32
+  truncated.set(new Uint8Array(10).fill(0xaa), 2); // only 10 bytes, not 32
+  const words = bech32.toWords(truncated);
+  const truncatedBech32 = bech32.encode("nprofile", words, 1023);
+
+  const truncatedDecoded = decodeBech32(truncatedBech32);
+  // Truncated entry should be skipped — no items returned
+  expect(truncatedDecoded.tlvItems).toEqual([]);
 });

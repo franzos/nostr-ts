@@ -19,9 +19,12 @@ type ConvertedTLVItem = {
 };
 
 function hexToBytes(hex: string) {
-  const bytes = new Uint8Array(Math.ceil(hex.length / 2));
+  if (hex.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(hex)) {
+    throw new Error(`Invalid hex string (length=${hex.length})`);
+  }
+  const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
   }
   return bytes;
 }
@@ -80,14 +83,21 @@ function parseTLV(
   const items = [];
 
   while (position < data.length) {
+    if (position + 2 > data.length) break;
     const type = data[position++];
     const length = data[position++];
+    if (position + length > data.length) break;
     let value: Uint8Array | number;
 
     if (type === 3) {
       // If type is 3, parse the value as a 32-bit unsigned integer in big-endian format.
+      if (length < 4) { position += length; continue; }
       const valueArray = data.slice(position, position + length);
-      value = new DataView(valueArray.buffer).getUint32(0, false); // Big-endian
+      value = new DataView(
+        valueArray.buffer,
+        valueArray.byteOffset,
+        valueArray.byteLength
+      ).getUint32(0, false);
     } else {
       // Otherwise, keep the value as a Uint8Array.
       value = data.slice(position, position + length);
@@ -143,7 +153,7 @@ export function encodeBech32(
     tlvData = generateTLV(tlvItems);
   }
 
-  const words = bech32.toWords(new Uint8Array(tlvData.buffer));
+  const words = bech32.toWords(tlvData);
 
   const encoded = bech32.encode(prefix, words, 1023);
 

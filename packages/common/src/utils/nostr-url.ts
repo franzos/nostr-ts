@@ -2,10 +2,10 @@ import { BECH32_PREFIX } from "../types";
 import { decodeBech32, encodeBech32 } from "./bech32";
 
 export const NOSTR_URL_REGEX =
-  /(?:nostr:)?(npub|nsec|note|lnurl|nprofile|nevent)([a-zA-Z0-9]+)/;
+  /(?:nostr:)?(npub|nsec|note|lnurl|nprofile|nevent|naddr|nrelay)([a-zA-Z0-9]+)/;
 
 export const NOSTR_URL_REGEX_GLOBAL =
-  /(?:nostr:)?(npub|nsec|note|lnurl|nprofile|nevent)([a-zA-Z0-9]+)/g;
+  /(?:nostr:)?(npub|nsec|note|lnurl|nprofile|nevent|naddr|nrelay)([a-zA-Z0-9]+)/g;
 
 export enum NOSTR_URL_PREFIX {
   npub = "npub",
@@ -14,6 +14,8 @@ export enum NOSTR_URL_PREFIX {
   lnurl = "lnurl",
   nprofile = "nprofile",
   nevent = "nevent",
+  naddr = "naddr",
+  nrelay = "nrelay",
 }
 
 function parseNostrURL(input: string) {
@@ -190,4 +192,185 @@ export function decodeNostrProfileString(nostrUrl: string) {
     return null;
   }
   return decoded.tlvItems;
+}
+
+// -- nevent (full TLV) --
+
+/**
+ * Encode a full nevent with optional relay hints, author, and kind
+ * @param eventId - hex-encoded event ID
+ * @param relayUrls - optional relay URLs where the event may be found
+ * @param authorPubkey - optional hex-encoded author pubkey
+ * @param kind - optional event kind number
+ * @returns bech32-encoded nevent string
+ */
+export function bechEncodeEvent(
+  eventId: string,
+  relayUrls?: string[],
+  authorPubkey?: string,
+  kind?: number
+) {
+  const tlvItems: Array<{
+    type: number;
+    value: string | number;
+    encoding?: "text";
+  }> = [{ type: 0, value: eventId }];
+
+  if (relayUrls) {
+    for (const url of relayUrls) {
+      tlvItems.push({ type: 1, value: url });
+    }
+  }
+
+  if (authorPubkey) {
+    tlvItems.push({ type: 2, value: authorPubkey });
+  }
+
+  if (kind !== undefined) {
+    tlvItems.push({ type: 3, value: kind });
+  }
+
+  return encodeBech32(BECH32_PREFIX.Event, tlvItems);
+}
+
+/**
+ * Decode an nevent bech32 or nostr: string into structured data
+ * @returns eventId, relays, author, kind — or null
+ */
+export function decodeNostrEventString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+
+  const result: {
+    eventId: string;
+    relays: string[];
+    author?: string;
+    kind?: number;
+  } = { eventId: "", relays: [] };
+
+  for (const item of decoded.tlvItems) {
+    if (item.type === 0) result.eventId = item.value as string;
+    else if (item.type === 1) result.relays.push(item.value as string);
+    else if (item.type === 2) result.author = item.value as string;
+    else if (item.type === 3) result.kind = item.value as number;
+  }
+
+  return result;
+}
+
+// -- naddr (event coordinates) --
+
+/**
+ * Encode an naddr (addressable event coordinate)
+ * @param identifier - the "d" tag value (use empty string for normal replaceable events)
+ * @param pubkey - hex-encoded author pubkey (required)
+ * @param kind - event kind number (required)
+ * @param relayUrls - optional relay URLs
+ * @returns bech32-encoded naddr string
+ */
+export function bechEncodeEventCoordinate(
+  identifier: string,
+  pubkey: string,
+  kind: number,
+  relayUrls?: string[]
+) {
+  const tlvItems: Array<{
+    type: number;
+    value: string | number;
+    encoding?: "text";
+  }> = [{ type: 0, value: identifier, encoding: "text" }];
+
+  if (relayUrls) {
+    for (const url of relayUrls) {
+      tlvItems.push({ type: 1, value: url });
+    }
+  }
+
+  tlvItems.push({ type: 2, value: pubkey });
+  tlvItems.push({ type: 3, value: kind });
+
+  return encodeBech32(BECH32_PREFIX.EventCoordinate, tlvItems);
+}
+
+/**
+ * nostr:naddr
+ */
+export function makeNostrEventCoordinateString(
+  identifier: string,
+  pubkey: string,
+  kind: number,
+  relayUrls?: string[]
+) {
+  return makeNostrString(
+    bechEncodeEventCoordinate(identifier, pubkey, kind, relayUrls)
+  );
+}
+
+/**
+ * Decode an naddr bech32 or nostr: string into structured data
+ * @returns identifier (d-tag), pubkey, kind, relays — or null
+ */
+export function decodeNostrEventCoordinateString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+
+  const result: {
+    identifier: string;
+    pubkey: string;
+    kind: number;
+    relays: string[];
+  } = { identifier: "", pubkey: "", kind: 0, relays: [] };
+
+  for (const item of decoded.tlvItems) {
+    if (item.type === 0) result.identifier = item.value as string;
+    else if (item.type === 1) result.relays.push(item.value as string);
+    else if (item.type === 2) result.pubkey = item.value as string;
+    else if (item.type === 3) result.kind = item.value as number;
+  }
+
+  return result;
+}
+
+// -- nrelay (deprecated per NIP-19) --
+
+/**
+ * Encode an nrelay
+ * @deprecated NIP-19 marks nrelay as deprecated
+ * @param relayUrl - the relay URL
+ * @returns bech32-encoded nrelay string
+ */
+export function bechEncodeRelay(relayUrl: string) {
+  return encodeBech32(BECH32_PREFIX.Relay, [
+    { type: 0, value: relayUrl, encoding: "text" },
+  ]);
+}
+
+/**
+ * nostr:nrelay
+ * @deprecated NIP-19 marks nrelay as deprecated
+ */
+export function makeNostrRelayString(relayUrl: string) {
+  return makeNostrString(bechEncodeRelay(relayUrl));
+}
+
+/**
+ * Decode an nrelay bech32 or nostr: string
+ * @deprecated NIP-19 marks nrelay as deprecated
+ * @returns relay URL string — or null
+ */
+export function decodeNostrRelayString(nostrUrl: string) {
+  const decoded = decodeNostrUrl(nostrUrl);
+  if (decoded === null) {
+    return null;
+  }
+
+  for (const item of decoded.tlvItems) {
+    if (item.type === 0) return item.value as string;
+  }
+
+  return null;
 }

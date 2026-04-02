@@ -95,3 +95,112 @@ test("decode bech", () => {
     "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gpp4mhxue69uhhytnc9e3k7mgpz4mhxue69uhkg6nzv9ejuumpv34kytnrdaksjlyr9p"
   );
 });
+
+/**
+ * NEVENT - full TLV with author and kind
+ */
+
+test("nevent encode/decode roundtrip", () => {
+  const eventId =
+    "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b";
+  const authorPubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const relays = ["wss://r.x.com", "wss://relay.damus.io"];
+  const kind = 1;
+
+  const encoded = encodeBech32(BECH32_PREFIX.Event, [
+    { type: 0, value: eventId },
+    { type: 1, value: relays[0] },
+    { type: 1, value: relays[1] },
+    { type: 2, value: authorPubkey },
+    { type: 3, value: kind },
+  ]);
+
+  expect(encoded.startsWith("nevent")).toBe(true);
+
+  const decoded = decodeBech32(encoded);
+  expect(decoded.prefix).toEqual("nevent");
+  expect(decoded.tlvItems).toEqual([
+    { type: 0, value: eventId },
+    { type: 1, value: relays[0] },
+    { type: 1, value: relays[1] },
+    { type: 2, value: authorPubkey },
+    { type: 3, value: kind },
+  ]);
+});
+
+test("nevent encode/decode with high kind number", () => {
+  const eventId =
+    "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b";
+
+  const encoded = encodeBech32(BECH32_PREFIX.Event, [
+    { type: 0, value: eventId },
+    { type: 3, value: 30023 },
+  ]);
+
+  const decoded = decodeBech32(encoded);
+  expect(decoded.tlvItems).toContainEqual({ type: 3, value: 30023 });
+});
+
+/**
+ * NADDR - addressable event coordinate
+ */
+
+test("naddr encode/decode roundtrip", () => {
+  const identifier = "my-article";
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const kind = 30023;
+  const relays = ["wss://relay.damus.io"];
+
+  const encoded = encodeBech32(BECH32_PREFIX.EventCoordinate, [
+    { type: 0, value: identifier, encoding: "text" },
+    { type: 1, value: relays[0] },
+    { type: 2, value: pubkey },
+    { type: 3, value: kind },
+  ]);
+
+  expect(encoded.startsWith("naddr")).toBe(true);
+
+  const decoded = decodeBech32(encoded);
+  expect(decoded.prefix).toEqual("naddr");
+  expect(decoded.tlvItems).toEqual([
+    { type: 0, value: identifier },
+    { type: 1, value: relays[0] },
+    { type: 2, value: pubkey },
+    { type: 3, value: kind },
+  ]);
+});
+
+test("naddr with empty d-tag (normal replaceable event)", () => {
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+
+  const encoded = encodeBech32(BECH32_PREFIX.EventCoordinate, [
+    { type: 0, value: "", encoding: "text" },
+    { type: 2, value: pubkey },
+    { type: 3, value: 0 },
+  ]);
+
+  const decoded = decodeBech32(encoded);
+  expect(decoded.prefix).toEqual("naddr");
+  expect(decoded.tlvItems[0]).toEqual({ type: 0, value: "" });
+});
+
+/**
+ * NRELAY (deprecated per NIP-19)
+ */
+
+test("nrelay encode/decode roundtrip", () => {
+  const relayUrl = "wss://relay.damus.io";
+
+  const encoded = encodeBech32(BECH32_PREFIX.Relay, [
+    { type: 0, value: relayUrl, encoding: "text" },
+  ]);
+
+  expect(encoded.startsWith("nrelay")).toBe(true);
+
+  const decoded = decodeBech32(encoded);
+  expect(decoded.prefix).toEqual("nrelay");
+  expect(decoded.tlvItems).toEqual([{ type: 0, value: relayUrl }]);
+});

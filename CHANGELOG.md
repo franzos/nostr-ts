@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Complete NIP-19 support: nevent (full TLV with author/kind), naddr (event coordinates), nrelay (deprecated)
+
+### Fixed
+- Bech32 kind encoding (type 3) now uses big-endian byte order per spec
+
 ## [0.0.9] - 2026-04-02
 
 ### Added

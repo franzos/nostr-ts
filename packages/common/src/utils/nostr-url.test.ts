@@ -2,10 +2,19 @@ import { BECH32_PREFIX } from "../types";
 import {
   bechEncodePrivateKey,
   bechEncodeProfile,
+  bechEncodeEvent,
+  bechEncodeEventCoordinate,
+  bechEncodeRelay,
   decodeNostrPrivateKeyString,
   decodeNostrProfileString,
   decodeNostrPublicKeyString,
+  decodeNostrEventString,
+  decodeNostrEventCoordinateString,
+  decodeNostrRelayString,
   encodeNostrString,
+  isNostrUrl,
+  makeNostrEventCoordinateString,
+  makeNostrRelayString,
 } from "./nostr-url";
 
 /**
@@ -86,4 +95,126 @@ test("decodeProfile", () => {
       value: "wss://djbas.sadkb.com",
     },
   ]);
+});
+
+/**
+ * EVENT (nevent)
+ */
+
+test("encodeEvent with all TLV fields", () => {
+  const eventId =
+    "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b";
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const relays = ["wss://r.x.com"];
+
+  const encoded = bechEncodeEvent(eventId, relays, pubkey, 1);
+  expect(encoded.startsWith("nevent")).toBe(true);
+
+  const decoded = decodeNostrEventString(encoded);
+  expect(decoded).toEqual({
+    eventId,
+    relays,
+    author: pubkey,
+    kind: 1,
+  });
+});
+
+test("encodeEvent with only event ID", () => {
+  const eventId =
+    "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b";
+
+  const encoded = bechEncodeEvent(eventId);
+  const decoded = decodeNostrEventString(encoded);
+  expect(decoded).toEqual({
+    eventId,
+    relays: [],
+  });
+});
+
+test("decodeEvent from nostr: URL", () => {
+  const eventId =
+    "4cd665db042864ee600ee976d6cfcc7c5ce743859462f94a347cd970d88a5f3b";
+  const encoded = bechEncodeEvent(eventId, ["wss://relay.damus.io"]);
+  const nostrUrl = `nostr:${encoded}`;
+
+  expect(isNostrUrl(nostrUrl)).toBe(true);
+  const decoded = decodeNostrEventString(nostrUrl);
+  expect(decoded?.eventId).toEqual(eventId);
+  expect(decoded?.relays).toEqual(["wss://relay.damus.io"]);
+});
+
+/**
+ * EVENT COORDINATE (naddr)
+ */
+
+test("encodeEventCoordinate", () => {
+  const identifier = "my-article";
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const kind = 30023;
+  const relays = ["wss://relay.damus.io"];
+
+  const encoded = bechEncodeEventCoordinate(identifier, pubkey, kind, relays);
+  expect(encoded.startsWith("naddr")).toBe(true);
+
+  const decoded = decodeNostrEventCoordinateString(encoded);
+  expect(decoded).toEqual({
+    identifier,
+    pubkey,
+    kind,
+    relays,
+  });
+});
+
+test("encodeEventCoordinate with empty d-tag", () => {
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+
+  const encoded = bechEncodeEventCoordinate("", pubkey, 0);
+  const decoded = decodeNostrEventCoordinateString(encoded);
+  expect(decoded?.identifier).toEqual("");
+  expect(decoded?.pubkey).toEqual(pubkey);
+});
+
+test("naddr nostr: URL roundtrip", () => {
+  const pubkey =
+    "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
+  const nostrUrl = makeNostrEventCoordinateString(
+    "banana",
+    pubkey,
+    30023,
+    ["wss://r.x.com"]
+  );
+
+  expect(nostrUrl.startsWith("nostr:naddr")).toBe(true);
+  expect(isNostrUrl(nostrUrl)).toBe(true);
+
+  const decoded = decodeNostrEventCoordinateString(nostrUrl);
+  expect(decoded?.identifier).toEqual("banana");
+  expect(decoded?.kind).toEqual(30023);
+});
+
+/**
+ * RELAY (nrelay — deprecated)
+ */
+
+test("encodeRelay", () => {
+  const relayUrl = "wss://relay.damus.io";
+  const encoded = bechEncodeRelay(relayUrl);
+  expect(encoded.startsWith("nrelay")).toBe(true);
+
+  const decoded = decodeNostrRelayString(encoded);
+  expect(decoded).toEqual(relayUrl);
+});
+
+test("nrelay nostr: URL roundtrip", () => {
+  const relayUrl = "wss://r.x.com";
+  const nostrUrl = makeNostrRelayString(relayUrl);
+
+  expect(nostrUrl.startsWith("nostr:nrelay")).toBe(true);
+  expect(isNostrUrl(nostrUrl)).toBe(true);
+
+  const decoded = decodeNostrRelayString(nostrUrl);
+  expect(decoded).toEqual(relayUrl);
 });

@@ -33,19 +33,24 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 function generateTLV(
-  items: Array<{ type: number; value: string | number }>
+  items: Array<{ type: number; value: string | number; encoding?: "text" }>
 ): Uint8Array {
   const parts: Uint8Array[] = [];
 
   for (const item of items) {
     const typePart = new Uint8Array([item.type]);
-    let valuePart;
+    let valuePart: Uint8Array;
 
-    if (item.type === 1) {
+    if (item.encoding === "text" || item.type === 1) {
+      // Text encoding: relay URLs (type 1), naddr d-tag (type 0), nrelay URL (type 0)
       valuePart = new TextEncoder().encode(item.value as string);
     } else if (item.type === 3) {
-      valuePart = new Uint32Array([item.value as number]);
+      // Kind: 32-bit unsigned integer, big-endian
+      const buf = new ArrayBuffer(4);
+      new DataView(buf).setUint32(0, item.value as number, false);
+      valuePart = new Uint8Array(buf);
     } else {
+      // Hex-encoded binary data: pubkeys (type 0/2), event IDs (type 0)
       valuePart = hexToBytes(item.value as string);
     }
 
@@ -123,7 +128,7 @@ function convertTLV(tlvItems: ParsedTLVItem[]): ConvertedTLVItem[] {
  */
 export function encodeBech32(
   prefix: BECH32_PREFIX,
-  tlvItems: Array<{ type: number; value: string | number }>
+  tlvItems: Array<{ type: number; value: string | number; encoding?: "text" }>
 ) {
   let tlvData;
 
@@ -167,12 +172,25 @@ export function decodeBech32(bech32Str: string) {
     tlvItems = [{ type: 0, value: bytesToHex(tlvData) }];
   } else if (
     prefix === BECH32_PREFIX.Profile ||
-    prefix === BECH32_PREFIX.Event ||
-    prefix === BECH32_PREFIX.Relay ||
-    prefix === BECH32_PREFIX.EventCoordinate
+    prefix === BECH32_PREFIX.Event
   ) {
     const parsedTLVItems: ParsedTLVItem[] = parseTLV(tlvData);
     tlvItems = convertTLV(parsedTLVItems);
+  } else if (
+    prefix === BECH32_PREFIX.EventCoordinate ||
+    prefix === BECH32_PREFIX.Relay
+  ) {
+    // naddr/nrelay: type 0 is UTF-8 text (d-tag or relay URL), not hex
+    const parsedTLVItems: ParsedTLVItem[] = parseTLV(tlvData);
+    tlvItems = parsedTLVItems.map((item) => {
+      if (item.type === 0) {
+        return {
+          type: 0,
+          value: new TextDecoder().decode(item.value as Uint8Array),
+        };
+      }
+      return convertTLV([item])[0];
+    });
   } else {
     throw new Error("Unknown prefix: " + prefix);
   }

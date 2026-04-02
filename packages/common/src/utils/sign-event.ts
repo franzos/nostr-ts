@@ -1,11 +1,11 @@
-import { schnorr } from "@noble/curves/secp256k1";
-import { bytesToHex } from "@noble/curves/abstract/utils";
+import { schnorr } from "@noble/curves/secp256k1.js";
+import { bytesToHex, hexToBytes } from "@noble/curves/utils.js";
 import { EventBase } from "../types";
 import { hashEvent } from "./hash-event";
 
 export function sign(eventHash: string, privateKey: string) {
   if (eventHash.length !== 64) throw new Error("Invalid event hash");
-  const sig = schnorr.sign(eventHash, privateKey);
+  const sig = schnorr.sign(hexToBytes(eventHash), hexToBytes(privateKey));
   return bytesToHex(sig);
 }
 

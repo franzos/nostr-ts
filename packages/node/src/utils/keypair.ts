@@ -1,6 +1,6 @@
 import { generateClientKeys } from "@nostr-ts/common";
-import { schnorr } from "@noble/curves/secp256k1";
-import { bytesToHex } from "@noble/curves/abstract/utils";
+import { schnorr } from "@noble/curves/secp256k1.js";
+import { bytesToHex, hexToBytes } from "@noble/curves/utils.js";
 
 import { readFile, statfs, writeFile } from "fs/promises";
 
@@ -42,7 +42,7 @@ export async function loadOrCreateKeypair(privateKeyPath?: string) {
       console.log(
         `Public key file ${keypath}.pub does not exist. Generating ...`
       );
-      publicKey = bytesToHex(schnorr.getPublicKey(privateKey));
+      publicKey = bytesToHex(schnorr.getPublicKey(hexToBytes(privateKey)));
     }
     return { privateKey, publicKey };
   } else {

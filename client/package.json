@@ -1,6 +1,6 @@
 {
   "name": "client",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Nostr node playground",
   "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "@types/node": "^20.19.6",
     "@types/ws": "^8.18.1",
     "rimraf": "^3.0.2",
-    "tslib": "2.5.0",
-    "typescript": "5.1.6"
+    "tslib": "2.8.1",
+    "typescript": "5.8.3"
   }
 }

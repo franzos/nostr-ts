@@ -1,6 +1,6 @@
 {
   "name": "client-web",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Nostr react client",
   "author": "Franz Geffke <mail@gofranz.com>",
   "license": "MIT",
